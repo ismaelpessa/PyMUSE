@@ -34,6 +34,15 @@ class MuseCube:
             flux_normalized.append(f*normalization_factor)
         return flux_normalized
     def substract_spec(self,spec,sky_spec):
+        """
+
+        :param spec: array[]
+                     flux array of the region
+        :param sky_spec: array[]
+                         flux array of the sky
+        :return: substracted_spec: array[]
+                                   flux array of the region with the substraction of the sky
+        """
         substracted_spec=[]
         n=len(spec)
         for i in xrange(0,n):
