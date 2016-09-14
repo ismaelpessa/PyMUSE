@@ -72,14 +72,12 @@ class MuseCube:
         wave=self.create_wavelength_array()
         n=len(wave)
         if wavelength<min(wave) or wavelength>max(wave):
-            print 'Longitud de onda dada no esta dentro del rango valido'
-            print 'Se usara wavelength = '+str(wave[n/2])
-            k=n/2
-        if wavelength>min(wave) and wavelength<max(wave) and self.indexOf(wave,wavelength)==-1:
+            raise ValueError('Longitud de onda dada no esta dentro del rango valido')
+        elif wavelength>min(wave) and wavelength<max(wave) and self.indexOf(wave,wavelength)==-1:
             print 'Longitud de onda en rango valido, pero el valor asignado no esta definido'
             k=int(self.closest_element(wave,wavelength))
             print 'Se usara wavelength = '+str(wave[k])
-        if wavelength>min(wave) and wavelength<max(wave) and self.indexOf(wave,wavelength)>=0:
+        elif wavelength>min(wave) and wavelength<max(wave) and self.indexOf(wave,wavelength)>=0:
             k=self.indexOf(wave,wavelength)
 
         data_matrix_array=[]
@@ -90,22 +88,21 @@ class MuseCube:
             Nw = len(DATA)
             Ny = len(DATA[0])
             Nx = len(DATA[0][0])
-            Matrix = np.array([[0. for x in range(Nx)] for y in range(Ny)])
+            matrix = np.array([[0. for x in range(Nx)] for y in range(Ny)])
             for i in xrange(0, Ny):
                 for j in xrange(0, Nx):
-                    Matrix[i][j] = DATA[k][i][j]
-            data_matrix_array.append(Matrix)
-        n_matrix=len(data_matrix_array)
-        Matrix_errors=np.array([[0. for x in range(Nx)] for y in range(Ny)])
+                    matrix[i][j] = DATA[k][i][j]
+            data_matrix_array.append(matrix)
+        matrix_errors=np.array([[0. for x in range(Nx)] for y in range(Ny)])
         for i in xrange(0, Ny):
             for j in xrange(0, Nx):
                 matrix_elements=[]
                 for matrix in data_matrix_array:
                     matrix_elements.append(matrix[i][j])
                 error=np.std(matrix_elements)
-                Matrix_errors[i][j]=error
+                matrix_errors[i][j]=error
         hdulist = fits.HDUList.fromfile(self.white)
-        hdulist[1].data = Matrix_errors
+        hdulist[1].data = matrix_errors
         fitsname='errors'
         n_figure=2
         hdulist.writeto(fitsname, clobber=True)
