@@ -38,7 +38,7 @@ class MuseCube:
         """
         dw = 1.25
         w = np.arange(4750, 9351.25, dw)
-        print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
+        #print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
         return w
 
     def indexOf(self, array, element):
@@ -86,6 +86,7 @@ class MuseCube:
         for exposure in exposures_names:
             hdulist=fits.open(exposure)
             DATA=hdulist[1].data
+            print DATA.shape
             Nw = len(DATA)
             Ny = len(DATA[0])
             Nx = len(DATA[0][0])
@@ -103,7 +104,13 @@ class MuseCube:
                     matrix_elements.append(matrix[i][j])
                 error=np.std(matrix_elements)
                 Matrix_errors[i][j]=error
-        plt.imshow(Matrix_errors)
+        hdulist = fits.HDUList.fromfile(self.white)
+        hdulist[1].data = Matrix_errors
+        fitsname='errors'
+        n_figure=2
+        hdulist.writeto(fitsname, clobber=True)
+        errors = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+        errors.show_grayscale()
 
 
 
@@ -248,14 +255,15 @@ class MuseCube:
         self.draw_circle(x_center, y_center, radius, 'Green', coord_system)
         reg = self.define_region(x_center, y_center, radius, coord_system)
         ring = self.define_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system)
-        print ring
-        print reg
+        #print ring
+        #print reg
         normalization_factor = float(len(reg)) / len(ring)
         print normalization_factor
         spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
         substracted_sky_spec = self.substract_spec(spec, spec_sky_normalized)
         plt.figure(n_figure)
         plt.plot(w, substracted_sky_spec)
+        plt.plot(w,spec_sky_normalized)
         return w, substracted_sky_spec
 
 
