@@ -26,7 +26,7 @@ class MuseCube:
         self.cube = filename_cube
         hdulist = fits.open(self.cube)
         self.data = hdulist[1].data
-        self.stat=hdulist[2].data
+        self.stat = hdulist[2].data
         self.white = filename_white
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(1))
         self.gc2.show_grayscale()
@@ -113,39 +113,131 @@ class MuseCube:
                 min_dif = dif
         return index
 
-    def __xyz_nan_erase(self,x,y,z):
-          n=len(z)
-          x_out=[]
-          y_out=[]
-          z_out=[]
-          for i in xrange(n):
-              if (z[i]!=z[i])==False:
-                  x_out.append(x[i])
-                  y_out.append(y[i])
-                  z_out.append(z[i])
-          return x_out,y_out,z_out
+    def __cut_bright_pixel(self, flux, n):
+        '''
+        cuts the brightest n elements in a sorted flux array
 
-    def rms_region(self,x_center,y_center,radius,coord_system='pix'):
-        region=self.define_region(x_center,y_center,radius,coord_system)
-        n = len(region)
-        n_wave=len(self.data)
-        rms_array=[]
+        :param flux: array[]
+                     array containing the sorted flux
+        :param n: int
+                  number of elements to cut
+        :return: cuted_flux: array[]
+                             array that contains the remaining elements of the flux
+        '''
+        N = len(flux)
+        cuted_flux = []
+        for i in xrange(0, N - n):
+            cuted_flux.append(flux[i])
+        return cuted_flux
+
+    def __rms_determinate(self, k):
+        '''
+        Function used to check the right number of pixels to cut before measure rms
+        :param k: wavelength index
+        :return:
+        '''
+        masked_flux = self.__matrix2array(k)
+        sorted_flux = np.sort(masked_flux)
+        N = len(sorted_flux)
+        rms_array = []
+        n_cuted_elements_array = []
+        j_ini = 80000  # Indice desde donde empezar a cortar elementos, todos los anteriores son cortados
+        sorted_flux = self.__cut_bright_pixel(sorted_flux, j_ini)
+        N_new = len(sorted_flux)
+        j_fin = N_new - 10  # Indice en donde acabar de cortar elementos
+        for j in xrange(0, j_fin):
+            # print 'iteracion ' + str(j) + ' de '+str(j_fin)
+            sorted_flux = self.__cut_bright_pixel(sorted_flux, 1)
+            rms = np.std(sorted_flux)
+            n_cuted_elements = j + 1
+            rms_array.append(rms)
+            n_cuted_elements_array.append(n_cuted_elements)
+        plt.plot(n_cuted_elements_array, rms_array)
+
+    def __xyz_nan_erase(self, x, y, z):
+        n = len(z)
+        x_out = []
+        y_out = []
+        z_out = []
+        for i in xrange(n):
+            if (z[i] != z[i]) == False:
+                x_out.append(x[i])
+                y_out.append(y[i])
+                z_out.append(z[i])
+        return x_out, y_out, z_out
+
+    def __matrix2array(self, k, stat=False):
+        matrix = self.data[k]
+        if stat == True:
+            matrix = self.stat[k]
+        n1 = len(matrix)
+        n2 = len(matrix[0])
+        array_flux = []
+        for i in xrange(n1):
+            for j in xrange(n2):
+                array_flux.append(matrix[i][j])
+        array_flux_aux = np.where(np.isnan(np.array(array_flux)), -1, np.array(array_flux))
+        masked_flux = ma.masked_equal(array_flux_aux, -1)
+        return masked_flux
+
+    def __rms_measure(self, k, n=40000):
+        '''
+
+        :param k: int
+                  index in wavelength array, where the rms will be measured
+        :param n: int
+                   number of bright pixel to cut before measure rms, default = 40000
+        :return: rms: flot
+                      value found for rms in the given wavelength
+        '''
+        flux = self.__matrix2array(k)
+        sorted_flux = np.sort(flux)
+        cuted_sorted_flux = self.__cut_bright_pixel(sorted_flux, n)
+        rms = np.std(cuted_sorted_flux)
+        return rms
+
+    def __save2fitsimage(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2):
+        if type == 'white':
+            hdulist = fits.HDUList.fromfile(self.white)
+            hdulist[1].data = data_to_save
+            hdulist.writeto(fitsname, clobber=True)
+            im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+            im.show_grayscale()
+
+        if type == 'cube':
+            hdulist = fits.HDUList.fromfile(self.cube)
+            if stat == False:
+                hdulist[1].data = data_to_save
+            if stat == True:
+                hdulist[2].data = data_to_save
+            hdulist.writeto(fitsname, clobber=True)
+            im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
+            im.show_grayscale()
+
+    def rms_normalize_stat(self, new_cube_name='new_cube.fits',n=40000):
+        '''
+        Function that creates a new cube with the stat dimension normalized
+        :param new_cube_name: string
+                              name of the fits cube that will be created
+               n: float
+                  number of pixels that will be ignored to calculate the observed rms
+        :return:
+        '''
+        n_wave = len(self.data)
+        stat_normalized = []
+        print n_wave
         for k in xrange(n_wave):
-            region_array=[]
-            for i in xrange(n):
-                region_array.append(self.data[k][region[i][1]][region[i][0]])
-            rms_array.append(np.nanstd(region_array))
-        stat_normalized=[]
-        for k in xrange(n_wave):
-            stat_normalized.append(self.stat[k]/rms_array[k])
+            print k
+            rms_obs = self.__rms_measure(k,n=n)
+            stat = self.__matrix2array(k, stat=True)
+            rms_stat = np.median(stat)
+            normalization_factor = rms_obs / rms_stat
+            stat_normalized.append(self.stat[k] * normalization_factor)
+
+        self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
         return stat_normalized
 
-
-
-
-
-
-    def calculate_error_not_aligned(self, exposure_names, wavelength, fitsname='error.fits', n_figure=2):
+    def __find_wavelength_index(self, wavelength):
         wave = self.create_wavelength_array()
         if wavelength < min(wave) or wavelength > max(wave):
             raise ValueError('Longitud de onda dada no esta dentro del rango valido')
@@ -156,6 +248,10 @@ class MuseCube:
         elif wavelength > min(wave) and wavelength < max(wave) and self.indexOf(wave, wavelength) >= 0:
             k = self.indexOf(wave, wavelength)
 
+        return k
+
+    def combine_not_aligned(self, exposure_names, wavelength,n_resolution=50000,kind='std'):
+        k = self.__find_wavelength_index(wavelength)
         ra_min_exposures = []
         ra_max_exposures = []
         dec_min_exposures = []
@@ -170,64 +266,68 @@ class MuseCube:
         ra_max_all = max(ra_max_exposures)
         dec_min_all = min(dec_min_exposures)
         dec_max_all = max(dec_max_exposures)
-        n_resolution = 10000
+
         n_ra = int(round((ra_max_all - ra_min_all) * n_resolution))
         n_dec = int(round((dec_max_all - dec_min_all) * n_resolution))
+        print 'n_ra = '+str(n_ra)
+        print 'n_dec = '+str(n_dec)
         ra2 = list(np.linspace(ra_min_all, ra_max_all, n_ra))
         ra2.reverse()
-        ra_array=np.array(ra2)
+        ra_array = np.array(ra2)
         dec_array = np.linspace(dec_min_all, dec_max_all, n_dec)
 
-
-        interpolated_fluxes=[]
+        interpolated_fluxes = []
 
         for exposure in exposure_names:
-            hdulist=fits.open(exposure)
-            data=hdulist[1].data
-            n1=len(data[0])
-            n2=len(data[0][0])
+            hdulist = fits.open(exposure)
+            data = hdulist[1].data
+            n1 = len(data[0])
+            n2 = len(data[0][0])
             im = aplpy.FITSFigure(exposure, figure=plt.figure(10), slices=[1])
             plt.close(10)
-            ra=[]
-            dec=[]
-            #flux=[]
+            ra = []
+            dec = []
             for i in xrange(n1):
                 for j in xrange(n2):
                     x_wcs, y_wcs = im.pixel2world(j, i)
-                    if i==n1-1:
+                    if i == n1 - 1:
                         ra.append(x_wcs)
-                    if j==n2-1:
+                    if j == n2 - 1:
                         dec.append(y_wcs)
-                    #flux.append(data[k][i][j])
-            data_aux=np.where(np.isnan(data[k]),-1,data[k])
-            data_aux_masked=ma.masked_equal(data_aux,-1)
-            interpolator=interpolate.interp2d(ra,dec,data_aux_masked,bounds_error=False,fill_value=np.nan)
-            flux_new=interpolator(ra_array,dec_array)
+                        # flux.append(data[k][i][j])
+            data_aux = np.where(np.isnan(data[k]), -1, data[k])
+            data_aux_masked = ma.masked_equal(data_aux, -1)
+            interpolator = interpolate.interp2d(ra, dec, data_aux_masked, bounds_error=False, fill_value=np.nan)
+            flux_new = interpolator(ra_array, dec_array)
             interpolated_fluxes.append(flux_new)
-        matrix_std=interpolated_fluxes[0]
-        n1=len(matrix_std)
-        n2=len(matrix_std[0])
 
+            matrix_combined=self.__calculate_combined_matrix(interpolated_fluxes,kind=kind)
+
+        return matrix_combined,interpolated_fluxes
+
+
+    def __calculate_combined_matrix(self, interpolated_fluxes,kind='std'):
+        '''
+
+        :param interpolated_fluxes: array[]
+                                    array of matrix, each matrix contain the flux of an exposure at a given wavelength
+               kind: string
+                     default = 'std', possible values = 'std, 'ave'. Kind of combination of the input matrix in each point
+        :return:
+        '''
+        matrix_combined=np.zeros_like(interpolated_fluxes[0])
+        n1=len(matrix_combined)
+        n2=len(matrix_combined[0])
         for i in xrange(n1):
             for j in xrange(n2):
-                std_aux_array=[]
+                aux_array = []
                 for matrix in interpolated_fluxes:
-                    std_aux_array.append(matrix[i][j])
-                matrix_std[i][j]=np.nanstd(std_aux_array)
-        return matrix_std
-
-
-
-        '''hdulist = fits.HDUList.fromfile(self.white)
-            hdulist[1].data = matrix_errors
-            hdulist.writeto(fitsname, clobber=True)
-            errors = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
-            errors.show_grayscale()'''
-
-
-
-
-
+                    aux_array.append(matrix[i][j])
+                if kind=='std':
+                    matrix_combined[i][j] = np.nanstd(aux_array)
+                if kind=='ave':
+                    matrix_combined[i][j] = np.nanmean(aux_array)
+        return matrix_combined
 
     def calculate_error(self, exposures_names, wavelength, fitsname='errors.fits', n_figure=2):
         """
@@ -243,15 +343,7 @@ class MuseCube:
                          number of the figure where the image will be displayed
         :return:
         """
-        wave = self.create_wavelength_array()
-        if wavelength < min(wave) or wavelength > max(wave):
-            raise ValueError('Longitud de onda dada no esta dentro del rango valido')
-        elif wavelength > min(wave) and wavelength < max(wave) and self.indexOf(wave, wavelength) == -1:
-            print 'Longitud de onda en rango valido, pero el valor asignado no esta definido'
-            k = int(self.closest_element(wave, wavelength))
-            print 'Se usara wavelength = ' + str(wave[k])
-        elif wavelength > min(wave) and wavelength < max(wave) and self.indexOf(wave, wavelength) >= 0:
-            k = self.indexOf(wave, wavelength)
+        k = self.__find_wavelength_index(wavelength)
 
         data_matrix_array = []
         for exposure in exposures_names:
@@ -303,7 +395,8 @@ class MuseCube:
         if type(wavelength[0]) != int and type(wavelength[0]) != float and type(wavelength[0]) != list and type(
                 wavelength[0]) != numpy.ndarray:
             interval = -1
-            print 'Tipo de variable usada para definir el longitudes de onda a colapsar desconocido'
+            raise ValueError('Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
+
         wave = self.create_wavelength_array()
         wave = list(wave)
         wave_index = []
@@ -340,11 +433,7 @@ class MuseCube:
                 for j in xrange(0, Ny):
                     Matrix[i][j] = self.data[k][i][j]
         image_stacker = image_stacker + Matrix
-        hdulist = fits.HDUList.fromfile(self.white)
-        hdulist[1].data = image_stacker
-        hdulist.writeto(fitsname, clobber=True)
-        colapsed = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
-        colapsed.show_grayscale()
+        self.__save2fitsimage(fitsname,image_stacker,type='white',n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
 
     def normalize_sky(self, flux_sky, normalization_factor):
