@@ -558,7 +558,8 @@ class MuseCube:
         errors = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
         errors.show_grayscale()
 
-    def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='image_video.avi'):
+    def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='image_video.avi',
+                                      erase=True):
         wave = self.create_wavelength_array()
         n = len(wave)
         index_ini = int(self.closest_element(wave, initial_wavelength))
@@ -573,18 +574,29 @@ class MuseCube:
             final_wavelength = wave[n - 1]
 
         images_names = []
+        fitsnames = []
         for i in xrange(initial_wavelength, final_wavelength):
             wavelength_range = [i, i + width]
             filename = 'colapsed_image_' + str(i) + '_'
             self.colapse_cube([wavelength_range], fitsname=filename + '.fits', n_figure=15)
             plt.close(15)
-
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
             image.save(filename=filename + '.png')
+            fitsnames.append(filename + '.fits')
             images_names.append(filename + '.png')
             plt.close(15)
         video = self.make_video(images=images_names, outvid=outvid)
+        n_im = len(fitsnames)
+        if erase:
+            for i in xrange(n_im):
+                fits_im = fitsnames[i]
+                png_im = images_names[i]
+                command_fits = 'rm ' + fits_im
+                command_png = 'rm ' + png_im
+                os.system(command_fits)
+                os.system(command_png)
+        return video
         return video
 
     def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2):
@@ -1237,7 +1249,7 @@ class MuseCube:
             print 'Region: X=' + str(regiones[i][0]) + ' Y=' + str(regiones[i][1]) + ' R= ' + str(
                 regiones[i][2]) + ' en Figure ' + str(i + 2)
 
-    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.01, outvid='emission_lines_video.avi'):
+    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         OII = 3728.483
         wave = self.create_wavelength_array()
         n = len(wave)
@@ -1249,6 +1261,7 @@ class MuseCube:
             z_fin = max_z_allowed
         z_array = np.arange(z_ini, z_fin, dz)
         images_names = []
+        fitsnames = []
         for z in z_array:
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
@@ -1259,8 +1272,18 @@ class MuseCube:
             plt.title('Emission lines image at z = ' + str(z))
             image.save(filename=filename + '.png')
             images_names.append(filename + '.png')
+            fitsnames.append(filename + '.fits')
             plt.close(15)
         video = self.make_video(images=images_names, outvid=outvid)
+        n_im = len(fitsnames)
+        if erase:
+            for i in xrange(n_im):
+                fits_im = fitsnames[i]
+                png_im = images_names[i]
+                command_fits = 'rm ' + fits_im
+                command_png = 'rm ' + png_im
+                os.system(command_fits)
+                os.system(command_png)
         return video
 
     def create_ranges(self, z, width=5.):
