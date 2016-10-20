@@ -7,6 +7,8 @@ from astropy.io import fits
 from matplotlib import pyplot as plt
 from scipy import interpolate
 import numpy.ma as ma
+import glob
+import os
 
 
 class MuseCube:
@@ -130,29 +132,33 @@ class MuseCube:
             cuted_flux.append(flux[i])
         return cuted_flux
 
-    def __rms_determinate(self, k):
+    def __rms_determinate(self, k, plotname='rms_test.png'):
         '''
         Function used to check the right number of pixels to cut before measure rms
         :param k: wavelength index
         :return:
         '''
+        # import time
         masked_flux = self.__matrix2array(k)
         sorted_flux = np.sort(masked_flux)
         N = len(sorted_flux)
-        rms_array = []
+        std_array = []
         n_cuted_elements_array = []
-        j_ini = 80000  # Indice desde donde empezar a cortar elementos, todos los anteriores son cortados
+        j_ini = 0  # Indice desde donde empezar a cortar elementos, todos los anteriores son cortados
         sorted_flux = self.__cut_bright_pixel(sorted_flux, j_ini)
         N_new = len(sorted_flux)
         j_fin = N_new - 10  # Indice en donde acabar de cortar elementos
+
         for j in xrange(0, j_fin):
-            # print 'iteracion ' + str(j) + ' de '+str(j_fin)
+            if j % 1000 == 0:
+                print 'iteracion ' + str(j) + ' de ' + str(j_fin)
             sorted_flux = self.__cut_bright_pixel(sorted_flux, 1)
-            rms = np.std(sorted_flux)
+            std = np.std(sorted_flux)
             n_cuted_elements = j + 1
-            rms_array.append(rms)
+            std_array.append(std)
             n_cuted_elements_array.append(n_cuted_elements)
-        plt.plot(n_cuted_elements_array, rms_array)
+        plt.plot(n_cuted_elements_array, std_array)
+        plt.savefig(plotname)
 
     def __xyz_nan_erase(self, x, y, z):
         n = len(z)
@@ -196,13 +202,50 @@ class MuseCube:
         rms = np.std(cuted_sorted_flux)
         return rms
 
-    def __save2fitsimage(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2):
+    def __edit_header(self, hdulist, values_list,
+                      keywords_list=['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'], hdu=1):
+        hdu_element = hdulist[hdu]
+        if len(keywords_list) != len(values_list):
+            raise ValueError('Dimensions of keywords_list and values-list does not match')
+        n = len(values_list)
+        for i in xrange(n):
+            keyword = keywords_list[i]
+            value = values_list[i]
+            hdu_element.header[keyword] = value
+        hdulist_edited = hdulist
+        hdulist_edited[hdu] = hdu_element
+        return hdulist_edited
+
+    def __save2fitsimage(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2, edit_header=[]):
         if type == 'white':
             hdulist = fits.HDUList.fromfile(self.white)
             hdulist[1].data = data_to_save
-            hdulist.writeto(fitsname, clobber=True)
-            im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
-            im.show_grayscale()
+            if len(edit_header) == 0:
+                hdulist.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+                im.show_grayscale()
+            elif len(edit_header) == 1:
+                values_list = edit_header[0]
+                hdulist_edited = self.__edit_header(hdulist, values_list=values_list)
+                hdulist_edited.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+                im.show_grayscale()
+            elif len(edit_header) == 2:
+                values_list = edit_header[0]
+                keywords_list = edit_header[1]
+                hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list)
+                hdulist_edited.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+                im.show_grayscale()
+            elif len(edit_header) == 3:
+                values_list = edit_header[0]
+                keywords_list = edit_header[1]
+                hdu = edit_header[2]
+                hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list,
+                                                    hdu=hdu)
+                hdulist_edited.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+                im.show_grayscale()
 
         if type == 'cube':
             hdulist = fits.HDUList.fromfile(self.cube)
@@ -210,11 +253,90 @@ class MuseCube:
                 hdulist[1].data = data_to_save
             if stat == True:
                 hdulist[2].data = data_to_save
-            hdulist.writeto(fitsname, clobber=True)
-            im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
-            im.show_grayscale()
+            if len(edit_header) == 0:
+                hdulist.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
+                im.show_grayscale()
+            elif len(edit_header) == 1:
+                values_list = edit_header[0]
+                hdulist_edited = self.__edit_header(hdulist, values_list=values_list)
+                hdulist_edited.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
+                im.show_grayscale()
+            elif len(edit_header) == 2:
+                values_list = edit_header[0]
+                keywords_list = edit_header[1]
+                hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list)
+                hdulist_edited.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
+                im.show_grayscale()
+            elif len(edit_header) == 3:
+                values_list = edit_header[0]
+                keywords_list = edit_header[1]
+                hdu = edit_header[2]
+                hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list,
+                                                    hdu=hdu)
+                hdulist_edited.writeto(fitsname, clobber=True)
+                im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
+                im.show_grayscale()
 
-    def rms_normalize_stat(self, new_cube_name='new_cube.fits',n=40000):
+    def __rms_measure2(self, k, threshold=0.2):
+        flux = self.__matrix2array(k, stat=False)
+        f = flux.data
+        fmin = min(f)
+        fmax = max(f)
+        nbins = 2000
+        bin = np.linspace(0, fmax, nbins)
+        plt.close(10)
+        plt.figure(10)
+        n, bines, patch = plt.hist(f, bins=bin)
+        bin_new = np.linspace(min(bin), max(bin), nbins - 1)
+        plt.close(10)
+        n_norm = self.__normalize2max(n)
+        plt.plot(bin_new, n_norm)
+        limit_hist_index = self.closest_element(n_norm, threshold)
+        limit_flux = bin_new[limit_hist_index]
+        lower_fluxes = self.__cut_over_limit(flux, limit_flux)
+        std = np.std(np.array(lower_fluxes))
+        return std
+
+    def __cut_over_limit(self, flux_array, upper_limit):
+        cuted_flux = []
+        for f in flux_array:
+            if f <= upper_limit:
+                cuted_flux.append(f)
+        return cuted_flux
+
+    def rms_normalize_stat_2(self, new_cube_name='new_cube.fits'):
+        '''
+        Function that creates a new cube with the stat dimension normalized.
+        :param new_cube_name: string
+                              name of the fits cube that will be created
+
+        :return:
+        '''
+        n_wave = len(self.data)
+        stat_normalized = []
+        print n_wave
+        for k in xrange(n_wave):
+            print 'iteration ' + str(k) + ' of ' + str(n_wave)
+            rms_obs = self.__rms_measure2(k)
+            stat = self.__matrix2array(k, stat=True)
+            rms_stat = np.median(stat)
+            normalization_factor = rms_obs / rms_stat
+            stat_normalized.append(self.stat[k] * normalization_factor)
+        self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
+        print 'New cube saved in ' + new_cube_name
+        return stat_normalized
+
+    def __normalize2max(self, array):
+        m = max(array)
+        normalized_array = []
+        for element in array:
+            normalized_array.append(element / m)
+        return normalized_array
+
+    def rms_normalize_stat(self, new_cube_name='new_cube.fits', n=40000):
         '''
         Function that creates a new cube with the stat dimension normalized
         :param new_cube_name: string
@@ -228,29 +350,73 @@ class MuseCube:
         print n_wave
         for k in xrange(n_wave):
             print k
-            rms_obs = self.__rms_measure(k,n=n)
+            rms_obs = self.__rms_measure(k, n=n)
             stat = self.__matrix2array(k, stat=True)
             rms_stat = np.median(stat)
             normalization_factor = rms_obs / rms_stat
             stat_normalized.append(self.stat[k] * normalization_factor)
 
         self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
+        print 'New cube saved in ' + new_cube_name
         return stat_normalized
 
     def __find_wavelength_index(self, wavelength):
         wave = self.create_wavelength_array()
         if wavelength < min(wave) or wavelength > max(wave):
             raise ValueError('Longitud de onda dada no esta dentro del rango valido')
-        elif wavelength > min(wave) and wavelength < max(wave) and self.indexOf(wave, wavelength) == -1:
+        elif wavelength >= min(wave) and wavelength <= max(wave) and self.indexOf(wave, wavelength) == -1:
             print 'Longitud de onda en rango valido, pero el valor asignado no esta definido'
             k = int(self.closest_element(wave, wavelength))
             print 'Se usara wavelength = ' + str(wave[k])
-        elif wavelength > min(wave) and wavelength < max(wave) and self.indexOf(wave, wavelength) >= 0:
+        elif wavelength >= min(wave) and wavelength <= max(wave) and self.indexOf(wave, wavelength) >= 0:
             k = self.indexOf(wave, wavelength)
-
         return k
 
-    def combine_not_aligned(self, exposure_names, wavelength,n_resolution=50000,kind='std'):
+    def __matrix2line(self, matrix):
+        n1 = len(matrix)
+        n2 = len(matrix[0])
+        out = ''
+        for i in xrange(n1):
+            for j in xrange(n2):
+                out = out + str(matrix[i][j])
+                if j < n2 - 1:
+                    out = out + ' '
+            if i < n1 - 1:
+                out = out + ';'
+        return out
+
+    def __line2file(self, line, filename):
+        f = open(filename, 'a')
+        f.write(line + '\n')
+        f.close()
+        return
+
+    def __filelines2cube(self, filename):
+        cube = []
+        f = open(filename, 'r')
+        while True:
+            line = f.readline()
+            if len(line) == 0:
+                break
+            matrix = np.matrix(line)
+            cube.append(matrix)
+        return cube
+
+    def create_combined_cube(self, exposure_names, kind='sum', fitsname='new_combined_cube.fits'):
+        wave = self.create_wavelength_array()
+        new_cube = []
+        for w in wave:
+            print 'wavelength ' + str(w) + ' of ' + str(max(wave))
+            combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
+                                                                                         wavelength=w, kind=kind)
+            matrix_line = self.__matrix2line(combined_matrix)
+            self.__line2file(matrix_line, 'matrix.dat')
+            # new_cube.append(combined_matrix)
+        new_cube = self.__filelines2cube('matrix.dat')
+        self.__save2fitsimage(fitsname, new_cube, type='cube', stat=False, edit_header=[values_list])
+        print 'New cube saved in ' + fitsname
+
+    def combine_not_aligned(self, exposure_names, wavelength, n_resolution=50000, kind='std'):
         k = self.__find_wavelength_index(wavelength)
         ra_min_exposures = []
         ra_max_exposures = []
@@ -269,8 +435,8 @@ class MuseCube:
 
         n_ra = int(round((ra_max_all - ra_min_all) * n_resolution))
         n_dec = int(round((dec_max_all - dec_min_all) * n_resolution))
-        print 'n_ra = '+str(n_ra)
-        print 'n_dec = '+str(n_dec)
+        print 'n_ra = ' + str(n_ra)
+        print 'n_dec = ' + str(n_dec)
         ra2 = list(np.linspace(ra_min_all, ra_max_all, n_ra))
         ra2.reverse()
         ra_array = np.array(ra2)
@@ -299,35 +465,55 @@ class MuseCube:
             data_aux_masked = ma.masked_equal(data_aux, -1)
             interpolator = interpolate.interp2d(ra, dec, data_aux_masked, bounds_error=False, fill_value=np.nan)
             flux_new = interpolator(ra_array, dec_array)
-            interpolated_fluxes.append(flux_new)
+            flux_new2 = np.zeros_like(flux_new)
+            m1 = len(flux_new)
+            m2 = len(flux_new[0])
+            for i in xrange(m1):
+                for j in xrange(m2):
+                    flux_new2[i][j] = flux_new[i][m2 - 1 - j]
 
-            matrix_combined=self.__calculate_combined_matrix(interpolated_fluxes,kind=kind)
+            interpolated_fluxes.append(flux_new2)
 
-        return matrix_combined,interpolated_fluxes
+        matrix_combined = self.__calculate_combined_matrix(interpolated_fluxes, kind=kind)
+        delta_ra = ra_array[1] - ra_array[0]
+        delta_dec = dec_array[1] - dec_array[0]
+        central_ra = ra_array[n_ra / 2]
+        central_dec = dec_array[n_dec / 2]
+        central_j = n_ra / 2
+        central_i = n_dec / 2
 
+        data_to_header = [central_j, central_i, delta_ra, delta_dec, central_ra, central_dec]
+        return matrix_combined, interpolated_fluxes, data_to_header
 
-    def __calculate_combined_matrix(self, interpolated_fluxes,kind='std'):
+    def __calculate_combined_matrix(self, interpolated_fluxes, kind='std'):
         '''
 
         :param interpolated_fluxes: array[]
                                     array of matrix, each matrix contain the flux of an exposure at a given wavelength
                kind: string
-                     default = 'std', possible values = 'std, 'ave'. Kind of combination of the input matrix in each point
+                     default = 'std', possible values = 'std, 'ave','sum. Kind of combination of the input matrix in each point
         :return:
         '''
-        matrix_combined=np.zeros_like(interpolated_fluxes[0])
-        n1=len(matrix_combined)
-        n2=len(matrix_combined[0])
+        matrix_combined = np.zeros_like(interpolated_fluxes[0])
+        n1 = len(matrix_combined)
+        n2 = len(matrix_combined[0])
         for i in xrange(n1):
             for j in xrange(n2):
                 aux_array = []
                 for matrix in interpolated_fluxes:
                     aux_array.append(matrix[i][j])
-                if kind=='std':
+                if kind == 'std':
                     matrix_combined[i][j] = np.nanstd(aux_array)
-                if kind=='ave':
+                if kind == 'ave':
                     matrix_combined[i][j] = np.nanmean(aux_array)
+                if kind == 'sum':
+                    matrix_combined[i][j] = np.nansum(aux_array)
         return matrix_combined
+
+    def __read_files(self, input):
+        path = input
+        files = glob.glob(path)
+        return files
 
     def calculate_error(self, exposures_names, wavelength, fitsname='errors.fits', n_figure=2):
         """
@@ -372,6 +558,35 @@ class MuseCube:
         errors = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
         errors.show_grayscale()
 
+    def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='image_video.avi'):
+        wave = self.create_wavelength_array()
+        n = len(wave)
+        index_ini = int(self.closest_element(wave, initial_wavelength))
+        if initial_wavelength < wave[0]:
+            print str(
+                initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(
+                wave[0])
+            initial_wavelength = wave[0]
+        if final_wavelength > wave[n - 1]:
+            print str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(
+                wave[n - 1])
+            final_wavelength = wave[n - 1]
+
+        images_names = []
+        for i in xrange(initial_wavelength, final_wavelength):
+            wavelength_range = [i, i + width]
+            filename = 'colapsed_image_' + str(i) + '_'
+            self.colapse_cube([wavelength_range], fitsname=filename + '.fits', n_figure=15)
+            plt.close(15)
+
+            image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
+            image.show_grayscale()
+            image.save(filename=filename + '.png')
+            images_names.append(filename + '.png')
+            plt.close(15)
+        video = self.make_video(images=images_names, outvid=outvid)
+        return video
+
     def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2):
         """
         Function that creates a new image, by colapsing some wavelengths of the cube
@@ -379,7 +594,7 @@ class MuseCube:
         :param wavelength: array[]
                            wavelength contain the information of the wavelength that will be colapsed
                            This array can contain eithar individual values, which represents the wavelengths
-                           that will be colapsed, or tuples, which represents wavelengths ranges that will be
+                           that will be colapsed, or arrays of length = 2, which represents wavelengths ranges that will be
                            colapsed
         :param fitsname: string, default = 'new_colapsed_cube.fits'
                          name of the fits image that will be created
@@ -395,7 +610,8 @@ class MuseCube:
         if type(wavelength[0]) != int and type(wavelength[0]) != float and type(wavelength[0]) != list and type(
                 wavelength[0]) != numpy.ndarray:
             interval = -1
-            raise ValueError('Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
+            raise ValueError(
+                'Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
 
         wave = self.create_wavelength_array()
         wave = list(wave)
@@ -404,25 +620,30 @@ class MuseCube:
         dw = wave[1] - wave[0]
         if interval == 0:
             for i in xrange(0, n):
-                index = self.indexOf(wave, wavelength[i])
-                if index < 0:
+                if wavelength[i] < wave[0] or wavelength[i] > wave[len(wave) - 1]:
                     print str(wavelength[i]) + ' is not a valid wavelength value'
-                if index >= 0:
+                else:
+                    index = int(self.closest_element(wave, wavelength[i]))
                     wave_index.append(index)
         if interval == 1:
             for i in xrange(0, n):
                 w_up = wavelength[i][1]
                 w_low = wavelength[i][0]
                 w_aux = w_low
-                if self.indexOf(wave, w_low) < 0:
-                    print str(w_low) + ' no es un valor valido como limite inferior, intervalo descartado'
-                if w_up >= wave[len(wave) - 1]:
-                    print str(w_up) + ' no es un valor valido como limite superior, intervalo descartado'
-                if self.indexOf(wave, w_low) >= 0 and w_up < wave[len(wave) - 1]:
-                    while w_aux < w_up:
-                        index = self.indexOf(wave, w_aux)
-                        wave_index.append(index)
-                        w_aux += dw
+                if w_low < wave[0]:
+                    print str(w_low) + ' es menor al valor minimo posible, se usara como limite inferior ' + str(
+                        wave[0])
+                    w_low = wave[0]
+                if w_up > wave[len(wave) - 1]:
+                    print str(w_up) + ' es mayor al valor maximo posible, se usara como limite superior ' + str(
+                        wave[len(wave) - 1])
+                    w_up = wave[len(wave) - 1]
+
+                w_aux = w_low
+                while w_aux < w_up:
+                    index = int(self.closest_element(wave, w_aux))
+                    wave_index.append(index)
+                    w_aux += dw
         Nw = len(self.data)
         Nx = len(self.data[0])
         Ny = len(self.data[0][0])
@@ -433,7 +654,7 @@ class MuseCube:
                 for j in xrange(0, Ny):
                     Matrix[i][j] = self.data[k][i][j]
         image_stacker = image_stacker + Matrix
-        self.__save2fitsimage(fitsname,image_stacker,type='white',n_figure=n_figure)
+        self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
 
     def normalize_sky(self, flux_sky, normalization_factor):
@@ -1016,6 +1237,74 @@ class MuseCube:
             print 'Region: X=' + str(regiones[i][0]) + ' Y=' + str(regiones[i][1]) + ' R= ' + str(
                 regiones[i][2]) + ' en Figure ' + str(i + 2)
 
+    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.01, outvid='emission_lines_video.avi'):
+        OII = 3728.483
+        wave = self.create_wavelength_array()
+        n = len(wave)
+        w_max = wave[n - 1]
+        max_z_allowed = (w_max / OII) - 1.
+        if z_fin > max_z_allowed:
+            print 'maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
+                z_fin)
+            z_fin = max_z_allowed
+        z_array = np.arange(z_ini, z_fin, dz)
+        images_names = []
+        for z in z_array:
+            ranges = self.create_ranges(z)
+            filename = 'emission_linea_image_redshif_' + str(z) + '_'
+            self.colapse_cube(ranges, fitsname=filename + '.fits', n_figure=15)
+            plt.close(15)
+            image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
+            image.show_grayscale()
+            plt.title('Emission lines image at z = ' + str(z))
+            image.save(filename=filename + '.png')
+            images_names.append(filename + '.png')
+            plt.close(15)
+        video = self.make_video(images=images_names, outvid=outvid)
+        return video
 
+    def create_ranges(self, z, width=5.):
+        wave = self.create_wavelength_array()
+        n = len(wave)
+        w_max = wave[n - 1]
+        w_min = wave[0]
+        half = width / 2.
+        OII = 3728.483
+        Hb = 4862.683
+        Ha = 6564.613
+        OIII_4959 = 4960.295
+        OIII_5007 = 5008.239
+        range_OII = np.array([OII - half, OII + half])
+        range_Hb = np.array([Hb - half, Hb + half])
+        range_Ha = np.array([Ha - half, Ha + half])
+        range_OIII_4959 = np.array([OIII_4959 - half, OIII_4959 + half])
+        range_OIII_5007 = np.array([OIII_5007 - half, OIII_5007 + half])
+        ranges = [range_Ha, range_Hb, range_OII, range_OIII_4959, range_OIII_5007]
+        z_ranges = []
+        for range in ranges:
+            z_ranges.append(range * (1 + z))
+        output_ranges = []
+        for range in z_ranges:
+            if range[0] >= w_min and range[1] <= w_max:
+                output_ranges.append(range)
+        return output_ranges
 
-            # Un radio de 4 pixeles es equivalente a un radio de 0.0002 en wcs
+    def make_video(self, images, outimg=None, fps=2, size=None, is_color=True, format="XVID", outvid='image_video.avi'):
+        from cv2 import VideoWriter, VideoWriter_fourcc, imread, resize
+        fourcc = VideoWriter_fourcc(*format)
+        vid = None
+        for image in images:
+            if not os.path.exists(image):
+                raise FileNotFoundError(image)
+            img = imread(image)
+            if vid is None:
+                if size is None:
+                    size = img.shape[1], img.shape[0]
+                vid = VideoWriter(outvid, fourcc, float(fps), size, is_color)
+            if size[0] != img.shape[1] and size[1] != img.shape[0]:
+                img = resize(img, size)
+            vid.write(img)
+        vid.release()
+        return vid
+
+        # Un radio de 4 pixeles es equivalente a un radio de 0.0002 en wcs
