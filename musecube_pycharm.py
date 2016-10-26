@@ -186,7 +186,7 @@ class MuseCube:
         masked_flux = ma.masked_equal(array_flux_aux, -1)
         return masked_flux
 
-    def __rms_measure(self, k, n=40000):
+    def __rms_measure(self, k, n=50000):
         '''
 
         :param k: int
@@ -280,7 +280,7 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
-    def __rms_measure2(self, k, threshold=0.2):
+    def __rms_measure2(self, k, threshold=0.5):
         flux = self.__matrix2array(k, stat=False)
         f = flux.data
         fmin = min(f)
@@ -307,7 +307,7 @@ class MuseCube:
                 cuted_flux.append(f)
         return cuted_flux
 
-    def rms_normalize_stat_2(self, new_cube_name='new_cube.fits'):
+    def rms_normalize_stat_2(self, new_cube_name='new_cube_stat_normalized.fits'):
         '''
         Function that creates a new cube with the stat dimension normalized.
         :param new_cube_name: string
@@ -336,7 +336,11 @@ class MuseCube:
             normalized_array.append(element / m)
         return normalized_array
 
-    def rms_normalize_stat(self, new_cube_name='new_cube.fits', n=40000):
+    def define_elipse_region(self,x_center,y_center,a,b,theta):
+        return
+
+
+    def rms_normalize_stat(self, new_cube_name='new_cube_stat_normalized.fits', n=50000):
         '''
         Function that creates a new cube with the stat dimension normalized
         :param new_cube_name: string
@@ -432,7 +436,6 @@ class MuseCube:
         ra_max_all = max(ra_max_exposures)
         dec_min_all = min(dec_min_exposures)
         dec_max_all = max(dec_max_exposures)
-
         n_ra = int(round((ra_max_all - ra_min_all) * n_resolution))
         n_dec = int(round((dec_max_all - dec_min_all) * n_resolution))
         print 'n_ra = ' + str(n_ra)
@@ -1036,7 +1039,7 @@ class MuseCube:
         self.data.shape
         print 'X,Y,Lambda'
 
-    def get_spectrum_point_aplpy(self, x, y, coord_system):
+    def get_spectrum_point_aplpy(self, x, y, coord_system,stat=False):
         """
         Obtain the spectrum of a given point defined by (x,y) in the datacube
         :param self:
@@ -1046,6 +1049,8 @@ class MuseCube:
                   y coordinate of the point
         :param coord_system: string
                              possible values: 'wcs', 'pix', indicates the coordinate system used.
+        :param stat: boolean, default = False
+                     if true, the spectra will be obtained from the stat image instead
         :return: wave: array[]
                        array with the wavelegth of the spectrum.
                  spec: array[]
@@ -1065,8 +1070,13 @@ class MuseCube:
         Ny = len(self.data[0][0])
         wave = self.create_wavelength_array()
         spec = []
+        data = self.data
+        if stat:
+            data=self.stat
         for i in xrange(0, len(wave)):
-            spec.append(self.data[i][y_pix][x_pix])
+            #print x_pix,y_pix
+            #print len(self.data[0])
+            spec.append(data[i][y_pix][x_pix])
         # figure(2)
         # plt.plot(wave,spec)
         # plt.show()
@@ -1285,6 +1295,34 @@ class MuseCube:
                 os.system(command_fits)
                 os.system(command_png)
         return video
+
+
+
+    def colapse_emission_lines_image(self,nsigma=2,fitsname='colapsed_emission_image.fits'):
+        data=self.data
+        image=data[0]
+        n1=len(image)
+        n2=len(image[0])
+        colapsed_image=np.zeros_like(image)
+        for i in xrange(n1):
+            for j in xrange(n2):
+                if j==n2-1:
+                    print 'iteracion '+str(i)+' de '+str(n1-1)
+                spec_data=self.get_spectrum_point_aplpy(j,i,coord_system='pix')
+                flux_data=np.array(spec_data[1])
+                spec_stat=self.get_spectrum_point_aplpy(j,i,coord_system='pix',stat=True)
+                flux_stat=np.array(spec_stat[1])
+                s2n=flux_data/flux_stat
+                condition=s2n>=nsigma
+                colapsed_emission=np.nansum(flux_data[condition])
+                colapsed_image[i][j]=colapsed_emission
+        self.__save2fitsimage(fitsname=fitsname,data_to_save=colapsed_image,type='white')
+        return colapsed_image
+
+
+
+
+
 
     def create_ranges(self, z, width=5.):
         wave = self.create_wavelength_array()
