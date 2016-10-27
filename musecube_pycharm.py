@@ -336,8 +336,38 @@ class MuseCube:
             normalized_array.append(element / m)
         return normalized_array
 
-    def define_elipse_region(self,x_center,y_center,a,b,theta):
-        return
+    def define_elipse_region(self,x_center,y_center,a,b,theta,coord_system):
+        Xc=x_center
+        Yc=y_center
+        if coord_system == 'wcs':
+            X_aux, Y_aux, a = self.xyr_to_pixel(Xc, Yc, a)
+            Xc,Yc,b=self.xyr_to_pixel(Xc, Yc, b)
+        if b > a:
+            aux = a
+            a = b
+            b = aux
+            theta = theta + np.pi / 2.
+        x = np.linspace(-a, a, 5000)
+
+        B = x * np.sin(2. * theta) * (a ** 2 - b ** 2)
+        A = (b * np.sin(theta)) ** 2 + (a * np.cos(theta)) ** 2
+        C = (x ** 2) * ((b * np.cos(theta)) ** 2 + (a * np.sin(theta)) ** 2) - (a ** 2) * (b ** 2)
+
+        y_positive = (-B + np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
+        y_negative = (-B - np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
+
+        y_positive_2 = y_positive + Yc
+        y_negative_2 = y_negative + Yc
+        x_2 = x + Xc
+        reg = []
+        for i in xrange(Xc-a-1,Xc+a+1):
+            for j in xrange(Yc-b-1,Yc+b+1):
+                k=self.closest_element(x_2,i)
+                if j<=y_positive_2[k] and j>=y_negative_2[k]:
+                    reg.append([i,j])
+
+
+        return reg
 
 
     def rms_normalize_stat(self, new_cube_name='new_cube_stat_normalized.fits', n=50000):
@@ -733,12 +763,21 @@ class MuseCube:
                  substracted_sky_spec: array[]
                                        array with the flux of the sky-substracted spectrum
         """
+
         w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False)
         w_sky, spec_sky = self.spectrum_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system)
         self.draw_circle(x_center, y_center, sky_radius_1, 'Blue', coord_system)
         self.draw_circle(x_center, y_center, sky_radius_2, 'Blue', coord_system)
-        self.draw_circle(x_center, y_center, radius, 'Green', coord_system)
-        reg = self.define_region(x_center, y_center, radius, coord_system)
+        if type(radius)==int or type(radius)==float:
+            self.draw_circle(x_center, y_center, radius, 'Green', coord_system)
+            reg = self.define_region(x_center, y_center, radius, coord_system)
+        else:
+            a=radius[0]
+            b=radius[1]
+            theta=radius[2]
+            self.draw_elipse(x_center,y_center,a,b,theta,'Green',coord_system)
+            reg = self.define_elipse_region(x_center,y_center,a,b,theta,coord_system)
+
         ring = self.define_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system)
         # print ring
         # print reg
@@ -989,6 +1028,50 @@ class MuseCube:
             plt.figure(1)
             plt.plot(reg[i][0], reg[i][1], 'o')
 
+    def draw_elipse(self,Xc,Yc,a,b,theta,color,coord_system):
+        """
+        Draw an elipse centered in (Xc,Yc) with semiaxis a and b, and a rotation angle theta
+        :param Xc: float
+                   x coordinate of the center of the elipse
+        :param Yc: float
+                   y coordinate of the center of the elipse
+        :param a: float
+                  semiaxis in the x axis of the elipse
+        :param b: float
+                  semiaxis in the y axis of the elipse
+        :param theta: float
+                      rotation angle between elipse and x axis
+        :param color: string
+                      Color of the elipse
+        :param coord_system: string
+                             possible values: 'wcs','pix', indicates the coordinate system used.
+        :return:
+        """
+        if coord_system == 'wcs':
+            X_aux, Y_aux, a = self.xyr_to_pixel(Xc, Yc, a)
+            Xc,Yc,b=self.xyr_to_pixel(Xc, Yc, b)
+        if b > a:
+            aux = a
+            a = b
+            b = aux
+            theta = theta + np.pi / 2.
+        x = np.linspace(-a, a, 5000)
+
+        B = x * np.sin(2. * theta) * (a ** 2 - b ** 2)
+        A = (b * np.sin(theta)) ** 2 + (a * np.cos(theta)) ** 2
+        C = (x ** 2) * ((b * np.cos(theta)) ** 2 + (a * np.sin(theta)) ** 2) - (a ** 2) * (b ** 2)
+
+        y_positive = (-B + np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
+        y_negative = (-B - np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
+
+        y_positive_2 = y_positive + Yc
+        y_negative_2 = y_negative + Yc
+        x_2 = x + Xc
+        plt.figure(1)
+        plt.plot(x_2, y_positive_2,color)
+        plt.plot(x_2, y_negative_2,color)
+
+
     def draw_circle(self, Xc, Yc, R, color, coord_system):
         """
         Draw a circle, centered in (Xc,Yc) with radius R.
@@ -1002,7 +1085,7 @@ class MuseCube:
         :param color: string
                       color of the circles that will be drawn
         :param coord_system: string
-                             possible values: 'wcs', 'pix', indicates de coordinate system used.
+                             possible values: 'wcs', 'pix', indicates the coordinate system used.
         :return:
         """
 
@@ -1113,14 +1196,15 @@ class MuseCube:
     def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False):
         """
         Obtain the spectrum of a given region in the datacube, defined by a center (x_center,y_center), and
-        radius.
+        radius. In the case of circular region, radius is a number, in the case of eliptical region, radius in an array that
+        must contain a,b and angle.
         :param self:
         :param x_center: float
-                         x coordinate of the center of the circular region
+                         x coordinate of the center of the region
         :param y_center: float
-                         y coordinate of the center of the circular region
-        :param radius: float
-                       radius of the circular region
+                         y coordinate of the center of the region
+        :param radius: float or 1-D array
+                       radius of the circular region or the [a,b,theta] that defines an eliptical region
         :param coord_system: string
                              possible values: 'wcs, 'pix', indicates the coordinate system used.
         :return: wave: array[]
@@ -1130,8 +1214,18 @@ class MuseCube:
                                 pixels in the region.
 
         """
+
         input = self.cube
-        Region = self.define_region(x_center, y_center, radius, coord_system)
+
+        if type(radius) == int or type(radius)==float:
+
+            Region = self.define_region(x_center, y_center, radius, coord_system)
+        else:
+            a=radius[0]
+            b=radius[1]
+            theta = radius[2]
+            Region = self.define_elipse_region(x_center,y_center,a,b,theta,coord_system)
+
         N = len(Region)
         S = []
         for i in xrange(0, N):
