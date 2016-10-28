@@ -9,6 +9,9 @@ from scipy import interpolate
 import numpy.ma as ma
 import glob
 import os
+from linetools.spectra.xspectrum1d import XSpectrum1D
+
+#spec = XSpectrum1D.from
 
 
 class MuseCube:
@@ -361,7 +364,7 @@ class MuseCube:
         x_2 = x + Xc
         reg = []
         for i in xrange(Xc-a-1,Xc+a+1):
-            for j in xrange(Yc-b-1,Yc+b+1):
+            for j in xrange(Yc-a-1,Yc+a+1):
                 k=self.closest_element(x_2,i)
                 if j<=y_positive_2[k] and j>=y_negative_2[k]:
                     reg.append([i,j])
@@ -749,7 +752,8 @@ class MuseCube:
         :param y_center: float
                          y coordinate of the center of the circular region
         :param radius: float
-                       radius of the circular region
+                       radius of the circular region. In the case of an eliptical region, radius must be an 1-D array
+                       of length = 3, containing [a,b,theta] parameters of the elipse
         :param sky_radius_1: float
                              internal radius of the ring where the sky will be calculated
         :param sky_radius_2: float
