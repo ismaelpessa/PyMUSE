@@ -740,7 +740,7 @@ class MuseCube:
         return substracted_spec
 
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
-                                              coord_system, n_figure=2):
+                                              coord_system, n_figure=2,errors = False):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -769,6 +769,8 @@ class MuseCube:
         """
 
         w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False)
+        if errors:
+            w,err=self.spectrum_region(x_center, y_center, radius, coord_system, debug=False,stat=True)
         w_sky, spec_sky = self.spectrum_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system)
         self.draw_circle(x_center, y_center, sky_radius_1, 'Blue', coord_system)
         self.draw_circle(x_center, y_center, sky_radius_2, 'Blue', coord_system)
@@ -788,11 +790,17 @@ class MuseCube:
         normalization_factor = float(len(reg)) / len(ring)
         print normalization_factor
         spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
-        substracted_sky_spec = self.substract_spec(spec, spec_sky_normalized)
+        substracted_sky_spec = np.array(self.substract_spec(spec, spec_sky_normalized))
         plt.figure(n_figure)
         plt.plot(w, substracted_sky_spec)
         plt.plot(w, spec_sky_normalized)
-        return w, substracted_sky_spec
+        if errors:
+            spec_tuple=(w,substracted_sky_spec,err)
+        else:
+            spec_tuple=(w,substracted_sky_spec)
+
+        spectrum = XSpectrum1D.from_tuple(spec_tuple)
+        return spectrum
 
 
 
@@ -806,7 +814,50 @@ class MuseCube:
         """
         plt.close(1)
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(1))
-        self.gc2.show_grayscale()
+
+
+    def create_table(self,input_file):
+        from astropy.io.ascii.sextractor import SExtractor
+        sex = SExtractor()
+        table=sex.read(input_file)
+        return table
+
+    def get_from_table(self,input_file,keyword):
+        table=self.create_table(input_file)
+        data = table[keyword]
+        return data
+
+    def determinate_seeing_from_white(self,xc,yc,halfsize):
+        hdulist = fits.open(self.white)
+        data = hdulist[1].data
+        from astropy.modeling import models, fitting
+        w,h = 2*halfsize+1,2*halfsize+1
+        matrix_data = [[0 for x in range(w)] for y in range(h)]
+        matrix_x= [[0 for x in range(w)] for y in range(h)]
+        matrix_y= [[0 for x in range(w)] for y in range(h)]
+        for i in xrange(xc-halfsize,xc+halfsize+1):
+            for j in xrange(yc-halfsize,yc+halfsize+1):
+                i2=i-(xc-halfsize)
+                j2=j-(yc-halfsize)
+                matrix_data[j2][i2]=data[j][i]
+                matrix_x[j2][i2]=i2
+                matrix_y[j2][i2]=j2
+        amp = np.matrix(matrix_data).max()
+        g_init = models.Gaussian2D(x_mean=halfsize+0.5,y_mean=halfsize + 0.5,x_stddev=1,y_stddev=1,amplitude=amp)
+        fit_g = fitting.LevMarLSQFitter()
+        g = fit_g(g_init, matrix_x, matrix_y, matrix_data)
+        print g.x_stddev
+        print g.y_stddev
+
+
+
+
+
+
+
+
+
+
 
     def write_coords(self, filename):
         """
@@ -1197,7 +1248,7 @@ class MuseCube:
             lambda_aux = []
         return wave, combined_spec
 
-    def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False):
+    def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False, stat = False):
         """
         Obtain the spectrum of a given region in the datacube, defined by a center (x_center,y_center), and
         radius. In the case of circular region, radius is a number, in the case of eliptical region, radius in an array that
@@ -1233,7 +1284,7 @@ class MuseCube:
         N = len(Region)
         S = []
         for i in xrange(0, N):
-            S.append(self.get_spectrum_point_aplpy(Region[i][0], Region[i][1], 'pix'))
+            S.append(self.get_spectrum_point_aplpy(Region[i][0], Region[i][1], 'pix',stat=stat))
         wave = S[0][0]
         specs = []
         for i in xrange(0, N):
@@ -1249,7 +1300,11 @@ class MuseCube:
                 plt.hist(lambda_aux, bins)
                 plt.show()
 
-            combined_spec[j] = np.nansum(lambda_aux)
+            if stat == False:
+                combined_spec[j] = np.nansum(lambda_aux)
+            else:
+                combined_spec[j] = np.sqrt(np.nansum(np.array(lambda_aux)**2))
+
 
             lambda_aux = []
         return wave, combined_spec
