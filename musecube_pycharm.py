@@ -1,12 +1,12 @@
+import numpy as np
+import numpy.ma as ma
+from scipy import interpolate
 import math as m
 import aplpy
-import numpy
-import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
+from astropy import units as u
 from matplotlib import pyplot as plt
-from scipy import interpolate
-import numpy.ma as ma
 import glob
 import os
 from linetools.spectra.xspectrum1d import XSpectrum1D
@@ -20,12 +20,14 @@ class MuseCube:
 
     """
 
-    def __init__(self, filename_cube, filename_white):
+    def __init__(self, filename_cube, filename_white, pixelsize=0.2*u.arcsec):
         """
         :param filename_cube: string
                               name of the fits file containing the datacube
         :param filename_white: string
                                name of the fits file containing the colapsed datacube
+        pixel_size : float or Quantity
+            Pixel size of the datacube, if float we assume arcsecs.
         """
         plt.close(1)
         self.cube = filename_cube
@@ -36,6 +38,7 @@ class MuseCube:
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(1))
         self.gc2.show_grayscale()
         self.gc = aplpy.FITSFigure(self.cube, slices=[1], figure=plt.figure(2))
+        self.pixelsize = pixelsize
         plt.close(2)
 
     def min_max_ra_dec(self, exposure_name):
@@ -827,10 +830,10 @@ class MuseCube:
         data = table[keyword]
         return data
 
-    def determinate_seeing_from_white(self,xc,yc,halfsize):
+    def determinate_seeing_from_white(self, xc, yc, halfsize):
+        from astropy.modeling import models, fitting
         hdulist = fits.open(self.white)
         data = hdulist[1].data
-        from astropy.modeling import models, fitting
         w,h = 2*halfsize+1,2*halfsize+1
         matrix_data = [[0 for x in range(w)] for y in range(h)]
         matrix_x= [[0 for x in range(w)] for y in range(h)]
@@ -842,12 +845,22 @@ class MuseCube:
                 matrix_data[j2][i2]=data[j][i]
                 matrix_x[j2][i2]=i2
                 matrix_y[j2][i2]=j2
-        amp = np.matrix(matrix_data).max()
-        g_init = models.Gaussian2D(x_mean=halfsize+0.5,y_mean=halfsize + 0.5,x_stddev=1,y_stddev=1,amplitude=amp)
+        amp_init = np.matrix(matrix_data).max()
+        stdev_init = 0.33*halfsize
+        def tie_stddev(model):  # we need this for tying x_std and y_std
+            xstddev = model.x_stddev
+            return xstddev
+        g_init = models.Gaussian2D(x_mean=halfsize+0.5,y_mean=halfsize + 0.5,x_stddev=stdev_init,
+                                   y_stddev=stdev_init,amplitude=amp_init, tied={'y_stddev': tie_stddev})
+
         fit_g = fitting.LevMarLSQFitter()
         g = fit_g(g_init, matrix_x, matrix_y, matrix_data)
-        print g.x_stddev
-        print g.y_stddev
+        if (g.y_stddev < 0) or (g.y_stddev > halfsize):
+            raise ValueError('Cannot trust the model, please try other imput parameters.')
+
+        seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
+        print 'FWHM={:.2f}'.format(seeing)
+        return seeing
 
 
 
