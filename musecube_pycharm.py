@@ -434,29 +434,32 @@ class MuseCube:
     def __filelines2cube(self, filename):
         cube = []
         f = open(filename, 'r')
+        i=1
         while True:
+            print 'copying line '+str(i)+' from file'
             line = f.readline()
             if len(line) == 0:
                 break
             matrix = np.matrix(line)
             cube.append(matrix)
-        return cube
+            i+=1
+        return np.array(cube)
 
-    def create_combined_cube(self, exposure_names, kind='sum', fitsname='new_combined_cube.fits'):
+    def create_combined_cube(self, exposure_names, kind='sum', fitsname='new_combined_cube.fits',cubetxt='cube.dat'):
         wave = self.create_wavelength_array()
-        new_cube = []
+
         for w in wave:
             print 'wavelength ' + str(w) + ' of ' + str(max(wave))
             combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
                                                                                          wavelength=w, kind=kind)
             matrix_line = self.__matrix2line(combined_matrix)
-            self.__line2file(matrix_line, 'matrix.dat')
-            # new_cube.append(combined_matrix)
-        new_cube = self.__filelines2cube('matrix.dat')
+            self.__line2file(matrix_line, cubetxt)
+
+        new_cube = self.__filelines2cube(cubetxt)
         self.__save2fitsimage(fitsname, new_cube, type='cube', stat=False, edit_header=[values_list])
         print 'New cube saved in ' + fitsname
 
-    def combine_not_aligned(self, exposure_names, wavelength, n_resolution=50000, kind='std'):
+    def combine_not_aligned(self, exposure_names, wavelength, n_resolution=25000, kind='std'):
         k = self.__find_wavelength_index(wavelength)
         ra_min_exposures = []
         ra_max_exposures = []
@@ -790,7 +793,7 @@ class MuseCube:
         ring = self.define_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system)
         # print ring
         # print reg
-        normalization_factor = float(len(reg)) / len(ring)
+        normalization_factor = float(len(reg))
         print normalization_factor
         spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
         substracted_sky_spec = np.array(self.substract_spec(spec, spec_sky_normalized))
@@ -1256,7 +1259,7 @@ class MuseCube:
                 plt.hist(lambda_aux, bins)
                 plt.show()
 
-            combined_spec[j] = np.nansum(lambda_aux)
+            combined_spec[j] = np.nanmedian(lambda_aux)
 
             lambda_aux = []
         return wave, combined_spec
