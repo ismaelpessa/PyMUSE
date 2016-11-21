@@ -458,6 +458,25 @@ class MuseCube:
             i += 1
         return np.array(cube)
 
+    def create_complete_cube(self, exposure_names, exposure_white_names, new_cube_name='New_Cube.fits',
+                             fitsname_stat='new_combined_cube_stat.fits',
+                             fitsname_data='new_combined_cube.fits', fitsname_white='new_combined_white.fits',
+                             new_pixel_scale=0.2 * u.arcsec, xoffset_list=[], yoffset_list=[], clobber=True):
+        self.create_combined_white(exposure_white_names, fitsname=fitsname_white, xoffset_list=xoffset_list,
+                                   yoffset_list=yoffset_list, clobber=clobber, new_pixel_scale=new_pixel_scale)
+        self.create_combined_cube(exposure_names, fitsname=fitsname_data, kind='ave', stat=False,
+                                  cubetxt='data_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
+                                  clobber=clobber, new_pixel_scale=new_pixel_scale)
+        self.create_combined_cube(exposure_names, fitsname=fitsname_stat, kind='stat', stat=True,
+                                  cubetxt='stat_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
+                                  clobber=clobber, new_pixel_scale=new_pixel_scale)
+
+        hdulist_stat = fits.open(fitsname_stat)
+        hdulist_data = fits.open(fitsname_data)
+        new_hdulist = hdulist_data
+        new_hdulist[2] = hdulist_stat[2]
+        new_hdulist.writeto(new_cube_name, clobber=True)
+
     def create_combined_white(self, exposure_white_names, kind='ave', fitsname='new_combined_white.fits',
                               xoffset_list=[], yoffset_list=[], clobber=True,
                               new_pixel_scale=0.2 * u.arcsec):
@@ -471,13 +490,14 @@ class MuseCube:
         print 'New white image saved in ' + fitsname
 
     def create_combined_cube(self, exposure_names, kind='ave', fitsname='new_combined_cube.fits', cubetxt='cube.dat',
-                             xoffset_list=[], yoffset_list=[], clobber=True, new_pixel_scale=0.2 * u.arcsec,stat=False):
-        wave = self.create_wavelength_array()
+                             xoffset_list=[], yoffset_list=[], clobber=True, new_pixel_scale=0.2 * u.arcsec,
+                             stat=False):
+        # wave = self.create_wavelength_array()
         if clobber:
             os.system('rm ' + fitsname)
             os.system('rm ' + cubetxt)
         # wave = np.array([4800,4801.25,4802.5,5800,6000,6500,7000,8000,8500,9000])
-        wave=np.array([4750])
+        wave = np.array([4750])
         for w in wave:
             print 'wavelength ' + str(w) + ' of ' + str(max(wave))
             combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
@@ -486,19 +506,21 @@ class MuseCube:
                                                                                          yoffset_list=yoffset_list,
                                                                                          kind=kind,
                                                                                          new_pixel_scale=new_pixel_scale,
-                                                                                         white=False,stat=stat)
+                                                                                         white=False, stat=stat)
             matrix_line = self.__matrix2line(combined_matrix)
             self.__line2file(matrix_line, cubetxt)
 
         new_cube = self.__filelines2cube(cubetxt)
         if stat:
-            self.__save2fitsimage(fitsname, new_cube, type='cube', stat=stat, edit_header=[values_list,['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'],2])
+            self.__save2fitsimage(fitsname, new_cube, type='cube', stat=stat,
+                                  edit_header=[values_list, ['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'],
+                                               2])
         else:
             self.__save2fitsimage(fitsname, new_cube, type='cube', stat=stat, edit_header=[values_list])
         print 'New cube saved in ' + fitsname
 
     def combine_not_aligned(self, exposure_names, wavelength, xoffset_list=[], yoffset_list=[],
-                            new_pixel_scale=0.2 * u.arcsec, kind='ave', white=False,stat=False):
+                            new_pixel_scale=0.2 * u.arcsec, kind='ave', white=False, stat=False):
         if white == False:
             k = self.__find_wavelength_index(wavelength)
         ra_min_exposures = []
@@ -529,7 +551,7 @@ class MuseCube:
         for exposure in exposure_names:
             hdulist = fits.open(exposure)
             if stat:
-                data=hdulist[2].data
+                data = hdulist[2].data
             else:
                 data = hdulist[1].data
             if white:
@@ -635,9 +657,9 @@ class MuseCube:
                         matrix_combined[i][j] = 0
                 elif kind == 'sum':
                     matrix_combined[i][j] = np.nansum(aux_array)
-                elif kind =='stat':
-                    aux_array=np.array(aux_array)
-                    matrix_combined[i][j]=np.sqrt(np.nansum(aux_array**2))
+                elif kind == 'stat':
+                    aux_array = np.array(aux_array)
+                    matrix_combined[i][j] = np.sqrt(np.nansum(aux_array ** 2))
                 else:
                     raise ValueError('kind of combination parameter given is not valid, please try std,ave,sum or stat')
         return matrix_combined
