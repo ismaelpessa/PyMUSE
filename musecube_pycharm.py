@@ -482,7 +482,7 @@ class MuseCube:
                               new_pixel_scale=0.2 * u.arcsec):
         if clobber:
             os.system('rm ' + fitsname)
-        combined_matrix, interpolated_fluces, values_list = self.combine_not_aligned(
+        combined_matrix, interpolated_flucealues_list = self.combine_not_aligned(
             exposure_names=exposure_white_names, wavelength=0, xoffset_list=xoffset_list,
             yoffset_list=yoffset_list, kind=kind, new_pixel_scale=new_pixel_scale,
             white=True)
@@ -492,12 +492,12 @@ class MuseCube:
     def create_combined_cube(self, exposure_names, kind='ave', fitsname='new_combined_cube.fits', cubetxt='cube.dat',
                              xoffset_list=[], yoffset_list=[], clobber=True, new_pixel_scale=0.2 * u.arcsec,
                              stat=False):
-        # wave = self.create_wavelength_array()
+        wave = self.create_wavelength_array()
         if clobber:
             os.system('rm ' + fitsname)
             os.system('rm ' + cubetxt)
         # wave = np.array([4800,4801.25,4802.5,5800,6000,6500,7000,8000,8500,9000])
-        wave = np.array([4750])
+        # wave = np.array([4750])
         for w in wave:
             print 'wavelength ' + str(w) + ' of ' + str(max(wave))
             combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
