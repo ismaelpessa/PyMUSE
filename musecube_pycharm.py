@@ -31,7 +31,7 @@ class MuseCube:
             Pixel size of the datacube, if float we assume arcsecs.
         """
         self.n = n_fig
-        plt.close(1)
+        plt.close(self.n)
         self.cube = filename_cube
         hdulist = fits.open(self.cube)
         self.data = hdulist[1].data
@@ -211,7 +211,7 @@ class MuseCube:
         :param k: int
                   index in wavelength array, where the rms will be measured
         :param n: int
-                   number of bright pixel to cut before measure rms, default = 40000
+                   number of bright pixel to cut before measure rms, default = 50000
         :return: rms: flot
                       value found for rms in the given wavelength
         '''
@@ -301,12 +301,12 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
-    def __rms_measure2(self, k, threshold=0.5):
+    def __rms_measure_threshold(self, k, threshold=0.4):
         flux = self.__matrix2array(k, stat=False)
         f = flux.data
         fmin = min(f)
         fmax = max(f)
-        nbins = 2000
+        nbins = len(f)/10
         bin = np.linspace(0, fmax, nbins)
         plt.close(10)
         plt.figure(10)
@@ -314,11 +314,12 @@ class MuseCube:
         bin_new = np.linspace(min(bin), max(bin), nbins - 1)
         plt.close(10)
         n_norm = self.__normalize2max(n)
-        plt.plot(bin_new, n_norm)
+        #plt.plot(bin_new, n_norm)
         limit_hist_index = self.closest_element(n_norm, threshold)
         limit_flux = bin_new[limit_hist_index]
         lower_fluxes = self.__cut_over_limit(flux, limit_flux)
-        std = np.std(np.array(lower_fluxes))
+        positive_fluxes=lower_fluxes[np.where(lower_fluxes>0)]
+        std = np.std(np.array(positive_fluxes))
         return std
 
     def __cut_over_limit(self, flux_array, upper_limit):
@@ -326,9 +327,9 @@ class MuseCube:
         for f in flux_array:
             if f <= upper_limit:
                 cuted_flux.append(f)
-        return cuted_flux
+        return np.array(cuted_flux)
 
-    def rms_normalize_stat_2(self, new_cube_name='new_cube_stat_normalized.fits'):
+    def rms_normalize_stat_treshold(self, new_cube_name='new_cube_stat_normalized.fits'):
         '''
         Function that creates a new cube with the stat dimension normalized.
         :param new_cube_name: string
@@ -341,14 +342,16 @@ class MuseCube:
         print n_wave
         for k in xrange(n_wave):
             print 'iteration ' + str(k) + ' of ' + str(n_wave)
-            rms_obs = self.__rms_measure2(k)
+            rms_obs = self.__rms_measure_threshold(k)
             stat = self.__matrix2array(k, stat=True)
             rms_stat = np.median(stat)
             normalization_factor = rms_obs / rms_stat
             stat_normalized.append(self.stat[k] * normalization_factor)
+        stat_normalized=np.array(stat_normalized)
         self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
         print 'New cube saved in ' + new_cube_name
         return stat_normalized
+
 
     def __normalize2max(self, array):
         m = max(array)
@@ -409,6 +412,7 @@ class MuseCube:
             normalization_factor = rms_obs / rms_stat
             stat_normalized.append(self.stat[k] * normalization_factor)
 
+        stat_normalized=np.array(stat_normalized)
         self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
         print 'New cube saved in ' + new_cube_name
         return stat_normalized
@@ -482,10 +486,11 @@ class MuseCube:
                               new_pixel_scale=0.2 * u.arcsec):
         if clobber:
             os.system('rm ' + fitsname)
-        combined_matrix, interpolated_flucealues_list = self.combine_not_aligned(
+        combined_matrix, interpolated_fluxes,values_list = self.combine_not_aligned(
             exposure_names=exposure_white_names, wavelength=0, xoffset_list=xoffset_list,
             yoffset_list=yoffset_list, kind=kind, new_pixel_scale=new_pixel_scale,
             white=True)
+        combined_matrix=np.array(combined_matrix)
         self.__save2fitsimage(fitsname, combined_matrix, type='white', stat=False, edit_header=[values_list])
         print 'New white image saved in ' + fitsname
 
@@ -597,12 +602,13 @@ class MuseCube:
             data_aux_masked = ma.masked_equal(data_aux, -1)
             interpolator = interpolate.interp2d(ra, dec, data_aux_masked, bounds_error=False, fill_value=np.nan)
             flux_new = interpolator(ra_array, dec_array)
-            flux_new2 = np.zeros_like(flux_new)
-            m1 = len(flux_new)
-            m2 = len(flux_new[0])
+            flux_new_aux=np.where(flux_new==-1,np.nan,flux_new)
+            flux_new2 = np.zeros_like(flux_new_aux)
+            m1 = len(flux_new_aux)
+            m2 = len(flux_new_aux[0])
             for i in xrange(m1):
                 for j in xrange(m2):
-                    flux_new2[i][j] = flux_new[i][m2 - 1 - j]
+                    flux_new2[i][j] = flux_new_aux[i][m2 - 1 - j]
 
             interpolated_fluxes.append(flux_new2)
             # import pdb; pdb.set_trace()
@@ -815,11 +821,16 @@ class MuseCube:
         Ny = len(self.data[0][0])
         Matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
         image_stacker = Matrix
-        for k in wave_index:
+        for count,k in enumerate(wave_index):
+            print 'iteration '+str(count)+' of '+str(len(wave_index))
             for i in xrange(0, Nx):
                 for j in xrange(0, Ny):
-                    Matrix[i][j] = self.data[k][i][j]
-        image_stacker = image_stacker + Matrix
+                    if np.isnan(self.data[k][i][j]) or self.data[k][i][j]<0:
+                        Matrix[i][j]=0
+                    else:
+                        Matrix[i][j] = self.data[k][i][j]
+            image_stacker = image_stacker + Matrix
+        image_stacker=np.array(image_stacker)
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
 
@@ -932,6 +943,7 @@ class MuseCube:
         """
         plt.close(self.n)
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
+        self.gc2.show_grayscale()
 
     def create_table(self, input_file):
         from astropy.io.ascii.sextractor import SExtractor
@@ -1584,6 +1596,7 @@ class MuseCube:
                 condition = s2n >= nsigma
                 colapsed_emission = np.nansum(flux_data[condition])
                 colapsed_image[i][j] = colapsed_emission
+        colapsed_image=np.array(colapsed_image)
         self.__save2fitsimage(fitsname=fitsname, data_to_save=colapsed_image, type='white')
         return colapsed_image
 
