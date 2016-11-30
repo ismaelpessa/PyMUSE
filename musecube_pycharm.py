@@ -466,6 +466,8 @@ class MuseCube:
                              fitsname_stat='new_combined_cube_stat.fits',
                              fitsname_data='new_combined_cube.fits', fitsname_white='new_combined_white.fits',
                              new_pixel_scale=0.2 * u.arcsec, xoffset_list=[], yoffset_list=[], clobber=True):
+        import gc
+        gc.enable()
         self.create_combined_white(exposure_white_names, fitsname=fitsname_white, xoffset_list=xoffset_list,
                                    yoffset_list=yoffset_list, clobber=clobber, new_pixel_scale=new_pixel_scale)
         self.create_combined_cube(exposure_names, fitsname=fitsname_data, kind='ave', stat=False,
@@ -497,6 +499,8 @@ class MuseCube:
     def create_combined_cube(self, exposure_names, kind='ave', fitsname='new_combined_cube.fits', cubetxt='cube.dat',
                              xoffset_list=[], yoffset_list=[], clobber=True, new_pixel_scale=0.2 * u.arcsec,
                              stat=False):
+        import gc
+        gc.enable()
         wave = self.create_wavelength_array()
         if clobber:
             os.system('rm ' + fitsname)
@@ -868,8 +872,29 @@ class MuseCube:
             substracted_spec.append(spec[i] - sky_spec[i])
         return substracted_spec
 
+    def spec_to_redmonster_format(self,spec,fitsname):
+        from scipy import interpolate
+        wave=spec.wavelength.value
+        wave_log=np.log10(wave)
+        n=len(wave)
+        new_wave_log=np.linspace(wave_log[1],wave_log[n-2],2*n)
+        spec_rebined=spec.rebin(new_wv=new_wave_log*u.angstrom)
+        f=interpolate.interp1d(wave_log,spec.sig.value)
+        sig=f(new_wave_log)
+        flux=spec_rebined.flux.value
+        hdu1=fits.PrimaryHDU(flux)
+        hdu2=fits.ImageHDU(sig)
+        hdu1.header['COEFF0']=new_wave_log[0]
+        hdu1.header['COEFF1']=new_wave_log[1]-new_wave_log[0]
+        hdulist_new=fits.HDUList([hdu1,hdu2])
+        hdulist_new.writeto(fitsname,clobber=True)
+
+
+
+
+
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
-                                              coord_system, n_figure=2, errors=False):
+                                              coord_system, n_figure=2, errors=False,redmonster_format=True):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -891,11 +916,18 @@ class MuseCube:
                              possible values: 'wcs', 'pix', indicates the coordinante system used.
         :param n_figure: int, default = 2
                          figure number to display the spectrum
+        :param redmonster_format: boolean, default = True
+                                  if true, creates a fitsfile which is compatible with redmonster software
         :return: w: array[]
                     array with the wavelength of the spectrum
                  substracted_sky_spec: array[]
                                        array with the flux of the sky-substracted spectrum
         """
+        if coord_system=='wcs':
+            coords=SkyCoord(ra=x_center,dec=y_center,frame='icrs', unit='deg')
+        else:
+            x_world,y_world=self.p2w(x_center,y_center)
+            coords=SkyCoord(ra=x_world,dec=y_world,frame='icrs', unit='deg')
 
         w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False)
         if errors:
@@ -923,12 +955,18 @@ class MuseCube:
         plt.figure(n_figure)
         plt.plot(w, substracted_sky_spec)
         plt.plot(w, spec_sky_normalized)
+
         if errors:
+            err=np.array(err)
             spec_tuple = (w, substracted_sky_spec, err)
         else:
             spec_tuple = (w, substracted_sky_spec)
 
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
+        if redmonster_format:
+            from linetools.utils import name_from_coord
+            spec_fits_name='spec_'+name_from_coord(coords)+'.fits'
+            self.spec_to_redmonster_format(spectrum,spec_fits_name)
         return spectrum
 
 
@@ -1533,9 +1571,9 @@ class MuseCube:
         """
         regiones = self.read_region_file(regionfile)
         for i in xrange(0, len(regiones)):
-            w, spec = self.plot_region_spectrum(regiones[i][0], regiones[i][1], regiones[i][2], 'pix',
+            spec = self.plot_region_spectrum(regiones[i][0], regiones[i][1], regiones[i][2], 'pix',
                                                 color='Green', n_figure=i + 2)
-            plt.figure(1)
+            plt.figure(self.n)
             plt.annotate('fig_' + str(i + 2), xy=(150, 150), xytext=(regiones[i][0], regiones[i][1]), color='red',
                          size=12)
             print 'Region: X=' + str(regiones[i][0]) + ' Y=' + str(regiones[i][1]) + ' R= ' + str(
