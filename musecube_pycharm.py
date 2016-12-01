@@ -9,6 +9,7 @@ from astropy import units as u
 from matplotlib import pyplot as plt
 import glob
 import os
+import pdb
 from linetools.spectra.xspectrum1d import XSpectrum1D
 
 
@@ -448,6 +449,19 @@ class MuseCube:
         f.close()
         return
 
+    def __vignetting_matrix(self,matrix,npixel_x,npixel_y):
+        matrix_out=np.zeros_like(matrix)
+        n1=len(matrix_out)
+        n2=len(matrix_out[0])
+        for i  in xrange(n1):
+            for j in xrange(n2):
+                if i<=npixel_y or i>=n1-npixel_y or j<=npixel_x or j>=n2-npixel_x:
+                    matrix_out[i][j]=-1
+                else:
+                    matrix_out[i][j]=matrix[i][j]
+        return matrix_out
+
+
     def __filelines2cube(self, filename):
         cube = []
         f = open(filename, 'r')
@@ -465,17 +479,17 @@ class MuseCube:
     def create_complete_cube(self, exposure_names, exposure_white_names, new_cube_name='New_Cube.fits',
                              fitsname_stat='new_combined_cube_stat.fits',
                              fitsname_data='new_combined_cube.fits', fitsname_white='new_combined_white.fits',
-                             new_pixel_scale=0.2 * u.arcsec, xoffset_list=[], yoffset_list=[], clobber=True):
+                             new_pixel_scale=0.2 * u.arcsec, xoffset_list=[], yoffset_list=[], clobber=True,vignetting_borders=[]):
         import gc
         gc.enable()
         self.create_combined_white(exposure_white_names, fitsname=fitsname_white, xoffset_list=xoffset_list,
-                                   yoffset_list=yoffset_list, clobber=clobber, new_pixel_scale=new_pixel_scale)
+                                   yoffset_list=yoffset_list, clobber=clobber, new_pixel_scale=new_pixel_scale,vignetting_borders=vignetting_borders)
         self.create_combined_cube(exposure_names, fitsname=fitsname_data, kind='ave', stat=False,
                                   cubetxt='data_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
-                                  clobber=clobber, new_pixel_scale=new_pixel_scale)
+                                  clobber=clobber, new_pixel_scale=new_pixel_scale,vignetting_borders=vignetting_borders)
         self.create_combined_cube(exposure_names, fitsname=fitsname_stat, kind='stat', stat=True,
                                   cubetxt='stat_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
-                                  clobber=clobber, new_pixel_scale=new_pixel_scale)
+                                  clobber=clobber, new_pixel_scale=new_pixel_scale,vignetting_borders=vignetting_borders)
 
         hdulist_stat = fits.open(fitsname_stat)
         hdulist_data = fits.open(fitsname_data)
@@ -485,28 +499,28 @@ class MuseCube:
 
     def create_combined_white(self, exposure_white_names, kind='ave', fitsname='new_combined_white.fits',
                               xoffset_list=[], yoffset_list=[], clobber=True,
-                              new_pixel_scale=0.2 * u.arcsec):
+                              new_pixel_scale=0.2 * u.arcsec,vignetting_borders=[]):
         if clobber:
             os.system('rm ' + fitsname)
         combined_matrix, interpolated_fluxes,values_list = self.combine_not_aligned(
             exposure_names=exposure_white_names, wavelength=0, xoffset_list=xoffset_list,
             yoffset_list=yoffset_list, kind=kind, new_pixel_scale=new_pixel_scale,
-            white=True)
+            white=True,vignetting_borders=vignetting_borders)
         combined_matrix=np.array(combined_matrix)
         self.__save2fitsimage(fitsname, combined_matrix, type='white', stat=False, edit_header=[values_list])
         print 'New white image saved in ' + fitsname
 
     def create_combined_cube(self, exposure_names, kind='ave', fitsname='new_combined_cube.fits', cubetxt='cube.dat',
                              xoffset_list=[], yoffset_list=[], clobber=True, new_pixel_scale=0.2 * u.arcsec,
-                             stat=False):
+                             stat=False,vignetting_borders=[]):
         import gc
         gc.enable()
         wave = self.create_wavelength_array()
         if clobber:
             os.system('rm ' + fitsname)
             os.system('rm ' + cubetxt)
-        # wave = np.array([4800,4801.25,4802.5,5800,6000,6500,7000,8000,8500,9000])
-        # wave = np.array([4750])
+        #wave = np.array([4800,4801.25,4802.5,5800,6000,6500,7000,8000,8500,9000])
+        wave = np.array([4750,4800])
         for w in wave:
             print 'wavelength ' + str(w) + ' of ' + str(max(wave))
             combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
@@ -515,7 +529,7 @@ class MuseCube:
                                                                                          yoffset_list=yoffset_list,
                                                                                          kind=kind,
                                                                                          new_pixel_scale=new_pixel_scale,
-                                                                                         white=False, stat=stat)
+                                                                                         white=False, stat=stat,vignetting_borders=vignetting_borders)
             matrix_line = self.__matrix2line(combined_matrix)
             self.__line2file(matrix_line, cubetxt)
 
@@ -529,7 +543,13 @@ class MuseCube:
         print 'New cube saved in ' + fitsname
 
     def combine_not_aligned(self, exposure_names, wavelength, xoffset_list=[], yoffset_list=[],
-                            new_pixel_scale=0.2 * u.arcsec, kind='ave', white=False, stat=False):
+                            new_pixel_scale=0.2 * u.arcsec, kind='ave', white=False, stat=False,vignetting_borders=[]):
+        master_header=fits.open(self.cube)[1].header
+        d_ra=master_header['CD1_1']
+        d_dec=master_header['CD2_2']
+        if d_ra==0. or d_dec==0.:
+            raise ValueError('CD1_1 or CD2_2 equals 0, not valid')
+
         if white == False:
             k = self.__find_wavelength_index(wavelength)
         ra_min_exposures = []
@@ -549,13 +569,21 @@ class MuseCube:
 
         pixel_size_deg = new_pixel_scale.to('deg').value
 
+
+
         ra_array = np.arange(ra_max_all, ra_min_all, -1. * pixel_size_deg)
 
         dec_array = np.arange(dec_min_all, dec_max_all, pixel_size_deg)
 
+        if d_ra>0.:
+            ra_array=np.arange(ra_min_all,ra_max_all,pixel_size_deg)
+        if d_dec<0:
+            dec_array=np.arange(dec_max_all,dec_min_all,-1.*pixel_size_deg)
+
         interpolated_fluxes = []
         cx = 0
         cy = 0
+        count_vig=0
 
         for exposure in exposure_names:
             hdulist = fits.open(exposure)
@@ -592,6 +620,23 @@ class MuseCube:
                 dec = np.linspace(dec_center - n1_half * pixel_size_deg_native,
                                   dec_center + n1_half * pixel_size_deg_native, n1)
 
+            if d_ra>0:
+                if n2 % 2 == 0:
+                    ra = np.linspace(ra_center - n2_half * pixel_size_deg_native,
+                                     ra_center + (n2_half - 1) * pixel_size_deg_native, n2)
+                if n2 % 2 == 1:
+                    ra = np.linspace(ra_center - n2_half * pixel_size_deg_native,
+                                     ra_center + n2_half * pixel_size_deg_native, n2)
+            if d_dec<0:
+                if n1 % 2 == 0:
+                    dec = np.linspace(dec_center + (n1_half - 1) * pixel_size_deg_native,
+                                      dec_center - n1_half * pixel_size_deg_native,
+                                      n1)
+                if n1 % 2 == 1:
+                    dec = np.linspace(dec_center + n1_half * pixel_size_deg_native,
+                                      dec_center - n1_half * pixel_size_deg_native, n1)
+
+
             if len(xoffset_list) == len(exposure_names):
                 ra = ra + xoffset_list[cx] * pixel_size_deg_native
                 cx += 1
@@ -599,20 +644,44 @@ class MuseCube:
                 dec = dec + yoffset_list[cy] * pixel_size_deg_native
                 cy += 1
 
+
+
             if white:
-                data_aux = np.where(np.isnan(data), -1, data)
+                data_matrix=data
             else:
-                data_aux = np.where(np.isnan(data[k]), -1, data[k])
+                data_matrix=data[k]
+
+            if len(vignetting_borders)==len(exposure_names):
+                npixel_x=vignetting_borders[count_vig][0]
+                npixel_y=vignetting_borders[count_vig][1]
+                data_vignetted=self.__vignetting_matrix(data_matrix,npixel_x=npixel_x,npixel_y=npixel_y)
+                count_vig+=1
+                data_matrix=data_vignetted
+
+
+            data_aux = np.where(np.isnan(data_matrix), -1, data_matrix)
+
+
             data_aux_masked = ma.masked_equal(data_aux, -1)
             interpolator = interpolate.interp2d(ra, dec, data_aux_masked, bounds_error=False, fill_value=np.nan)
             flux_new = interpolator(ra_array, dec_array)
-            flux_new_aux=np.where(flux_new==-1,np.nan,flux_new)
+            flux_new_aux=np.where(flux_new<0,np.nan,flux_new)
             flux_new2 = np.zeros_like(flux_new_aux)
             m1 = len(flux_new_aux)
             m2 = len(flux_new_aux[0])
-            for i in xrange(m1):
-                for j in xrange(m2):
-                    flux_new2[i][j] = flux_new_aux[i][m2 - 1 - j]
+            if d_ra<0. and d_dec>0.:
+                for i in xrange(m1):
+                    for j in xrange(m2):
+                        flux_new2[i][j] = flux_new_aux[i][m2 - 1 - j]
+            elif d_dec<0 and d_ra>0.:
+                for i in xrange(m1):
+                    for j in xrange(m2):
+                        flux_new2[i][j] = flux_new_aux[m1-1-i][j]
+            elif d_dec<0. and d_ra<0.:
+                for i in xrange(m1):
+                    for j in xrange(m2):
+                        flux_new2[i][j] = flux_new_aux[m1-1-i][m2-1-j]
+
 
             interpolated_fluxes.append(flux_new2)
             # import pdb; pdb.set_trace()
@@ -779,13 +848,13 @@ class MuseCube:
 
         :return:
         """
-        if type(wavelength[0]) == int or type(wavelength[0]) == float:
+        if type(wavelength[0]) == int or type(wavelength[0]) == float or type(wavelength[0])==np.float64:
             interval = 0
-        if type(wavelength[0]) == list or type(wavelength[0]) == np.ndarray:
+        elif type(wavelength[0]) == list or type(wavelength[0]) == np.ndarray:
             interval = 1
-        if type(wavelength[0]) != int and type(wavelength[0]) != float and type(wavelength[0]) != list and type(
-                wavelength[0]) != np.ndarray:
-            interval = -1
+        else:
+            print 'Type found: '
+            print type(wavelength[0])
             raise ValueError(
                 'Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
 
@@ -872,18 +941,27 @@ class MuseCube:
             substracted_spec.append(spec[i] - sky_spec[i])
         return substracted_spec
 
+    def create_white(self,new_white_fitsname='white_from_colapse.fits'):
+        wave=self.create_wavelength_array()
+        self.colapse_cube(wavelength=wave,fitsname=new_white_fitsname)
+
+
     def spec_to_redmonster_format(self,spec,fitsname):
         from scipy import interpolate
+        #pdb.set_trace()
         wave=spec.wavelength.value
         wave_log=np.log10(wave)
         n=len(wave)
+        spec.wavelength=wave_log*u.angstrom
         new_wave_log=np.linspace(wave_log[1],wave_log[n-2],2*n)
         spec_rebined=spec.rebin(new_wv=new_wave_log*u.angstrom)
+        flux=spec_rebined.flux.value
         f=interpolate.interp1d(wave_log,spec.sig.value)
         sig=f(new_wave_log)
-        flux=spec_rebined.flux.value
-        hdu1=fits.PrimaryHDU(flux)
-        hdu2=fits.ImageHDU(sig)
+        sig=flux/10000.
+        inv_sig=1./sig**2
+        hdu1=fits.PrimaryHDU([flux,flux])
+        hdu2=fits.ImageHDU([inv_sig,inv_sig])
         hdu1.header['COEFF0']=new_wave_log[0]
         hdu1.header['COEFF1']=new_wave_log[1]-new_wave_log[0]
         hdulist_new=fits.HDUList([hdu1,hdu2])
