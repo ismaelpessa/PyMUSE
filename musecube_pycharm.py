@@ -520,7 +520,7 @@ class MuseCube:
             os.system('rm ' + fitsname)
             os.system('rm ' + cubetxt)
         #wave = np.array([4800,4801.25,4802.5,5800,6000,6500,7000,8000,8500,9000])
-        wave = np.array([4750,4800])
+        #wave = np.array([4750,4800])
         for w in wave:
             print 'wavelength ' + str(w) + ' of ' + str(max(wave))
             combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
