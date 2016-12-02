@@ -206,17 +206,19 @@ class MuseCube:
         masked_flux = ma.masked_equal(array_flux_aux, -1)
         return masked_flux
 
-    def __rms_measure(self, k, n=50000):
+    def __rms_measure_fraction(self, k, fraction=.05):
         '''
 
         :param k: int
                   index in wavelength array, where the rms will be measured
-        :param n: int
-                   number of bright pixel to cut before measure rms, default = 50000
+        :param fraction: float
+                   fraction of the pixels that will be removed (the brightest) before measure rms
         :return: rms: flot
                       value found for rms in the given wavelength
         '''
+
         flux = self.__matrix2array(k)
+        n=int(fraction*len(flux))
         sorted_flux = np.sort(flux)
         cuted_sorted_flux = self.__cut_bright_pixel(sorted_flux, n)
         rms = np.std(cuted_sorted_flux)
@@ -303,6 +305,7 @@ class MuseCube:
                 im.show_grayscale()
 
     def __rms_measure_threshold(self, k, threshold=0.4):
+        #pdb.set_trace()
         flux = self.__matrix2array(k, stat=False)
         f = flux.data
         fmin = min(f)
@@ -319,18 +322,17 @@ class MuseCube:
         limit_hist_index = self.closest_element(n_norm, threshold)
         limit_flux = bin_new[limit_hist_index]
         lower_fluxes = self.__cut_over_limit(flux, limit_flux)
-        positive_fluxes=lower_fluxes[np.where(lower_fluxes>0)]
-        std = np.std(np.array(positive_fluxes))
+        std = np.std(np.array(lower_fluxes))
         return std
 
     def __cut_over_limit(self, flux_array, upper_limit):
         cuted_flux = []
         for f in flux_array:
-            if f <= upper_limit:
+            if f <= upper_limit and f>=-upper_limit:
                 cuted_flux.append(f)
         return np.array(cuted_flux)
 
-    def rms_normalize_stat_treshold(self, new_cube_name='new_cube_stat_normalized.fits'):
+    def rms_normalize_stat_threshold(self, new_cube_name='new_cube_stat_normalized.fits',threshold=0.4):
         '''
         Function that creates a new cube with the stat dimension normalized.
         :param new_cube_name: string
@@ -343,7 +345,7 @@ class MuseCube:
         print n_wave
         for k in xrange(n_wave):
             print 'iteration ' + str(k) + ' of ' + str(n_wave)
-            rms_obs = self.__rms_measure_threshold(k)
+            rms_obs = self.__rms_measure_threshold(k,threshold=threshold)
             stat = self.__matrix2array(k, stat=True)
             rms_stat = np.median(stat)
             normalization_factor = rms_obs / rms_stat
@@ -393,7 +395,7 @@ class MuseCube:
 
         return reg
 
-    def rms_normalize_stat(self, new_cube_name='new_cube_stat_normalized.fits', n=50000):
+    def rms_normalize_stat_fraction(self, new_cube_name='new_cube_stat_normalized.fits',fraction=0.5):
         '''
         Function that creates a new cube with the stat dimension normalized
         :param new_cube_name: string
@@ -402,12 +404,13 @@ class MuseCube:
                   number of pixels that will be ignored to calculate the observed rms
         :return:
         '''
+
         n_wave = len(self.data)
         stat_normalized = []
         print n_wave
         for k in xrange(n_wave):
             print k
-            rms_obs = self.__rms_measure(k, n=n)
+            rms_obs = self.__rms_measure_fraction(k, fraction=fraction)
             stat = self.__matrix2array(k, stat=True)
             rms_stat = np.median(stat)
             normalization_factor = rms_obs / rms_stat
@@ -450,6 +453,16 @@ class MuseCube:
         return
 
     def __vignetting_matrix(self,matrix,npixel_x,npixel_y):
+        """
+        Function used to mask the edges of the images
+        :param matrix: ndarray
+                       image to mask
+        :param npixel_x: int
+                         number of pixel to mask in both edges of the x-axis
+        :param npixel_y: int
+                         number of pixels to mask in both edges of the y-axis
+        :return:
+        """
         matrix_out=np.zeros_like(matrix)
         n1=len(matrix_out)
         n2=len(matrix_out[0])
@@ -496,6 +509,52 @@ class MuseCube:
         new_hdulist = hdulist_data
         new_hdulist[2] = hdulist_stat[2]
         new_hdulist.writeto(new_cube_name, clobber=True)
+
+    def region_from_mask(self,mask):
+        """
+        :param mask: ndarray
+                     mask has to be a matrix with the same shape of the white image of the cube, containing in each place, the wight of the pixel in the spectrum
+
+        :return: reg: list
+                      list containing the x,y physical coordinates of the pixels inside the mask
+                 weigths: list
+                          list containing the weights of each pixel in reg
+        """
+        reg=[]
+        weights=[]
+        n1=len(mask)
+        n2=len(mask[0])
+        for i in xrange(n1):
+            for j in xrange(n2):
+                if mask[i][j]>0:
+                    reg.append([i,j])  ##PUEDE SER [i][j] o [j][i] no estoy seguro!!!!! PROBAAAR!
+                    weights.append(mask[i][j])
+        return reg,weights
+
+
+    def plot_mask_spec(self,mask,n_figure=2):
+        """
+        function to get the spectrum of a region caracterized by a mask of the image
+        :param mask: ndarrayy
+                     mask has to be a matrix with the same shape of the white image of the cube, containing in each place, the wight of the pixel in the spectrum
+
+        :return:
+        """
+        reg,weights=self.region_from_mask(mask)
+        x_reg=[]
+        y_reg=[]
+        N=len(reg)
+        for i in xrange(N):
+            x_reg.append(reg[i][0])
+            y_reg.append(reg[i][1])
+        w,f=self.spectrum_region(x_reg,y_reg,weights,coord_system='pix',mask=True)
+        plt.plot(x_reg,y_reg,color='x',figure=plt.figure(self.n))
+        plt.plot(w,f,figure=plt.figure(n_figure))
+        spec_tuple=(np.array(w),np.array(f))
+        spectrum = XSpectrum1D.from_tuple(spec_tuple)
+        return spectrum
+
+
 
     def create_combined_white(self, exposure_white_names, kind='ave', fitsname='new_combined_white.fits',
                               xoffset_list=[], yoffset_list=[], clobber=True,
@@ -958,10 +1017,10 @@ class MuseCube:
         flux=spec_rebined.flux.value
         f=interpolate.interp1d(wave_log,spec.sig.value)
         sig=f(new_wave_log)
-        sig=flux/10000.
+        #sig=flux/10000.
         inv_sig=1./sig**2
-        hdu1=fits.PrimaryHDU([flux,flux])
-        hdu2=fits.ImageHDU([inv_sig,inv_sig])
+        hdu1=fits.PrimaryHDU([flux])
+        hdu2=fits.ImageHDU([inv_sig])
         hdu1.header['COEFF0']=new_wave_log[0]
         hdu1.header['COEFF1']=new_wave_log[1]-new_wave_log[0]
         hdulist_new=fits.HDUList([hdu1,hdu2])
@@ -1494,7 +1553,7 @@ class MuseCube:
             lambda_aux = []
         return wave, combined_spec
 
-    def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False, stat=False):
+    def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False, stat=False,mask=False):
         """
         Obtain the spectrum of a given region in the datacube, defined by a center (x_center,y_center), and
         radius. In the case of circular region, radius is a number, in the case of eliptical region, radius in an array that
@@ -1508,6 +1567,8 @@ class MuseCube:
                        radius of the circular region or the [a,b,theta] that defines an eliptical region
         :param coord_system: string
                              possible values: 'wcs, 'pix', indicates the coordinate system used.
+        :param mask: boolean, default = False
+                     if true, that means that the spectrum comes from a region defined by a mask, and x_center,y_center and radius are the coordinates of the pixels inside the region and the weights, respectively
         :return: wave: array[]
                        array with the wavelength of the spectrum
                  combined_spec: array[]
@@ -1518,14 +1579,25 @@ class MuseCube:
 
         input = self.cube
 
-        if type(radius) == int or type(radius) == float:
+        if mask==False:
 
-            Region = self.define_region(x_center, y_center, radius, coord_system)
+            if type(radius) == int or type(radius) == float:
+
+                Region = self.define_region(x_center, y_center, radius, coord_system)
+            else:
+                a = radius[0]
+                b = radius[1]
+                theta = radius[2]
+                Region = self.define_elipse_region(x_center, y_center, a, b, theta, coord_system)
+            N=len(Region)
+            weights=np.ones(N)
         else:
-            a = radius[0]
-            b = radius[1]
-            theta = radius[2]
-            Region = self.define_elipse_region(x_center, y_center, a, b, theta, coord_system)
+            weights=radius
+            n=len(x_center)
+            Region=[]
+            for i in xrange(n):
+                Region.append([x_center[i],y_center[i]])
+
 
         N = len(Region)
         S = []
@@ -1534,7 +1606,7 @@ class MuseCube:
         wave = S[0][0]
         specs = []
         for i in xrange(0, N):
-            specs.append(S[i][1])
+            specs.append(weights[i]*np.array(S[i][1]))
         combined_spec = range(len(specs[0]))
 
         lambda_aux = []
