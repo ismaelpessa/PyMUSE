@@ -1012,15 +1012,13 @@ class MuseCube:
         wave_log=np.log10(wave)
         n=len(wave)
         spec.wavelength=wave_log*u.angstrom
-        new_wave_log=np.linspace(wave_log[1],wave_log[n-2],2*n)
+        new_wave_log=np.linspace(wave_log[1],wave_log[n-2],4630)
         spec_rebined=spec.rebin(new_wv=new_wave_log*u.angstrom)
         flux=spec_rebined.flux.value
         f=interpolate.interp1d(wave_log,spec.sig.value)
         sig=f(new_wave_log)
-        #sig=flux/10000.
-        inv_sig=1./sig**2
         hdu1=fits.PrimaryHDU([flux])
-        hdu2=fits.ImageHDU([inv_sig])
+        hdu2=fits.ImageHDU([sig/1000000.])
         hdu1.header['COEFF0']=new_wave_log[0]
         hdu1.header['COEFF1']=new_wave_log[1]-new_wave_log[0]
         hdulist_new=fits.HDUList([hdu1,hdu2])
@@ -1031,7 +1029,7 @@ class MuseCube:
 
 
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
-                                              coord_system, n_figure=2, errors=False,redmonster_format=True):
+                                              coord_system, n_figure=2, errors=False,method='med',redmonster_format=True):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -1051,6 +1049,8 @@ class MuseCube:
                              external radius of the ring where the sky will be calculated
         :param coord_system: string
                              possible values: 'wcs', 'pix', indicates the coordinante system used.
+        :param method: string, default = 'med'
+                       method to estimate the sky. Possible values are med,ave, or none
         :param n_figure: int, default = 2
                          figure number to display the spectrum
         :param redmonster_format: boolean, default = True
@@ -1069,7 +1069,7 @@ class MuseCube:
         w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False)
         if errors:
             w, err = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False, stat=True)
-        w_sky, spec_sky = self.spectrum_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system)
+        w_sky, spec_sky = self.spectrum_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system,method=method)
         self.draw_circle(x_center, y_center, sky_radius_1, 'Blue', coord_system)
         self.draw_circle(x_center, y_center, sky_radius_2, 'Blue', coord_system)
         if type(radius) == int or type(radius) == float:
@@ -1082,9 +1082,6 @@ class MuseCube:
             self.draw_elipse(x_center, y_center, a, b, theta, 'Green', coord_system)
             reg = self.define_elipse_region(x_center, y_center, a, b, theta, coord_system)
 
-        ring = self.define_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system)
-        # print ring
-        # print reg
         normalization_factor = float(len(reg))
         print normalization_factor
         spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
@@ -1525,7 +1522,7 @@ class MuseCube:
         # plt.show()
         return wave, spec
 
-    def spectrum_ring_region(self, x_center, y_center, radius_1, radius_2, coord_system, debug=False):
+    def spectrum_ring_region(self, x_center, y_center, radius_1, radius_2, coord_system, debug=False,method='med'):
         input = self.cube
         # print x_center
         Region = self.define_ring_region(x_center, y_center, radius_1, radius_2, coord_system)
@@ -1547,8 +1544,12 @@ class MuseCube:
                 bins = np.linspace(np.min(lambda_aux), np.max(lambda_aux), 20)
                 plt.hist(lambda_aux, bins)
                 plt.show()
-
-            combined_spec[j] = np.nanmedian(lambda_aux)
+            if method=='med':
+                combined_spec[j] = np.nanmedian(lambda_aux)
+            elif method=='ave':
+                combined_spec[j] = np.nanmean(lambda_aux)
+            elif method=='none':
+                combined_spec[j] = 0.
 
             lambda_aux = []
         return wave, combined_spec
