@@ -22,7 +22,8 @@ class MuseCube:
 
     """
 
-    def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1):
+    def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom):
         """
         :param filename_cube: string
                               name of the fits file containing the datacube
@@ -31,6 +32,7 @@ class MuseCube:
         pixel_size : float or Quantity
             Pixel size of the datacube, if float we assume arcsecs.
         """
+        self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
         self.cube = filename_cube
@@ -94,8 +96,13 @@ class MuseCube:
         :return: w: array[]
                  array which contain an evenly sampled wavelength range
         """
-        dw = 1.25
-        w = np.arange(4750, 9351.25, dw)
+        hdulist = fits.open(self.cube)
+        header = hdulist[1].header
+        dw = header['CD3_3']
+        w_ini = header['CRVAL3']
+        N = header['NAXIS3']
+        w_fin = w_ini + (N - 1) * dw
+        w = np.linspace(w_ini, w_fin, N)
         # print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
         return w
 
@@ -546,10 +553,10 @@ class MuseCube:
         y_reg = []
         N = len(reg)
         for i in xrange(N):
-            x_reg.append(reg[i][0])
-            y_reg.append(reg[i][1])
+            x_reg.append(reg[i][1])
+            y_reg.append(reg[i][0])
         w, f = self.spectrum_region(x_reg, y_reg, weights, coord_system='pix', mask=True)
-        plt.plot(x_reg, y_reg, color='x', figure=plt.figure(self.n))
+        plt.plot(x_reg, y_reg, 'x', color='Blue', figure=plt.figure(self.n))
         plt.plot(w, f, figure=plt.figure(n_figure))
         spec_tuple = (np.array(w), np.array(f))
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
@@ -776,31 +783,42 @@ class MuseCube:
         return matrix_combined, interpolated_fluxes, data_to_header
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=16):
-        x_pix = self.get_from_table(sextractor_filename, 'X_IMAGE')
-        y_pix = self.get_from_table(sextractor_filename, 'Y_IMAGE')
-        a = self.get_from_table(sextractor_filename, 'A_IMAGE')
-        b = self.get_from_table(sextractor_filename, 'B_IMAGE')
+        self.clean_canvas()
+        x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
+        y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
+        a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
+        b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
         theta = self.get_from_table(sextractor_filename, 'THETA_IMAGE')
         flags = self.get_from_table(sextractor_filename, 'FLAGS')
+        id = self.get_from_table(sextractor_filename, 'NUMBER')
         n = len(x_pix)
         for i in xrange(0, n):
             color = 'Green'
+            region = self.define_elipse_region(x_center=int(x_pix[i]), y_center=int(y_pix[i]), a=int(a[i] + 0.6),
+                                               b=int(b[i] + 0.6), theta=-1. * theta[i], coord_system='pix')
             if flags[i] > flag_threshold:
                 color = 'Red'
-            self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], -theta[i], color=color, coord_system='pix')
-        return x_pix, y_pix, a, b, theta, flags
+            elif len(region) < 1:
+                flags[i] = flag_threshold + 1
+                color = 'Blue'
 
-    def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='med',
+            self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], -1 * theta[i], color=color, coord_system='pix')
+            plt.text(x_pix[i], y_pix[i], id[i], color='White')
+        return x_pix, y_pix, a, b, theta, flags, id
+
+    def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
                               n_figure=2):
-        x_pix, y_pix, a, b, theta, flags = self.plot_sextractor_regions(sextractor_filename=sextractor_filename,
-                                                                        flag_threshold=flag_threshold)
+        x_pix, y_pix, a, b, theta, flags, id = self.plot_sextractor_regions(sextractor_filename=sextractor_filename,
+                                                                            flag_threshold=flag_threshold)
+        self.clean_canvas()
         n = len(x_pix)
         if redmonster_format:
             for i in xrange(n):
                 if flags[i] < flag_threshold:
                     spectrum, name = self.plot_region_spectrum_sky_substraction(x_center=int(x_pix[i]),
                                                                                 y_center=int(y_pix[i]),
-                                                                                radius=[int(a[i]), int(b[i]),
+                                                                                radius=[int(a[i] + 0.6),
+                                                                                        int(b[i] + 0.6),
                                                                                         -1 * theta[i]],
                                                                                 sky_radius_1=int(
                                                                                     2 * max(int(a[i]), int(b[i]))),
@@ -808,13 +826,14 @@ class MuseCube:
                                                                                     3 * max(int(a[i]), int(b[i]))),
                                                                                 coord_system='pix', n_figure=n_figure,
                                                                                 errors=True, sky_method=sky_method,
-                                                                                redmonster_format=True)
+                                                                                redmonster_format=True, n_id=id[i])
         else:
             for i in xrange(n):
                 if flags[i] < flag_threshold:
                     spectrum, name = self.plot_region_spectrum_sky_substraction(x_center=int(x_pix[i]),
                                                                                 y_center=int(y_pix[i]),
-                                                                                radius=[int(a[i]), int(b[i]),
+                                                                                radius=[int(a[i] + 0.6),
+                                                                                        int(b[i] + 0.6),
                                                                                         -1 * theta[i]],
                                                                                 sky_radius_1=int(
                                                                                     2 * max(int(a[i]), int(b[i]))),
@@ -822,7 +841,7 @@ class MuseCube:
                                                                                     3 * max(int(a[i]), int(b[i]))),
                                                                                 coord_system='pix', n_figure=n_figure,
                                                                                 errors=True, sky_method=sky_method,
-                                                                                redmonster_format=False)
+                                                                                redmonster_format=False, n_id=id[i])
                     spectrum.write_to_fits(name)
 
     def __calculate_combined_matrix(self, interpolated_fluxes, kind='ave'):
@@ -955,7 +974,6 @@ class MuseCube:
                 os.system(command_fits)
                 os.system(command_png)
         return video
-        return video
 
     def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2):
         """
@@ -1075,7 +1093,7 @@ class MuseCube:
         wave = self.create_wavelength_array()
         self.colapse_cube(wavelength=wave, fitsname=new_white_fitsname)
 
-    def spec_to_redmonster_format(self, spec, fitsname):
+    def spec_to_redmonster_format(self, spec, fitsname, n_id=-1):
         """
         Function used to create a spectrum in the REDMONSTER software format
         :param spec: XSpectrum1D object
@@ -1088,21 +1106,217 @@ class MuseCube:
         wave_log = np.log10(wave)
         n = len(wave)
         spec.wavelength = wave_log * u.angstrom
-        new_wave_log = np.linspace(wave_log[1], wave_log[n - 2], 4630)
+        new_wave_log = np.arange(wave_log[1], wave_log[n - 2], 0.0001)
         spec_rebined = spec.rebin(new_wv=new_wave_log * u.angstrom)
         flux = spec_rebined.flux.value
         f = interpolate.interp1d(wave_log, spec.sig.value)
         sig = f(new_wave_log)
+        # sig=flux/1.1
+        inv_sig = 1. / np.array(sig) ** 2
+        inv_sig = np.where(np.isinf(inv_sig), 0, inv_sig)
+        inv_sig = np.where(np.isnan(inv_sig), 0, inv_sig)
         hdu1 = fits.PrimaryHDU([flux])
-        hdu2 = fits.ImageHDU([sig])
+        hdu2 = fits.ImageHDU([inv_sig])
         hdu1.header['COEFF0'] = new_wave_log[0]
         hdu1.header['COEFF1'] = new_wave_log[1] - new_wave_log[0]
+        if n_id > 0:
+            hdu1.header['ID'] = n_id
         hdulist_new = fits.HDUList([hdu1, hdu2])
         hdulist_new.writeto(fitsname, clobber=True)
 
+    def get_filter(self,wavelength, filter='r'):
+        wave_u = np.array(
+            [2980, 3005, 3030, 3055, 3080, 3105, 3130, 3155, 3180, 3205, 3230, 3255, 3280, 3305, 3330, 3355, 3380, 3405,
+             3430, 3455, 3480, 3505, 3530, 3555, 3580, 3605, 3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855,
+             3880, 3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130])
+        flux_u = array([0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
+                        9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
+                        5.61000000e-02, 6.34000000e-02, 7.00000000e-02, 7.56000000e-02, 8.03000000e-02, 8.48000000e-02,
+                        8.83000000e-02, 9.17000000e-02, 9.59000000e-02, 1.00100000e-01, 1.02900000e-01, 1.04400000e-01,
+                        1.05300000e-01, 1.06300000e-01, 1.07500000e-01, 1.08500000e-01, 1.08400000e-01, 1.06400000e-01,
+                        1.02400000e-01, 9.66000000e-02, 8.87000000e-02, 7.87000000e-02, 6.72000000e-02, 5.49000000e-02,
+                        4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
+                        1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
+        wave_g = np.array(
+                [3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855, 3880,
+                 3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130, 4155,
+                 4180, 4205, 4230, 4255, 4280, 4305, 4330, 4355, 4380, 4405, 4430,
+                 4455, 4480, 4505, 4530, 4555, 4580, 4605, 4630, 4655, 4680, 4705,
+                 4730, 4755, 4780, 4805, 4830, 4855, 4880, 4905, 4930, 4955, 4980,
+                 5005, 5030, 5055, 5080, 5105, 5130, 5155, 5180, 5205, 5230, 5255,
+                 5280, 5305, 5330, 5355, 5380, 5405, 5430, 5455, 5480, 5505, 5530,
+                 5555, 5580, 5605, 5630, 5655, 5680, 5705, 5730, 5755, 5780, 5805,
+                 5830])
+        flux_g=np.array(
+            [0.00000000e+00,   3.00000000e-04,   8.00000000e-04,
+             1.30000000e-03,   1.90000000e-03,   2.40000000e-03,
+             3.40000000e-03,   5.50000000e-03,   1.03000000e-02,
+             1.94000000e-02,   3.26000000e-02,   4.92000000e-02,
+             6.86000000e-02,   9.00000000e-02,   1.12300000e-01,
+             1.34200000e-01,   1.54500000e-01,   1.72200000e-01,
+             1.87300000e-01,   2.00300000e-01,   2.11600000e-01,
+             2.21400000e-01,   2.30100000e-01,   2.37800000e-01,
+             2.44800000e-01,   2.51300000e-01,   2.57400000e-01,
+             2.63300000e-01,   2.69100000e-01,   2.74700000e-01,
+             2.80100000e-01,   2.85200000e-01,   2.89900000e-01,
+             2.94000000e-01,   2.97900000e-01,   3.01600000e-01,
+             3.05500000e-01,   3.09700000e-01,   3.14100000e-01,
+             3.18400000e-01,   3.22400000e-01,   3.25700000e-01,
+             3.28400000e-01,   3.30700000e-01,   3.32700000e-01,
+             3.34600000e-01,   3.36400000e-01,   3.38300000e-01,
+             3.40300000e-01,   3.42500000e-01,   3.44800000e-01,
+             3.47200000e-01,   3.49500000e-01,   3.51900000e-01,
+             3.54100000e-01,   3.56200000e-01,   3.58100000e-01,
+             3.59700000e-01,   3.60900000e-01,   3.61300000e-01,
+             3.60900000e-01,   3.59500000e-01,   3.58100000e-01,
+             3.55800000e-01,   3.45200000e-01,   3.19400000e-01,
+             2.80700000e-01,   2.33900000e-01,   1.83900000e-01,
+             1.35200000e-01,   9.11000000e-02,   5.48000000e-02,
+             2.95000000e-02,   1.66000000e-02,   1.12000000e-02,
+             7.70000000e-03,   5.00000000e-03,   3.20000000e-03,
+             2.10000000e-03,   1.50000000e-03,   1.20000000e-03,
+             1.00000000e-03,   9.00000000e-04,   8.00000000e-04,
+             6.00000000e-04,   5.00000000e-04,   3.00000000e-04,
+             1.00000000e-04,   0.00000000e+00])
+        wave_r = np.array(
+            [5380, 5405, 5430, 5455, 5480, 5505, 5530, 5555, 5580, 5605, 5630,
+             5655, 5680, 5705, 5730, 5755, 5780, 5805, 5830, 5855, 5880, 5905,
+             5930, 5955, 5980, 6005, 6030, 6055, 6080, 6105, 6130, 6155, 6180,
+             6205, 6230, 6255, 6280, 6305, 6330, 6355, 6380, 6405, 6430, 6455,
+             6480, 6505, 6530, 6555, 6580, 6605, 6630, 6655, 6680, 6705, 6730,
+             6755, 6780, 6805, 6830, 6855, 6880, 6905, 6930, 6955, 6980, 7005,
+             7030, 7055, 7080, 7105, 7130, 7155, 7180, 7205, 7230])
+        flux_r=np.array(
+            [0.00000000e+00,   1.40000000e-03,   9.90000000e-03,
+             2.60000000e-02,   4.98000000e-02,   8.09000000e-02,
+             1.19000000e-01,   1.63000000e-01,   2.10000000e-01,
+             2.56400000e-01,   2.98600000e-01,   3.33900000e-01,
+             3.62300000e-01,   3.84900000e-01,   4.02700000e-01,
+             4.16500000e-01,   4.27100000e-01,   4.35300000e-01,
+             4.41600000e-01,   4.46700000e-01,   4.51100000e-01,
+             4.55000000e-01,   4.58700000e-01,   4.62400000e-01,
+             4.66000000e-01,   4.69200000e-01,   4.71600000e-01,
+             4.73100000e-01,   4.74000000e-01,   4.74700000e-01,
+             4.75800000e-01,   4.77600000e-01,   4.80000000e-01,
+             4.82700000e-01,   4.85400000e-01,   4.88100000e-01,
+             4.90500000e-01,   4.92600000e-01,   4.94200000e-01,
+             4.95100000e-01,   4.95500000e-01,   4.95600000e-01,
+             4.95800000e-01,   4.96100000e-01,   4.96400000e-01,
+             4.96200000e-01,   4.95300000e-01,   4.93100000e-01,
+             4.90600000e-01,   4.87300000e-01,   4.75200000e-01,
+             4.47400000e-01,   4.05900000e-01,   3.54400000e-01,
+             2.96300000e-01,   2.35000000e-01,   1.73900000e-01,
+             1.16800000e-01,   6.97000000e-02,   3.86000000e-02,
+             2.15000000e-02,   1.36000000e-02,   1.01000000e-02,
+             7.70000000e-03,   5.60000000e-03,   3.90000000e-03,
+             2.80000000e-03,   2.00000000e-03,   1.60000000e-03,
+             1.30000000e-03,   1.00000000e-03,   7.00000000e-04,
+             4.00000000e-04,   2.00000000e-04,   0.00000000e+00])
+        wave_i=array(
+            [6430, 6455, 6480, 6505, 6530, 6555, 6580, 6605, 6630, 6655, 6680,
+             6705, 6730, 6755, 6780, 6805, 6830, 6855, 6880, 6905, 6930, 6955,
+             6980, 7005, 7030, 7055, 7080, 7105, 7130, 7155, 7180, 7205, 7230,
+             7255, 7280, 7305, 7330, 7355, 7380, 7405, 7430, 7455, 7480, 7505,
+             7530, 7555, 7580, 7605, 7630, 7655, 7680, 7705, 7730, 7755, 7780,
+             7805, 7830, 7855, 7880, 7905, 7930, 7955, 7980, 8005, 8030, 8055,
+             8080, 8105, 8130, 8155, 8180, 8205, 8230, 8255, 8280, 8305, 8330,
+             8355, 8380, 8405, 8430, 8455, 8480, 8505, 8530, 8555, 8580, 8605,
+             8630])
+        flux_i=np.array(
+            [0.00000000e+00,   1.00000000e-04,   3.00000000e-04,
+             4.00000000e-04,   4.00000000e-04,   4.00000000e-04,
+             3.00000000e-04,   4.00000000e-04,   9.00000000e-04,
+             1.90000000e-03,   3.40000000e-03,   5.60000000e-03,
+             1.04000000e-02,   1.97000000e-02,   3.49000000e-02,
+             5.69000000e-02,   8.51000000e-02,   1.18100000e-01,
+             1.55200000e-01,   1.98000000e-01,   2.44800000e-01,
+             2.90600000e-01,   3.29000000e-01,   3.56600000e-01,
+             3.82900000e-01,   4.06700000e-01,   4.24500000e-01,
+             4.32000000e-01,   4.25200000e-01,   4.02800000e-01,
+             3.84400000e-01,   3.91100000e-01,   4.01100000e-01,
+             3.98800000e-01,   3.92400000e-01,   3.91900000e-01,
+             3.98800000e-01,   3.97900000e-01,   3.93000000e-01,
+             3.89800000e-01,   3.87200000e-01,   3.84200000e-01,
+             3.79900000e-01,   3.73700000e-01,   3.68500000e-01,
+             3.67800000e-01,   3.60300000e-01,   1.52700000e-01,
+             2.17600000e-01,   2.75200000e-01,   3.43400000e-01,
+             3.39200000e-01,   3.36100000e-01,   3.31900000e-01,
+             3.27200000e-01,   3.22100000e-01,   3.17300000e-01,
+             3.12900000e-01,   3.09500000e-01,   3.07700000e-01,
+             3.07500000e-01,   3.08600000e-01,   3.09800000e-01,
+             3.09800000e-01,   3.07600000e-01,   3.02100000e-01,
+             2.93900000e-01,   2.82100000e-01,   2.59700000e-01,
+             2.24200000e-01,   1.81500000e-01,   1.37400000e-01,
+             9.73000000e-02,   6.52000000e-02,   4.10000000e-02,
+             2.37000000e-02,   1.28000000e-02,   7.40000000e-03,
+             5.30000000e-03,   3.60000000e-03,   2.20000000e-03,
+             1.40000000e-03,   1.10000000e-03,   1.00000000e-03,
+             1.00000000e-03,   9.00000000e-04,   6.00000000e-04,
+             3.00000000e-04,   0.00000000e+00])
+        wave_z=np.array(
+            [7730,  7755,  7780,  7805,  7830,  7855,  7880,  7905,  7930,
+             7955,  7980,  8005,  8030,  8055,  8080,  8105,  8130,  8155,
+             8180,  8205,  8230,  8255,  8280,  8305,  8330,  8355,  8380,
+             8405,  8430,  8455,  8480,  8505,  8530,  8555,  8580,  8605,
+             8630,  8655,  8680,  8705,  8730,  8755,  8780,  8805,  8830,
+             8855,  8880,  8905,  8930,  8955,  8980,  9005,  9030,  9055,
+             9080,  9105,  9130,  9155,  9180,  9205,  9230,  9255,  9280,
+             9305,  9330,  9355,  9380,  9405,  9430,  9455,  9480,  9505,
+             9530,  9555,  9580,  9605,  9630,  9655,  9680,  9705,  9730,
+             9755,  9780,  9805,  9830,  9855,  9880,  9905,  9930,  9955,
+             9980, 10005, 10030, 10055, 10080, 10105, 10130, 10155, 10180,
+             10205, 10230, 10255, 10280, 10305, 10330, 10355, 10380, 10405,
+             10430, 10455, 10480, 10505, 10530, 10555, 10580, 10605, 10630,
+             10655, 10680, 10705, 10730, 10755, 10780, 10805, 10830, 10855,
+             10880, 10905, 10930, 10955, 10980, 11005, 11030, 11055, 11080,
+             11105, 11130, 11155, 11180, 11205, 11230])
+        flux_z=np.array(
+            [0.    ,  0.    ,  0.0001,  0.0001,  0.0001,  0.0002,  0.0002,
+             0.0003,  0.0005,  0.0007,  0.0011,  0.0017,  0.0027,  0.004 ,
+             0.0057,  0.0079,  0.0106,  0.0139,  0.0178,  0.0222,  0.0271,
+             0.0324,  0.0382,  0.0446,  0.0511,  0.0564,  0.0603,  0.0637,
+             0.0667,  0.0694,  0.0717,  0.0736,  0.0752,  0.0765,  0.0775,
+             0.0782,  0.0786,  0.0787,  0.0785,  0.078 ,  0.0772,  0.0763,
+             0.0751,  0.0738,  0.0723,  0.0708,  0.0693,  0.0674,  0.0632,
+             0.0581,  0.0543,  0.0526,  0.0523,  0.0522,  0.0512,  0.0496,
+             0.0481,  0.0473,  0.0476,  0.0482,  0.0476,  0.0447,  0.0391,
+             0.0329,  0.0283,  0.0264,  0.0271,  0.0283,  0.0275,  0.0254,
+             0.0252,  0.0256,  0.0246,  0.0244,  0.0252,  0.0258,  0.0265,
+             0.0274,  0.0279,  0.0271,  0.0252,  0.0236,  0.0227,  0.0222,
+             0.0216,  0.0208,  0.0196,  0.0183,  0.0171,  0.016 ,  0.0149,
+             0.0138,  0.0128,  0.0118,  0.0108,  0.0099,  0.0091,  0.0083,
+             0.0075,  0.0068,  0.0061,  0.0055,  0.005 ,  0.0045,  0.0041,
+             0.0037,  0.0033,  0.003 ,  0.0027,  0.0025,  0.0023,  0.0021,
+             0.0019,  0.0018,  0.0017,  0.0016,  0.0015,  0.0014,  0.0013,
+             0.0012,  0.0011,  0.001 ,  0.0009,  0.0008,  0.0008,  0.0007,
+             0.0006,  0.0006,  0.0006,  0.0005,  0.0005,  0.0004,  0.0004,
+             0.0003,  0.0003,  0.0002,  0.0002,  0.0001,  0.0001,  0.   ,  0.    ])
+        if filter =='u':
+            wave_filter=wave_u
+            flux_filter=flux_u
+        if filter == 'g':
+            wave_filter = wave_g
+            flux_filter = flux_g
+        if filter == 'r':
+            wave_filter = wave_r
+            flux_filter = flux_r
+        if filter == 'i':
+            wave_filter = wave_i
+            flux_filter = flux_i
+        if filter == 'z':
+            wave_filter = wave_z
+            flux_filter = flux_z
+
+
+
+
+
+
+
+
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
                                               coord_system, n_figure=2, errors=False, sky_method='med',
-                                              redmonster_format=True):
+                                              redmonster_format=True, n_id=-1):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -1172,14 +1386,25 @@ class MuseCube:
 
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
         from linetools.utils import name_from_coord
-        spec_fits_name = name_from_coord(coords) + '.fits'
+        spec_fits_name = name_from_coord(coords)
         if redmonster_format:
-            self.spec_to_redmonster_format(spectrum, 'RMF_' + spec_fits_name)
-        return spectrum, spec_fits_name
+            spec_tuple_aux = (w, substracted_sky_spec, err)
+            spectrum_aux = XSpectrum1D.from_tuple(spec_tuple_aux)
+            str_id = str(n_id).zfill(3)
+            self.spec_to_redmonster_format(spectrum, str_id + '_' + spec_fits_name + '_RMF.fits', n_id=n_id)
+            return spectrum_aux, spec_fits_name
+        else:
+            if n_id > 0:
+                spectrum.write_to_fits(spec_fits_name)
+                hdulist_spec = fits.open(spec_fits_name)
+                hdulist_spec[0].header['ID'] = n_id
+                hdulist_spec.writeto(spec_fits_name + '.fits', clobber=True)
+
+            return spectrum, spec_fits_name
 
 
 
-        # plt.plot(w,w_sky)#print spec_sky
+            # plt.plot(w,w_sky)#print spec_sky
 
     def clean_canvas(self):
         """
@@ -1613,9 +1838,9 @@ class MuseCube:
             y_pix = y
 
         # DATA.shape ##Z,X,Y
-        Nw = len(self.data)
-        Nx = len(self.data[0])
-        Ny = len(self.data[0][0])
+        nw = len(self.data)
+        ny = len(self.data[0])
+        nx = len(self.data[0][0])
         wave = self.create_wavelength_array()
         spec = []
         data = self.data
@@ -1624,6 +1849,11 @@ class MuseCube:
         for i in xrange(0, len(wave)):
             # print x_pix,y_pix
             # print len(self.data[0])
+            if y_pix >= ny:
+                y_pix = ny - 1
+            if x_pix >= nx:
+                x_pix = nx - 1
+
             spec.append(data[i][y_pix][x_pix])
         # figure(2)
         # plt.plot(wave,spec)
@@ -1646,7 +1876,13 @@ class MuseCube:
         # print x_center
         Region = self.define_ring_region(x_center, y_center, radius_1, radius_2, coord_system)
         N = len(Region)
+
         S = []
+        if N == 0:
+            wave = self.create_wavelength_array()
+            flux = np.zeros(len(wave))
+            return wave, flux
+
         for i in xrange(0, N):
             S.append(self.get_spectrum_point_aplpy(Region[i][0], Region[i][1], 'pix'))
         wave = S[0][0]
