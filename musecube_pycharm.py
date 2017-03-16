@@ -46,6 +46,57 @@ class MuseCube:
         self.pixelsize = pixelsize
         plt.close(20)
 
+    def get_mini_image(self, center, halfsize=15):
+
+        """
+
+        :param center: tuple of coordinates, in pixels
+        :param size: length of the square around center
+        :return: ndarray which contain the image
+        """
+        side = 2 * halfsize + 1
+        image = [[0 for x in range(side)] for y in range(side)]
+        data_white = fits.open(self.white)[1].data
+        center_x = center[0]
+        center_y = center[1]
+        for i in xrange(center_x - halfsize, center_x + halfsize + 1):
+            for j in xrange(center_y - halfsize, center_y + halfsize + 1):
+                i2 = i - (center_x - halfsize)
+                j2 = j - (center_y - halfsize)
+                image[j2][i2] = data_white[j][i]
+        return image
+
+    def get_spec_image(self, center, halfsize=15, n_fig=2):
+        x_center = center[0]
+        y_center = center[1]
+        radius = halfsize
+        sky_radius_1 = 5
+        sky_radius_2 = 7
+        coord_system = 'pix'
+        spectrum, spec_name = self.plot_region_spectrum_sky_substraction(x_center, y_center, radius, sky_radius_1,
+                                                                         sky_radius_2,
+                                                                         coord_system, sky_method='none', errors=False, redmonster_format=False)
+        mini_image = self.get_mini_image(center=center, halfsize=halfsize)
+        plt.figure(n_fig, figsize=(15, 3))
+        ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
+        plt.title(spec_name)
+        w = spectrum.wavelength.value
+        f = spectrum.flux.value
+        ax1.plot(w, f)
+        plt.ylabel('Flux ('+str(self.flux_units)+')')
+        plt.xlabel('Wavelength (Angstroms)')
+        n = len(w)
+        ave = np.nanmean(f)
+        std = np.nanstd(f)
+        ymin = ave - 3 * std
+        ymax = ave + 4 * std
+        plt.ylim([ymin, ymax])
+        plt.xlim([w[0], w[n - 1]])
+        ax2 = plt.subplot2grid((1, 4), (0, 3), colspan=1)
+        ax2.imshow(mini_image, cmap='gray')
+        plt.ylim([0, 2 * halfsize])
+        plt.xlim([0, 2 * halfsize])
+
     def min_max_ra_dec(self, exposure_name, n_figure=2, white=False):
         """
         Funcion to compute the coordinates range in a datacube
@@ -1093,7 +1144,7 @@ class MuseCube:
         wave = self.create_wavelength_array()
         self.colapse_cube(wavelength=wave, fitsname=new_white_fitsname)
 
-    def spec_to_redmonster_format(self, spec, fitsname, n_id=-1,mag=[0,0]):
+    def spec_to_redmonster_format(self, spec, fitsname, n_id=-1, mag=[0, 0]):
         """
         Function used to create a spectrum in the REDMONSTER software format
         :param spec: XSpectrum1D object
@@ -1122,37 +1173,36 @@ class MuseCube:
         hdu1.header['COEFF1'] = new_wave_log[1] - new_wave_log[0]
         if n_id > 0:
             hdu1.header['ID'] = n_id
-        if mag[0]!=0:
-            print mag[0],mag[1]
+        if mag[0] != 0:
+            print mag[0], mag[1]
             if np.isnan(mag[1]) or np.isinf(mag[1]):
-                mag[1]=999.
-            hdu1.header[mag[0]]=mag[1]
+                mag[1] = 999.
+            hdu1.header[mag[0]] = mag[1]
         hdulist_new = fits.HDUList([hdu1, hdu2])
         hdulist_new.writeto(fitsname, clobber=True)
 
-    def calculate_mag(self,wavelength,flux,filter,zeropoint_flux = 9.275222661263278e-07):
-        dw=np.diff(wavelength)
-        new_flux=flux*filter
-        f_mean=(new_flux[:-1]+new_flux[1:])*0.5
-        total_flux=np.sum(f_mean*dw)*self.flux_units.value
-        mag=-2.5*np.log10(total_flux/zeropoint_flux)
+    def calculate_mag(self, wavelength, flux, filter, zeropoint_flux=9.275222661263278e-07):
+        dw = np.diff(wavelength)
+        new_flux = flux * filter
+        f_mean = (new_flux[:-1] + new_flux[1:]) * 0.5
+        total_flux = np.sum(f_mean * dw) * self.flux_units.value
+        mag = -2.5 * np.log10(total_flux / zeropoint_flux)
         return mag
-
-
 
     def get_filter(self, wavelength_spec, filter='r'):
         wave_u = np.array(
             [2980, 3005, 3030, 3055, 3080, 3105, 3130, 3155, 3180, 3205, 3230, 3255, 3280, 3305, 3330, 3355, 3380, 3405,
              3430, 3455, 3480, 3505, 3530, 3555, 3580, 3605, 3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855,
              3880, 3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130])
-        flux_u = np.array([0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
-                        9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
-                        5.61000000e-02, 6.34000000e-02, 7.00000000e-02, 7.56000000e-02, 8.03000000e-02, 8.48000000e-02,
-                        8.83000000e-02, 9.17000000e-02, 9.59000000e-02, 1.00100000e-01, 1.02900000e-01, 1.04400000e-01,
-                        1.05300000e-01, 1.06300000e-01, 1.07500000e-01, 1.08500000e-01, 1.08400000e-01, 1.06400000e-01,
-                        1.02400000e-01, 9.66000000e-02, 8.87000000e-02, 7.87000000e-02, 6.72000000e-02, 5.49000000e-02,
-                        4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
-                        1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
+        flux_u = np.array(
+            [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
+             9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
+             5.61000000e-02, 6.34000000e-02, 7.00000000e-02, 7.56000000e-02, 8.03000000e-02, 8.48000000e-02,
+             8.83000000e-02, 9.17000000e-02, 9.59000000e-02, 1.00100000e-01, 1.02900000e-01, 1.04400000e-01,
+             1.05300000e-01, 1.06300000e-01, 1.07500000e-01, 1.08500000e-01, 1.08400000e-01, 1.06400000e-01,
+             1.02400000e-01, 9.66000000e-02, 8.87000000e-02, 7.87000000e-02, 6.72000000e-02, 5.49000000e-02,
+             4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
+             1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
         wave_g = np.array(
             [3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855, 3880,
              3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130, 4155,
@@ -1391,8 +1441,9 @@ class MuseCube:
             w, err = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False, stat=True)
         w_sky, spec_sky = self.spectrum_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system,
                                                     sky_method=sky_method)
-        self.draw_circle(x_center, y_center, sky_radius_1, 'Blue', coord_system)
-        self.draw_circle(x_center, y_center, sky_radius_2, 'Blue', coord_system)
+        if sky_method!='none':
+            self.draw_circle(x_center, y_center, sky_radius_1, 'Blue', coord_system)
+            self.draw_circle(x_center, y_center, sky_radius_2, 'Blue', coord_system)
         if type(radius) == int or type(radius) == float:
             self.draw_circle(x_center, y_center, radius, 'Green', coord_system)
             reg = self.define_region(x_center, y_center, radius, coord_system)
@@ -1421,14 +1472,15 @@ class MuseCube:
         from linetools.utils import name_from_coord
         spec_fits_name = name_from_coord(coords)
         if redmonster_format:
-            photo_filter=self.get_filter(w,filter=filter)
-            mag=self.calculate_mag(w,substracted_sky_spec,photo_filter)
-            keyword_mag='MAG_'+filter.upper()
-            mag_tuple=[keyword_mag,mag]
+            photo_filter = self.get_filter(w, filter=filter)
+            mag = self.calculate_mag(w, substracted_sky_spec, photo_filter)
+            keyword_mag = 'MAG_' + filter.upper()
+            mag_tuple = [keyword_mag, mag]
             spec_tuple_aux = (w, substracted_sky_spec, err)
             spectrum_aux = XSpectrum1D.from_tuple(spec_tuple_aux)
             str_id = str(n_id).zfill(3)
-            self.spec_to_redmonster_format(spectrum, str_id + '_' + spec_fits_name + '_RMF.fits', n_id=n_id,mag=mag_tuple)
+            self.spec_to_redmonster_format(spectrum, str_id + '_' + spec_fits_name + '_RMF.fits', n_id=n_id,
+                                           mag=mag_tuple)
             return spectrum_aux, spec_fits_name
         else:
             if n_id > 0:
