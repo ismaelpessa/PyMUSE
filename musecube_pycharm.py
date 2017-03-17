@@ -66,7 +66,18 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_spec_image(self, center, halfsize=15, n_fig=2):
+    def get_spec_image(self, center, halfsize=15, n_fig=3):
+
+
+        """
+        Function to Get a spectrum and an image of the selected source.
+
+        :param center: Tuple. Contain the coordinates in pixels of the center
+        :param halfsize: int or list. If int, is the halfsize of the image box and the radius of a circular aperture to get the spectrum
+                                      If list, contain the [a,b,alpha] parameter for an eliptical aperture. The box will be a square with the major semiaxis
+        :param n_fig: Figure number to deploy the image
+        :return:
+        """
         x_center = center[0]
         y_center = center[1]
         radius = halfsize
@@ -76,8 +87,12 @@ class MuseCube:
         spectrum, spec_name = self.plot_region_spectrum_sky_substraction(x_center, y_center, radius, sky_radius_1,
                                                                          sky_radius_2,
                                                                          coord_system, sky_method='none', errors=False, redmonster_format=False)
+
+        if type(halfsize)==list:
+            aux=[halfsize[0],halfsize[1]]
+            halfsize=max(aux)
         mini_image = self.get_mini_image(center=center, halfsize=halfsize)
-        plt.figure(n_fig, figsize=(15, 3))
+        plt.figure(n_fig, figsize=(17, 5))
         ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
         plt.title(spec_name)
         w = spectrum.wavelength.value
