@@ -18,19 +18,27 @@ from linetools.spectra.xspectrum1d import XSpectrum1D
 
 class MuseCube:
     """
-    Class made to manage datacubes from MUSE
+    Class to handle VLT/MUSE data
 
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
                  flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom):
         """
-        :param filename_cube: string
-                              name of the fits file containing the datacube
-        :param filename_white: string
-                               name of the fits file containing the colapsed datacube
-        pixel_size : float or Quantity
-            Pixel size of the datacube, if float we assume arcsecs.
+        Parameters
+        ----------
+        filename_cube: string
+            Name of the MUSE datacube .fits file
+        filename_white: string
+            Name of the MUSE white image .fits file
+        pixel_size : float or Quantity, optional
+            Pixel size of the datacube, if float it assumes arcsecs.
+            Default is 0.2 arcsec
+        n_fig : int, optional
+            XXXXXXXX
+        flux_units : Quantity
+            XXXXXXXXXX
+
         """
         self.flux_units = flux_units
         self.n = n_fig
@@ -951,7 +959,7 @@ class MuseCube:
 
     def calculate_error(self, exposures_names, wavelength, fitsname='errors.fits', n_figure=2):
         """
-        From differents exposures of a field, this function computes the error, by calculating the
+        From different exposures of a field, this function computes the error, by calculating the
         std of all exposures, in all the field, for a given wavelength. The exposures must be aligned.
         :param exposures_names: array[]
                                 array containing the names of the differents exposures in each position
@@ -1043,14 +1051,14 @@ class MuseCube:
 
     def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2):
         """
-        Function that creates a new image, by colapsing some wavelengths of the cube
+        Function that creates a new image, by collapsing some wavelengths of the cube
 
         :param wavelength: array[]
-                           wavelength contain the information of the wavelength that will be colapsed
-                           This array can contain eithar individual values, which represents the wavelengths
-                           that will be colapsed, or arrays of length = 2, which represents wavelengths ranges that will be
-                           colapsed
-        :param fitsname: string, default = 'new_colapsed_cube.fits'
+                           wavelength contain the information of the wavelength that will be collapsed
+                           This array can contain either individual values, which represents the wavelengths
+                           that will be collapsed, or arrays of length = 2, which represents wavelengths ranges that will be
+                           collapsed
+        :param fitsname: string, default = 'new_collapsed_cube.fits'
                          name of the fits image that will be created
         :param n_figure: int, default = 2
                          number of the figure that will display the new image created
@@ -1152,7 +1160,7 @@ class MuseCube:
 
     def create_white(self, new_white_fitsname='white_from_colapse.fits'):
         """
-        Function that colapses all wavelengths availables to produce a new white image
+        Function that collapses all wavelengths available to produce a new white image
         :param new_white_fitsname: Name of the new image
         :return:
         """
