@@ -284,7 +284,7 @@ class MuseCube:
         return x_out, y_out, z_out
 
     def __matrix2array(self, k, stat=False):
-        matrix = self.cube[k]
+        matrix = self.cube.data[k]
         if stat == True:
             matrix = self.stat[k]
         n1 = len(matrix)
@@ -431,7 +431,7 @@ class MuseCube:
 
         :return:
         '''
-        n_wave = len(self.cube)
+        n_wave = len(self.cube.data)
         stat_normalized = []
         print n_wave
         for k in xrange(n_wave):
@@ -495,7 +495,7 @@ class MuseCube:
         :return:
         '''
 
-        n_wave = len(self.cube)
+        n_wave = len(self.cube.data)
         stat_normalized = []
         print n_wave
         for k in xrange(n_wave):
@@ -1116,19 +1116,19 @@ class MuseCube:
                     index = int(self.closest_element(wave, w_aux))
                     wave_index.append(index)
                     w_aux += dw
-        Nw = len(self.cube)
-        Nx = len(self.cube[0])
-        Ny = len(self.cube[0][0])
+        Nw = len(self.cube.data)
+        Nx = len(self.cube.data[0])
+        Ny = len(self.cube.data[0][0])
         Matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
         image_stacker = Matrix
         for count, k in enumerate(wave_index):
             print 'iteration ' + str(count) + ' of ' + str(len(wave_index))
             for i in xrange(0, Nx):
                 for j in xrange(0, Ny):
-                    if np.isnan(self.cube[k][i][j]) or self.cube[k][i][j] < 0:
+                    if np.isnan(self.cube.data[k][i][j]) or self.cube.data[k][i][j] < 0:
                         Matrix[i][j] = 0
                     else:
-                        Matrix[i][j] = self.cube[k][i][j]
+                        Matrix[i][j] = self.cube.data[k][i][j]
             image_stacker = image_stacker + Matrix
         image_stacker = np.array(image_stacker)
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
@@ -1619,8 +1619,8 @@ class MuseCube:
                   Number of pixels of the image in the y-axis
         :return:
         """
-        Nx = len(self.cube[0])
-        Ny = len(self.cube[0][0])
+        Nx = len(self.cube.data[0])
+        Ny = len(self.cube.data[0][0])
         f = open(filename, 'w')
         for i in xrange(0, Nx):
             for j in xrange(0, Ny):
@@ -1931,7 +1931,7 @@ class MuseCube:
         input = self.filename
         hdulist = fits.open(input)
         hdulist.info()
-        self.cube.shape
+        self.cube.data.shape
         print 'X,Y,Lambda'
 
     def get_spectrum_point_aplpy(self, x, y, coord_system, stat=False):
@@ -1960,12 +1960,12 @@ class MuseCube:
             y_pix = y
 
         # DATA.shape ##Z,X,Y
-        nw = len(self.cube)
-        ny = len(self.cube[0])
-        nx = len(self.cube[0][0])
+        nw = len(self.cube.data)
+        ny = len(self.cube.data[0])
+        nx = len(self.cube.data[0][0])
         wave = self.create_wavelength_array()
         spec = []
-        data = self.cube
+        data = self.cube.data
         if stat:
             data = self.stat
         for i in xrange(0, len(wave)):
@@ -2266,7 +2266,7 @@ class MuseCube:
                          name of the new image
         :return:
         """
-        data = self.cube
+        data = self.cube.data
         image = data[0]
         n1 = len(image)
         n2 = len(image[0])
