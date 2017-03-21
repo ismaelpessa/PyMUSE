@@ -286,7 +286,7 @@ class MuseCube:
     def __matrix2array(self, k, stat=False):
         matrix = self.cube.data[k]
         if stat == True:
-            matrix = self.stat[k]
+            matrix = self.stat.data[k]
         n1 = len(matrix)
         n2 = len(matrix[0])
         array_flux = []
@@ -1967,7 +1967,7 @@ class MuseCube:
         spec = []
         data = self.cube.data
         if stat:
-            data = self.stat
+            data = self.stat.data
         for i in xrange(0, len(wave)):
             # print x_pix,y_pix
             # print len(self.data[0])
