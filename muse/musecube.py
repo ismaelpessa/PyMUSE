@@ -45,8 +45,11 @@ class MuseCube:
         plt.close(self.n)
         self.cube = filename_cube
         hdulist = fits.open(self.cube)
-        self.data = hdulist[1].data
-        self.stat = hdulist[2].data
+    
+        self.data = ma.array(hdulist[1].data,mask=np.isnan(hdulist[1].data))
+        self.stat = ma.array(hdulist[2].data,mask=np.isnan(hdulist[1].data))        
+        #data and stat are now masked arrays,the mask is made by the indexes whose entries equal nan
+       
         self.white = filename_white
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
         self.gc2.show_grayscale()
@@ -1106,22 +1109,14 @@ class MuseCube:
                     index = int(self.closest_element(wave, w_aux))
                     wave_index.append(index)
                     w_aux += dw
-        Nw = len(self.data)
-        Nx = len(self.data[0])
-        Ny = len(self.data[0][0])
-        Matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
-        image_stacker = Matrix
-        for count, k in enumerate(wave_index):
-            print 'iteration ' + str(count) + ' of ' + str(len(wave_index))
-            for i in xrange(0, Nx):
-                for j in xrange(0, Ny):
-                    if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
-                        Matrix[i][j] = 0
-                    else:
-                        Matrix[i][j] = self.data[k][i][j]
-            image_stacker = image_stacker + Matrix
-        image_stacker = np.array(image_stacker)
-        self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
+       
+        Matrix = self.data[:,:,wave_index]
+        #Assuming the third index is the one corresponding to the wave axis. This returns the images at each wavelength requested by the user.
+
+        Matrix_flat = np.sum(self.data[:,:,wave_index],axis=2)
+        #sums over the wave axis, collapsing the data into a 2d array.
+        
+        self.__save2fitsimage(fitsname, Matrix_flat, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
 
     def normalize_sky(self, flux_sky, normalization_factor):
@@ -1213,10 +1208,13 @@ class MuseCube:
         return mag
 
     def get_filter(self, wavelength_spec, filter='r'):
-        wave_u = np.array(
-            [2980, 3005, 3030, 3055, 3080, 3105, 3130, 3155, 3180, 3205, 3230, 3255, 3280, 3305, 3330, 3355, 3380, 3405,
-             3430, 3455, 3480, 3505, 3530, 3555, 3580, 3605, 3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855,
-             3880, 3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130])
+#        wave_u = np.array(
+#            [2980, 3005, 3030, 3055, 3080, 3105, 3130, 3155, 3180, 3205, 3230, 3255, 3280, 3305, 3330, 3355, 3380, 3405,
+#             3430, 3455, 3480, 3505, 3530, 3555, 3580, 3605, 3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855,
+#             3880, 3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130])
+        
+        wave_u = np.arange(2980,4155,25)
+        #Same list as above with fewer lines.Same could be done with all followings arrays.
         flux_u = np.array(
             [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
              9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
