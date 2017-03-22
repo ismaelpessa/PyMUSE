@@ -214,7 +214,7 @@ class MuseCube:
             if dif < min_dif:
                 index = i
                 min_dif = dif
-        return index
+        return int(index)
 
     def __cut_bright_pixel(self, flux, n):
         '''
@@ -1080,6 +1080,9 @@ class MuseCube:
         wave = self.create_wavelength_array()
         wave = list(wave)
         wave_index = []
+        if continuum:
+            left_box_all=[]
+            right_box_all=[]
         n = len(wavelength)
         dw = wave[1] - wave[0]
         if interval == 0:
@@ -1104,14 +1107,27 @@ class MuseCube:
                     w_up = wave[len(wave) - 1]
 
                 w_aux = w_low
+                interval_index=[]
                 while w_aux < w_up:
                     index = int(self.closest_element(wave, w_aux))
+                    interval_index.append(index)
                     wave_index.append(index)
                     w_aux += dw
                 if continuum:
-                    n=len(wave_index)
-                    left_box=np.arange(wave_index[0]-n,wave_index,1)
-                    right_box=np.arange(wave_index[])
+                    n_interval=len(interval_index)
+                    index_low=self.closest_element(wave,w_low)
+                    index_up=self.closest_element(wave,w_up)
+                    left_box=np.arange(index_low-n_interval,index_low,1)
+                    right_box=np.arange(index_up,index_up+n_interval,1)
+                    for i in xrange(n_interval):
+                        left_box_all.append(left_box[i])
+                        right_box_all.append(right_box[i])
+        if continuum:
+            box_all=[]
+            for element in left_box_all:
+                box_all.append(element)
+            for element in right_box_all:
+                box_all.append(element)
 
         Nw = len(self.data)
         Nx = len(self.data[0])
@@ -1127,6 +1143,22 @@ class MuseCube:
                     else:
                         Matrix[i][j] = self.data[k][i][j]
             image_stacker = image_stacker + Matrix
+        if continuum:
+            'Print Substracting continuum....'
+            continuum_stacker = np.array([[0. for y in range(Ny)] for x in range(Nx)])
+            for count,k in enumerate(box_all):
+                print 'iteration' + str(count) + ' of ' + str(len(box_all))
+                for i in xrange(0, Nx):
+                    for j in xrange(0, Ny):
+                        if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
+                            Matrix[i][j] = 0
+                        else:
+                            Matrix[i][j] = self.data[k][i][j]
+            continuum_stacker = continuum_stacker + Matrix/2.
+
+
+        if continuum:
+            image_stacker=image_stacker-continuum_stacker
         image_stacker = np.array(image_stacker)
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
