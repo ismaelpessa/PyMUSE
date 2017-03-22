@@ -1144,17 +1144,17 @@ class MuseCube:
                         Matrix[i][j] = self.data[k][i][j]
             image_stacker = image_stacker + Matrix
         if continuum:
-            'Print Substracting continuum....'
+            print 'Substracting continuum....'
             continuum_stacker = np.array([[0. for y in range(Ny)] for x in range(Nx)])
             for count,k in enumerate(box_all):
-                print 'iteration' + str(count) + ' of ' + str(len(box_all))
+                print 'iteration ' + str(count) + ' of ' + str(len(box_all))
                 for i in xrange(0, Nx):
                     for j in xrange(0, Ny):
                         if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
                             Matrix[i][j] = 0
                         else:
                             Matrix[i][j] = self.data[k][i][j]
-            continuum_stacker = continuum_stacker + Matrix/2.
+                continuum_stacker = continuum_stacker + Matrix/2.
 
 
         if continuum:
