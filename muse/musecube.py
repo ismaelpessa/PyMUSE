@@ -1078,6 +1078,7 @@ class MuseCube:
                 'Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
 
         wave = self.create_wavelength_array()
+        n_wave=len(wave)
         wave = list(wave)
         wave_index = []
         if continuum:
@@ -1097,14 +1098,14 @@ class MuseCube:
                 w_up = wavelength[i][1]
                 w_low = wavelength[i][0]
                 w_aux = w_low
-                if w_low < wave[0]:
-                    print str(w_low) + ' es menor al valor minimo posible, se usara como limite inferior ' + str(
+                if w_low <= wave[0]:
+                    print str(w_low) + ' es menor al valor minimo posible ' + str(
                         wave[0])
-                    w_low = wave[0]
-                if w_up > wave[len(wave) - 1]:
-                    print str(w_up) + ' es mayor al valor maximo posible, se usara como limite superior ' + str(
+                    continue
+                if w_up >= wave[len(wave) - 1]:
+                    print str(w_up) + ' es mayor al valor maximo posible ' + str(
                         wave[len(wave) - 1])
-                    w_up = wave[len(wave) - 1]
+                    continue
 
                 w_aux = w_low
                 interval_index=[]
@@ -1125,9 +1126,11 @@ class MuseCube:
         if continuum:
             box_all=[]
             for element in left_box_all:
-                box_all.append(element)
+                if element<n_wave:
+                    box_all.append(element)
             for element in right_box_all:
-                box_all.append(element)
+                if element<n_wave:
+                    box_all.append(element)
 
         Nw = len(self.data)
         Nx = len(self.data[0])
