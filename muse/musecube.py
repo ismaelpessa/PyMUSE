@@ -1059,7 +1059,7 @@ class MuseCube:
                 os.system(command_png)
         return video
 
-    def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2,continuum=False):
+    def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2, continuum=False):
         """
         Function that creates a new image, by collapsing some wavelengths of the cube
 
@@ -1142,19 +1142,20 @@ class MuseCube:
                 if element<n_wave:
                     box_all.append(element)
 
-
+        Nw = len(self.data)
+        Nx = len(self.data[0])
+        Ny = len(self.data[0][0])
         Matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
         image_stacker = Matrix
         for count, k in enumerate(wave_index):
             print 'iteration ' + str(count) + ' of ' + str(len(wave_index))
             for i in xrange(0, Nx):
                 for j in xrange(0, Ny):
-                    if np.isnan(self.cube.data[k][i][j]) or self.cube.data[k][i][j] < 0:
+                    if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
                         Matrix[i][j] = 0
                     else:
-                        Matrix[i][j] = self.cube.data[k][i][j]
+                        Matrix[i][j] = self.data[k][i][j]
             image_stacker = image_stacker + Matrix
-
         if continuum:
             print 'Substracting continuum....'
             continuum_stacker = np.array([[0. for y in range(Ny)] for x in range(Nx)])
@@ -1172,7 +1173,6 @@ class MuseCube:
         if continuum:
             image_stacker=image_stacker-continuum_stacker
         image_stacker = np.array(image_stacker)
-
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
 
