@@ -224,7 +224,7 @@ class MuseCube:
             if dif < min_dif:
                 index = i
                 min_dif = dif
-        return index
+        return int(index)
 
     def __cut_bright_pixel(self, flux, n):
         '''
@@ -1059,7 +1059,7 @@ class MuseCube:
                 os.system(command_png)
         return video
 
-    def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2):
+    def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2,continuum=False):
         """
         Function that creates a new image, by collapsing some wavelengths of the cube
 
@@ -1072,6 +1072,8 @@ class MuseCube:
                          name of the fits image that will be created
         :param n_figure: int, default = 2
                          number of the figure that will display the new image created
+        :param continuum: boolean, default = false.
+                          If True, the continuum will be substracted around de wavelengths selected, asuming ranges and not discrete values in wavelength
 
         :return:
         """
@@ -1086,8 +1088,12 @@ class MuseCube:
                 'Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
 
         wave = self.create_wavelength_array()
+        n_wave=len(wave)
         wave = list(wave)
         wave_index = []
+        if continuum:
+            left_box_all=[]
+            right_box_all=[]
         n = len(wavelength)
         dw = wave[1] - wave[0]
         if interval == 0:
@@ -1102,23 +1108,41 @@ class MuseCube:
                 w_up = wavelength[i][1]
                 w_low = wavelength[i][0]
                 w_aux = w_low
-                if w_low < wave[0]:
-                    print str(w_low) + ' es menor al valor minimo posible, se usara como limite inferior ' + str(
+                if w_low <= wave[0]:
+                    print str(w_low) + ' es menor al valor minimo posible ' + str(
                         wave[0])
-                    w_low = wave[0]
-                if w_up > wave[len(wave) - 1]:
-                    print str(w_up) + ' es mayor al valor maximo posible, se usara como limite superior ' + str(
+                    continue
+                if w_up >= wave[len(wave) - 1]:
+                    print str(w_up) + ' es mayor al valor maximo posible ' + str(
                         wave[len(wave) - 1])
-                    w_up = wave[len(wave) - 1]
+                    continue
 
                 w_aux = w_low
+                interval_index=[]
                 while w_aux < w_up:
                     index = int(self.closest_element(wave, w_aux))
+                    interval_index.append(index)
                     wave_index.append(index)
                     w_aux += dw
-        Nw = len(self.cube.data)
-        Nx = len(self.cube.data[0])
-        Ny = len(self.cube.data[0][0])
+                if continuum:
+                    n_interval=len(interval_index)
+                    index_low=self.closest_element(wave,w_low)
+                    index_up=self.closest_element(wave,w_up)
+                    left_box=np.arange(index_low-n_interval,index_low,1)
+                    right_box=np.arange(index_up,index_up+n_interval,1)
+                    for i in xrange(n_interval):
+                        left_box_all.append(left_box[i])
+                        right_box_all.append(right_box[i])
+        if continuum:
+            box_all=[]
+            for element in left_box_all:
+                if element<n_wave:
+                    box_all.append(element)
+            for element in right_box_all:
+                if element<n_wave:
+                    box_all.append(element)
+
+
         Matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
         image_stacker = Matrix
         for count, k in enumerate(wave_index):
@@ -1130,7 +1154,25 @@ class MuseCube:
                     else:
                         Matrix[i][j] = self.cube.data[k][i][j]
             image_stacker = image_stacker + Matrix
+
+        if continuum:
+            print 'Substracting continuum....'
+            continuum_stacker = np.array([[0. for y in range(Ny)] for x in range(Nx)])
+            for count,k in enumerate(box_all):
+                print 'iteration ' + str(count) + ' of ' + str(len(box_all))
+                for i in xrange(0, Nx):
+                    for j in xrange(0, Ny):
+                        if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
+                            Matrix[i][j] = 0
+                        else:
+                            Matrix[i][j] = self.data[k][i][j]
+                continuum_stacker = continuum_stacker + Matrix/2.
+
+
+        if continuum:
+            image_stacker=image_stacker-continuum_stacker
         image_stacker = np.array(image_stacker)
+
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
 
@@ -2236,7 +2278,7 @@ class MuseCube:
         for z in z_array:
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
-            self.colapse_cube(ranges, fitsname=filename + '.fits', n_figure=15)
+            self.colapse_cube(ranges, fitsname=filename + '.fits', n_figure=15,continuum=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
