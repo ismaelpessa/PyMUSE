@@ -52,6 +52,7 @@ class MuseCube:
         self.gc2.show_grayscale()
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
+
         plt.close(20)
 
     def load_data(self):
@@ -60,8 +61,11 @@ class MuseCube:
         self.cube= ma.MaskedArray(hdulist[1].data)
         self.stat = ma.MaskedArray(hdulist[2].data)
         #masking
-        self.cube.mask = np.isnan(self.cube)
-        self.stat.mask = np.isnan(self.stat)
+        self.cube.mask = np.isnan(self.cube) | (self.stat <= 0) | np.isnan(self.stat)
+        self.stat.mask = self.cube.mask
+
+        #wavelength array
+        self.wavelength = self.create_wavelength_array()
 
 
     def get_mini_image(self, center, halfsize=15):
@@ -1175,6 +1179,45 @@ class MuseCube:
         image_stacker = np.array(image_stacker)
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
+
+    def find_wv_inds(self, wv_array):
+        """
+
+        :param wv_array
+        :return: Returns the indices in the cube, that are closest to wv_array
+        """
+        inds = [np.argmin(np.fabs(wv_ii - self.wavelength)) for wv_ii in wv_array]
+        inds = np.unique(inds)
+        return inds
+
+
+    def sum_cube(self, wv_input, fitsname='new_colapsed_cube.fits', n_figure=2):
+        """
+        Sums along the wavelength dimension according to wv_input
+
+        :param wv_input: tuple or np.array
+            If tuple : these are interpreted as limits, thus the sum includes all elements between these two limits
+            If np.array : the sum is over only the elements close to the values in the given array
+        :param fitsname:
+        :param n_figure:
+        :return:
+        """
+        if isinstance(wv_input, tuple):
+            if len(wv_input) != 2:
+                raise ValueError("If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
+            wv_inds = self.find_wv_inds(wv_input)
+            ind_min = np.min(wv_inds)
+            ind_max = np.max(wv_inds)
+            matrix_flat = np.sum(self.cube[ind_min:ind_max,:,:], axis=0)
+        else: #assuming array-like
+            wv_inds = self.find_wv_inds(wv_input)
+            matrix_flat = np.sum(self.cube[wv_inds,:,:], axis=0)
+
+        self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+        return matrix_flat
+
+
+
 
     def normalize_sky(self, flux_sky, normalization_factor):
         """
