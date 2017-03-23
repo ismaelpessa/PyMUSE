@@ -1029,7 +1029,7 @@ class MuseCube:
         for i in xrange(initial_wavelength, final_wavelength):
             wavelength_range = [i, i + width]
             filename = 'colapsed_image_' + str(i) + '_'
-            self.colapse_cube([wavelength_range], fitsname=filename + '.fits', n_figure=15)
+            self.collapse_cube([wavelength_range], fitsname=filename + '.fits', n_figure=15)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
@@ -1049,7 +1049,7 @@ class MuseCube:
                 os.system(command_png)
         return video
 
-    def colapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2,continuum=False):
+    def collapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2, continuum=False):
         """
         Function that creates a new image, by collapsing some wavelengths of the cube
 
@@ -1063,7 +1063,7 @@ class MuseCube:
         :param n_figure: int, default = 2
                          number of the figure that will display the new image created
         :param continuum: boolean, default = false.
-                          If True, the continuum will be substracted around de wavelengths selected, asuming ranges and not discrete values in wavelength
+                          If True, the continuum will be substracted around the wavelengths selected, asuming ranges and not discrete values in wavelength
 
         :return:
         """
@@ -1207,7 +1207,7 @@ class MuseCube:
         :return:
         """
         wave = self.create_wavelength_array()
-        self.colapse_cube(wavelength=wave, fitsname=new_white_fitsname)
+        self.collapse_cube(wavelength=wave, fitsname=new_white_fitsname)
 
     def spec_to_redmonster_format(self, spec, fitsname, n_id=-1, mag=[0, 0]):
         """
@@ -2268,7 +2268,7 @@ class MuseCube:
         for z in z_array:
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
-            self.colapse_cube(ranges, fitsname=filename + '.fits', n_figure=15,continuum=True)
+            self.collapse_cube(ranges, fitsname=filename + '.fits', n_figure=15, continuum=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
