@@ -46,8 +46,9 @@ class MuseCube:
         self.cube = filename_cube
         hdulist = fits.open(self.cube)
     
-        self.data = ma.array(hdulist[1].data,mask=np.isnan(hdulist[1].data))
-        self.stat = ma.array(hdulist[2].data,mask=np.isnan(hdulist[1].data))        
+        self.data = ma.array(hdulist[1].data,mask=(np.isnan(hdulist[1].data))& (np.isnan(hdulist[2].data)) & (hdulist[2].data==0))
+        self.stat = ma.array(hdulist[2].data,mask=(np.isnan(hdulist[1].data))& (np.isnan(hdulist[2].data)) & (hdulist[2].data==0))
+       
         #data and stat are now masked arrays,the mask is made by the indexes whose entries equal nan
        
         self.white = filename_white
@@ -1212,7 +1213,9 @@ class MuseCube:
        wave_z = np.arange(7730,11255,25)
        
        
-       flux_u = np.array(
+
+        
+        flux_u = np.array(
             [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
              9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
              5.61000000e-02, 6.34000000e-02, 7.00000000e-02, 7.56000000e-02, 8.03000000e-02, 8.48000000e-02,
@@ -1221,9 +1224,8 @@ class MuseCube:
              1.02400000e-01, 9.66000000e-02, 8.87000000e-02, 7.87000000e-02, 6.72000000e-02, 5.49000000e-02,
              4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
              1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-            
-            
-       flux_g = np.array(
+       
+        flux_g = np.array(
             [0.00000000e+00, 3.00000000e-04, 8.00000000e-04,
              1.30000000e-03, 1.90000000e-03, 2.40000000e-03,
              3.40000000e-03, 5.50000000e-03, 1.03000000e-02,
@@ -1254,8 +1256,8 @@ class MuseCube:
              1.00000000e-03, 9.00000000e-04, 8.00000000e-04,
              6.00000000e-04, 5.00000000e-04, 3.00000000e-04,
              1.00000000e-04, 0.00000000e+00])
-
-       flux_r = np.array(
+            
+        flux_r = np.array(
             [0.00000000e+00, 1.40000000e-03, 9.90000000e-03,
              2.60000000e-02, 4.98000000e-02, 8.09000000e-02,
              1.19000000e-01, 1.63000000e-01, 2.10000000e-01,
@@ -1281,8 +1283,8 @@ class MuseCube:
              2.80000000e-03, 2.00000000e-03, 1.60000000e-03,
              1.30000000e-03, 1.00000000e-03, 7.00000000e-04,
              4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-        
-        flux_i = np.array(
+       
+       flux_i = np.array(
             [0.00000000e+00, 1.00000000e-04, 3.00000000e-04,
              4.00000000e-04, 4.00000000e-04, 4.00000000e-04,
              3.00000000e-04, 4.00000000e-04, 9.00000000e-04,
