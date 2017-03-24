@@ -933,27 +933,21 @@ class MuseCube:
         matrix_combined = np.zeros_like(interpolated_fluxes[0])
         n1 = len(matrix_combined)
         n2 = len(matrix_combined[0])
-        for i in xrange(n1):
-            for j in xrange(n2):
-                aux_array = []
-                for matrix in interpolated_fluxes:
-                    aux_array.append(matrix[i][j])
-                if kind == 'std':
-                    matrix_combined[i][j] = np.nanstd(aux_array)
-                    if np.isnan(matrix_combined[i][j]):
-                        matrix_combined[i][j] = 0
-                elif kind == 'ave':
-                    matrix_combined[i][j] = np.nanmean(aux_array)
-                    if np.isnan(matrix_combined[i][j]):
-                        matrix_combined[i][j] = 0
-                elif kind == 'sum':
-                    matrix_combined[i][j] = np.nansum(aux_array)
-                elif kind == 'stat':
-                    aux_array = np.array(aux_array)
-                    matrix_combined[i][j] = np.sqrt(np.nansum(aux_array ** 2))
-                else:
-                    raise ValueError('kind of combination parameter given is not valid, please try std,ave,sum or stat')
-        return matrix_combined
+        _matrix = np.empty((len(interpolated_fluxes),n1,n2))
+
+        for i in range(len(interpolated_fluxes)):
+            _matrix[i,:,:] = interpolated_fluxes[i]
+        if kind == 'std':
+            return _matrix.std(axis=0)
+        elif kind == 'ave':
+                     
+            return _matrix.mean(axis=0)
+        elif kind == 'sum':
+            return _matrix.sum(axis=0)
+        elif kind == 'stat':
+            return np.sqrt((_matrix**2).sum(axis=0))
+        else:
+            raise ValueError('kind of combination parameter given is not valid, please try std,ave,sum or stat')
 
     def __read_files(self, input):
         path = input
@@ -1110,11 +1104,9 @@ class MuseCube:
                     wave_index.append(index)
                     w_aux += dw
        
-        Matrix = self.data[:,:,wave_index]
-        #Assuming the third index is the one corresponding to the wave axis. This returns the images at each wavelength requested by the user.
+        Matrix = self.data[wave_index,:,:]
 
-        Matrix_flat = np.sum(self.data[:,:,wave_index],axis=2)
-        #sums over the wave axis, collapsing the data into a 2d array.
+        Matrix_flat = np.sum(self.data[wave_index,:,:],axis=0)
         
         self.__save2fitsimage(fitsname, Matrix_flat, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
@@ -1199,23 +1191,28 @@ class MuseCube:
         hdulist_new = fits.HDUList([hdu1, hdu2])
         hdulist_new.writeto(fitsname, clobber=True)
 
-    def calculate_mag(self, wavelength, flux, filter, zeropoint_flux=9.275222661263278e-07):
+    def calculate_mag(self, wavelength, flux, _filter, zeropoint_flux=9.275222661263278e-07):
         dw = np.diff(wavelength)
-        new_flux = flux * filter
+        new_flux = flux * _filter
         f_mean = (new_flux[:-1] + new_flux[1:]) * 0.5
         total_flux = np.sum(f_mean * dw) * self.flux_units.value
         mag = -2.5 * np.log10(total_flux / zeropoint_flux)
         return mag
 
-    def get_filter(self, wavelength_spec, filter='r'):
-#        wave_u = np.array(
-#            [2980, 3005, 3030, 3055, 3080, 3105, 3130, 3155, 3180, 3205, 3230, 3255, 3280, 3305, 3330, 3355, 3380, 3405,
-#             3430, 3455, 3480, 3505, 3530, 3555, 3580, 3605, 3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855,
-#             3880, 3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130])
+    def get_filter(self, wavelength_spec, _filter='r'):
+       
+       wave_u = np.arange(2980,4155,25)
         
-        wave_u = np.arange(2980,4155,25)
-        #Same list as above with fewer lines.Same could be done with all followings arrays.
-        flux_u = np.array(
+       wave_g = np.arange(3630,5855,25)
+       
+       wave_r = np.arange(5830,7255,25)
+       
+       wave_i = np.arange(6430,8655,25)
+    
+       wave_z = np.arange(7730,11255,25)
+       
+       
+       flux_u = np.array(
             [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
              9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
              5.61000000e-02, 6.34000000e-02, 7.00000000e-02, 7.56000000e-02, 8.03000000e-02, 8.48000000e-02,
@@ -1224,17 +1221,9 @@ class MuseCube:
              1.02400000e-01, 9.66000000e-02, 8.87000000e-02, 7.87000000e-02, 6.72000000e-02, 5.49000000e-02,
              4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
              1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-        wave_g = np.array(
-            [3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855, 3880,
-             3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130, 4155,
-             4180, 4205, 4230, 4255, 4280, 4305, 4330, 4355, 4380, 4405, 4430,
-             4455, 4480, 4505, 4530, 4555, 4580, 4605, 4630, 4655, 4680, 4705,
-             4730, 4755, 4780, 4805, 4830, 4855, 4880, 4905, 4930, 4955, 4980,
-             5005, 5030, 5055, 5080, 5105, 5130, 5155, 5180, 5205, 5230, 5255,
-             5280, 5305, 5330, 5355, 5380, 5405, 5430, 5455, 5480, 5505, 5530,
-             5555, 5580, 5605, 5630, 5655, 5680, 5705, 5730, 5755, 5780, 5805,
-             5830])
-        flux_g = np.array(
+            
+            
+       flux_g = np.array(
             [0.00000000e+00, 3.00000000e-04, 8.00000000e-04,
              1.30000000e-03, 1.90000000e-03, 2.40000000e-03,
              3.40000000e-03, 5.50000000e-03, 1.03000000e-02,
@@ -1265,15 +1254,8 @@ class MuseCube:
              1.00000000e-03, 9.00000000e-04, 8.00000000e-04,
              6.00000000e-04, 5.00000000e-04, 3.00000000e-04,
              1.00000000e-04, 0.00000000e+00])
-        wave_r = np.array(
-            [5380, 5405, 5430, 5455, 5480, 5505, 5530, 5555, 5580, 5605, 5630,
-             5655, 5680, 5705, 5730, 5755, 5780, 5805, 5830, 5855, 5880, 5905,
-             5930, 5955, 5980, 6005, 6030, 6055, 6080, 6105, 6130, 6155, 6180,
-             6205, 6230, 6255, 6280, 6305, 6330, 6355, 6380, 6405, 6430, 6455,
-             6480, 6505, 6530, 6555, 6580, 6605, 6630, 6655, 6680, 6705, 6730,
-             6755, 6780, 6805, 6830, 6855, 6880, 6905, 6930, 6955, 6980, 7005,
-             7030, 7055, 7080, 7105, 7130, 7155, 7180, 7205, 7230])
-        flux_r = np.array(
+
+       flux_r = np.array(
             [0.00000000e+00, 1.40000000e-03, 9.90000000e-03,
              2.60000000e-02, 4.98000000e-02, 8.09000000e-02,
              1.19000000e-01, 1.63000000e-01, 2.10000000e-01,
@@ -1299,16 +1281,7 @@ class MuseCube:
              2.80000000e-03, 2.00000000e-03, 1.60000000e-03,
              1.30000000e-03, 1.00000000e-03, 7.00000000e-04,
              4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-        wave_i = np.array(
-            [6430, 6455, 6480, 6505, 6530, 6555, 6580, 6605, 6630, 6655, 6680,
-             6705, 6730, 6755, 6780, 6805, 6830, 6855, 6880, 6905, 6930, 6955,
-             6980, 7005, 7030, 7055, 7080, 7105, 7130, 7155, 7180, 7205, 7230,
-             7255, 7280, 7305, 7330, 7355, 7380, 7405, 7430, 7455, 7480, 7505,
-             7530, 7555, 7580, 7605, 7630, 7655, 7680, 7705, 7730, 7755, 7780,
-             7805, 7830, 7855, 7880, 7905, 7930, 7955, 7980, 8005, 8030, 8055,
-             8080, 8105, 8130, 8155, 8180, 8205, 8230, 8255, 8280, 8305, 8330,
-             8355, 8380, 8405, 8430, 8455, 8480, 8505, 8530, 8555, 8580, 8605,
-             8630])
+        
         flux_i = np.array(
             [0.00000000e+00, 1.00000000e-04, 3.00000000e-04,
              4.00000000e-04, 4.00000000e-04, 4.00000000e-04,
@@ -1340,23 +1313,8 @@ class MuseCube:
              1.40000000e-03, 1.10000000e-03, 1.00000000e-03,
              1.00000000e-03, 9.00000000e-04, 6.00000000e-04,
              3.00000000e-04, 0.00000000e+00])
-        wave_z = np.array(
-            [7730, 7755, 7780, 7805, 7830, 7855, 7880, 7905, 7930,
-             7955, 7980, 8005, 8030, 8055, 8080, 8105, 8130, 8155,
-             8180, 8205, 8230, 8255, 8280, 8305, 8330, 8355, 8380,
-             8405, 8430, 8455, 8480, 8505, 8530, 8555, 8580, 8605,
-             8630, 8655, 8680, 8705, 8730, 8755, 8780, 8805, 8830,
-             8855, 8880, 8905, 8930, 8955, 8980, 9005, 9030, 9055,
-             9080, 9105, 9130, 9155, 9180, 9205, 9230, 9255, 9280,
-             9305, 9330, 9355, 9380, 9405, 9430, 9455, 9480, 9505,
-             9530, 9555, 9580, 9605, 9630, 9655, 9680, 9705, 9730,
-             9755, 9780, 9805, 9830, 9855, 9880, 9905, 9930, 9955,
-             9980, 10005, 10030, 10055, 10080, 10105, 10130, 10155, 10180,
-             10205, 10230, 10255, 10280, 10305, 10330, 10355, 10380, 10405,
-             10430, 10455, 10480, 10505, 10530, 10555, 10580, 10605, 10630,
-             10655, 10680, 10705, 10730, 10755, 10780, 10805, 10830, 10855,
-             10880, 10905, 10930, 10955, 10980, 11005, 11030, 11055, 11080,
-             11105, 11130, 11155, 11180, 11205, 11230])
+        
+            
         flux_z = np.array(
             [0., 0., 0.0001, 0.0001, 0.0001, 0.0002, 0.0002,
              0.0003, 0.0005, 0.0007, 0.0011, 0.0017, 0.0027, 0.004,
@@ -1378,23 +1336,24 @@ class MuseCube:
              0.0012, 0.0011, 0.001, 0.0009, 0.0008, 0.0008, 0.0007,
              0.0006, 0.0006, 0.0006, 0.0005, 0.0005, 0.0004, 0.0004,
              0.0003, 0.0003, 0.0002, 0.0002, 0.0001, 0.0001, 0., 0.])
-        if filter == 'u':
+        if _filter == 'u':
             wave_filter = wave_u
             flux_filter = flux_u
-        if filter == 'g':
+        if _filter == 'g':
             wave_filter = wave_g
             flux_filter = flux_g
-        if filter == 'r':
+        if _filter == 'r':
             wave_filter = wave_r
             flux_filter = flux_r
-        if filter == 'i':
+        if _filter == 'i':
             wave_filter = wave_i
             flux_filter = flux_i
-        if filter == 'z':
+        if _filter == 'z':
             wave_filter = wave_z
             flux_filter = flux_z
-
-        new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
+        #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confuciones.
+       
+       new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
         interpolator = interpolate.interp1d(wave_filter, flux_filter)
         new_filter_flux = interpolator(new_filter_wavelength)
 
