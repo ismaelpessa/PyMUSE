@@ -1464,7 +1464,7 @@ class MuseCube:
 
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
                                               coord_system, n_figure=2, errors=True, sky_method='med',
-                                              redmonster_format=True, n_id=-1, filter='r'):
+                                              redmonster_format=True, n_id=-1, filter='r',range=[]):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -1526,6 +1526,16 @@ class MuseCube:
         plt.figure(n_figure)
         plt.plot(w, substracted_sky_spec)
         plt.plot(w, spec_sky_normalized)
+
+        if len(range)==2:
+            w_inf=range[0]
+            w_sup=range[1]
+            k_inf=self.closest_element(w,w_inf)
+            k_sup=self.closest_element(w,w_sup)
+            w=w[k_inf:k_sup]
+            substracted_sky_spec=substracted_sky_spec[k_inf,k_sup]
+            if errors:
+                err=err[k_inf,k_sup]
 
         if errors:
             err = np.array(err)
