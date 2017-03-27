@@ -76,7 +76,6 @@ class MuseCube:
 
     def get_spec_image(self, center, halfsize=15, n_fig=3):
 
-
         """
         Function to Get a spectrum and an image of the selected source.
 
@@ -94,11 +93,12 @@ class MuseCube:
         coord_system = 'pix'
         spectrum, spec_name = self.plot_region_spectrum_sky_substraction(x_center, y_center, radius, sky_radius_1,
                                                                          sky_radius_2,
-                                                                         coord_system, sky_method='none', errors=False, redmonster_format=False)
+                                                                         coord_system, sky_method='none', errors=False,
+                                                                         redmonster_format=False)
 
-        if type(halfsize)==list:
-            aux=[halfsize[0],halfsize[1]]
-            halfsize=max(aux)
+        if type(halfsize) == list:
+            aux = [halfsize[0], halfsize[1]]
+            halfsize = max(aux)
         mini_image = self.get_mini_image(center=center, halfsize=halfsize)
         plt.figure(n_fig, figsize=(17, 5))
         ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
@@ -106,7 +106,7 @@ class MuseCube:
         w = spectrum.wavelength.value
         f = spectrum.flux.value
         ax1.plot(w, f)
-        plt.ylabel('Flux ('+str(self.flux_units)+')')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         n = len(w)
         ave = np.nanmean(f)
@@ -442,6 +442,14 @@ class MuseCube:
         for element in array:
             normalized_array.append(element / m)
         return normalized_array
+
+    def elipse_paramters_to_pixel(self, xc, yc, radius):
+        a = radius[0]
+        b = radius[1]
+        Xaux, Yaux, a2 = self.xyr_to_pixel(xc, yc, a)
+        xc2, yc2, b2 = self.xyr_to_pixel(xc, yc, b)
+        radius2 = [a2, b2, radius[2]]
+        return xc2, yc2, radius
 
     def define_elipse_region(self, x_center, y_center, a, b, theta, coord_system):
         Xc = x_center
@@ -1078,12 +1086,12 @@ class MuseCube:
                 'Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
 
         wave = self.create_wavelength_array()
-        n_wave=len(wave)
+        n_wave = len(wave)
         wave = list(wave)
         wave_index = []
         if continuum:
-            left_box_all=[]
-            right_box_all=[]
+            left_box_all = []
+            right_box_all = []
         n = len(wavelength)
         dw = wave[1] - wave[0]
         if interval == 0:
@@ -1108,28 +1116,28 @@ class MuseCube:
                     continue
 
                 w_aux = w_low
-                interval_index=[]
+                interval_index = []
                 while w_aux < w_up:
                     index = int(self.closest_element(wave, w_aux))
                     interval_index.append(index)
                     wave_index.append(index)
                     w_aux += dw
                 if continuum:
-                    n_interval=len(interval_index)
-                    index_low=self.closest_element(wave,w_low)
-                    index_up=self.closest_element(wave,w_up)
-                    left_box=np.arange(index_low-n_interval,index_low,1)
-                    right_box=np.arange(index_up,index_up+n_interval,1)
+                    n_interval = len(interval_index)
+                    index_low = self.closest_element(wave, w_low)
+                    index_up = self.closest_element(wave, w_up)
+                    left_box = np.arange(index_low - n_interval, index_low, 1)
+                    right_box = np.arange(index_up, index_up + n_interval, 1)
                     for i in xrange(n_interval):
                         left_box_all.append(left_box[i])
                         right_box_all.append(right_box[i])
         if continuum:
-            box_all=[]
+            box_all = []
             for element in left_box_all:
-                if element<n_wave:
+                if element < n_wave:
                     box_all.append(element)
             for element in right_box_all:
-                if element<n_wave:
+                if element < n_wave:
                     box_all.append(element)
 
         Nw = len(self.data)
@@ -1149,7 +1157,7 @@ class MuseCube:
         if continuum:
             print 'Substracting continuum....'
             continuum_stacker = np.array([[0. for y in range(Ny)] for x in range(Nx)])
-            for count,k in enumerate(box_all):
+            for count, k in enumerate(box_all):
                 print 'iteration ' + str(count) + ' of ' + str(len(box_all))
                 for i in xrange(0, Nx):
                     for j in xrange(0, Ny):
@@ -1157,11 +1165,10 @@ class MuseCube:
                             Matrix[i][j] = 0
                         else:
                             Matrix[i][j] = self.data[k][i][j]
-                continuum_stacker = continuum_stacker + Matrix/2.
-
+                continuum_stacker = continuum_stacker + Matrix / 2.
 
         if continuum:
-            image_stacker=image_stacker-continuum_stacker
+            image_stacker = image_stacker - continuum_stacker
         image_stacker = np.array(image_stacker)
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
@@ -1464,7 +1471,7 @@ class MuseCube:
 
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
                                               coord_system, n_figure=2, errors=True, sky_method='med',
-                                              redmonster_format=True, n_id=-1, filter='r',range=[]):
+                                              redmonster_format=True, n_id=-1, filter='r', range=[]):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -1506,7 +1513,7 @@ class MuseCube:
             w, err = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False, stat=True)
         w_sky, spec_sky = self.spectrum_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system,
                                                     sky_method=sky_method)
-        if sky_method!='none':
+        if sky_method != 'none':
             self.draw_circle(x_center, y_center, sky_radius_1, 'Blue', coord_system)
             self.draw_circle(x_center, y_center, sky_radius_2, 'Blue', coord_system)
         if type(radius) == int or type(radius) == float:
@@ -1527,15 +1534,15 @@ class MuseCube:
         plt.plot(w, substracted_sky_spec)
         plt.plot(w, spec_sky_normalized)
 
-        if len(range)==2:
-            w_inf=range[0]
-            w_sup=range[1]
-            k_inf=self.closest_element(w,w_inf)
-            k_sup=self.closest_element(w,w_sup)
-            w=w[k_inf:k_sup]
-            substracted_sky_spec=substracted_sky_spec[k_inf,k_sup]
+        if len(range) == 2:
+            w_inf = range[0]
+            w_sup = range[1]
+            k_inf = self.closest_element(w, w_inf)
+            k_sup = self.closest_element(w, w_sup)
+            w = w[k_inf:k_sup]
+            substracted_sky_spec = substracted_sky_spec[k_inf:k_sup]
             if errors:
-                err=err[k_inf,k_sup]
+                err = err[k_inf:k_sup]
 
         if errors:
             err = np.array(err)
@@ -2073,7 +2080,17 @@ class MuseCube:
             lambda_aux = []
         return np.array(wave), np.array(combined_spec)
 
-    def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False, stat=False, mask=False):
+    def get_weights(self, x_center, y_center, radius, region):
+        from astropy.modeling import models
+        g = models.Gaussian1D(amplitude=1.0, mean=0.0, stddev=radius)
+        weights = []
+        for element in region:
+            distance = np.sqrt((x_center - element[0]) ** 2 + (y_center - element[1]) ** 2)
+            weights.append(distance)
+        weights = np.array(weights)
+        return weights / np.sum(weights)
+
+    def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False, stat=False, mask=False, seeing=2.):
         """
         Obtain the spectrum of a given region in the datacube, defined by a center (x_center,y_center), and
         radius. In the case of circular region, radius is a number, in the case of eliptical region, radius in an array that
@@ -2098,6 +2115,11 @@ class MuseCube:
         """
 
         input = self.cube
+        if coord_system == 'wcs':
+            if type(radius) == int or type(radius) == float:
+                x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
+            elif len(radius) == 3:
+                x_center, y_center, radius = self.elipse_paramters_to_pixel(x_center, y_center, radius)
 
         if mask == False:
 
@@ -2110,7 +2132,10 @@ class MuseCube:
                 theta = radius[2]
                 Region = self.define_elipse_region(x_center, y_center, a, b, theta, coord_system)
             N = len(Region)
-            weights = np.ones(N)
+            if seeing == 0.:
+                weights = np.ones(N)
+            else:
+                weights = self.get_weights(x_center, y_center, radius=seeing, region=Region) * N
         else:
             weights = radius
             n = len(x_center)
