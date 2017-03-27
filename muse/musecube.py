@@ -40,19 +40,55 @@ class MuseCube:
             XXXXXXXXXX
 
         """
+
+        # init
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
-        self.cube = filename_cube
-        hdulist = fits.open(self.cube)
-        self.data = hdulist[1].data
-        self.stat = hdulist[2].data
-        self.white = filename_white
-        self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
+        self.filename = filename_cube
+        self.filename_white = filename_white
+        self.load_data()
+        self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale()
-        self.gc = aplpy.FITSFigure(self.cube, slices=[1], figure=plt.figure(20))
+        self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
+
         plt.close(20)
+
+    def load_data(self):
+        hdulist = fits.open(self.filename)
+        # import pdb; pdb.set_trace()
+        self.cube= ma.MaskedArray(hdulist[1].data)
+        self.stat = ma.MaskedArray(hdulist[2].data)
+        #masking
+        self.cube.mask = np.isnan(self.cube) | (self.stat <= 0) | np.isnan(self.stat)
+        self.stat.mask = self.cube.mask
+
+        #wavelength array
+        self.wavelength = self.create_wavelength_array()
+
+
+    def spatial_smooth(self, npix=2, write_to_disk=True):
+        from scipy import ndimage
+        import copy
+        # matrix_flat = np.sum(self.cube[ind_min:ind_max,:,:], axis=0)
+        cube_new = copy.deepcopy(self.cube)
+        ntot = len(self.cube)
+        for wv_ii in range(ntot):
+            print('{}/{}'.format(wv_ii+1, ntot))
+            image_aux = self.cube[wv_ii,:,:]
+            smooth_ii = ndimage.gaussian_filter(image_aux, sigma=npix)
+            cube_new[wv_ii,:,:] = smooth_ii
+            # import pdb; pdb.set_trace()
+        if write_to_disk:
+            hdulist = fits.open(self.filename)
+            hdulist[1].data = cube_new.data
+            prihdr = hdulist[0].header
+            comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
+            print(comment)
+            prihdr['history'] = comment
+            hdulist.writeto("smoothed.fits", clobber=True)
+        return cube_new
 
     def get_mini_image(self, center, halfsize=15):
 
@@ -64,7 +100,7 @@ class MuseCube:
         """
         side = 2 * halfsize + 1
         image = [[0 for x in range(side)] for y in range(side)]
-        data_white = fits.open(self.white)[1].data
+        data_white = fits.open(self.filename_white)[1].data
         center_x = center[0]
         center_y = center[1]
         for i in xrange(center_x - halfsize, center_x + halfsize + 1):
@@ -170,7 +206,7 @@ class MuseCube:
         :return: w: array[]
                  array which contain an evenly sampled wavelength range
         """
-        hdulist = fits.open(self.cube)
+        hdulist = fits.open(self.filename)
         header = hdulist[1].header
         dw = header['CD3_3']
         w_ini = header['CRVAL3']
@@ -274,9 +310,9 @@ class MuseCube:
         return x_out, y_out, z_out
 
     def __matrix2array(self, k, stat=False):
-        matrix = self.data[k]
+        matrix = self.cube.data[k]
         if stat == True:
-            matrix = self.stat[k]
+            matrix = self.stat.data[k]
         n1 = len(matrix)
         n2 = len(matrix[0])
         array_flux = []
@@ -323,7 +359,7 @@ class MuseCube:
 
     def __save2fitsimage(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2, edit_header=[]):
         if type == 'white':
-            hdulist = fits.HDUList.fromfile(self.white)
+            hdulist = fits.HDUList.fromfile(self.filename_white)
             hdulist[1].data = data_to_save
             if len(edit_header) == 0:
                 hdulist.writeto(fitsname, clobber=True)
@@ -353,7 +389,7 @@ class MuseCube:
                 im.show_grayscale()
 
         if type == 'cube':
-            hdulist = fits.HDUList.fromfile(self.cube)
+            hdulist = fits.HDUList.fromfile(self.filename)
             if stat == False:
                 hdulist[1].data = data_to_save
             if stat == True:
@@ -421,7 +457,7 @@ class MuseCube:
 
         :return:
         '''
-        n_wave = len(self.data)
+        n_wave = len(self.cube.data)
         stat_normalized = []
         print n_wave
         for k in xrange(n_wave):
@@ -493,7 +529,7 @@ class MuseCube:
         :return:
         '''
 
-        n_wave = len(self.data)
+        n_wave = len(self.cube.data)
         stat_normalized = []
         print n_wave
         for k in xrange(n_wave):
@@ -718,7 +754,7 @@ class MuseCube:
 
     def combine_not_aligned(self, exposure_names, wavelength, xoffset_list=[], yoffset_list=[],
                             new_pixel_scale=0.2 * u.arcsec, kind='ave', white=False, stat=False, vignetting_borders=[]):
-        master_header = fits.open(self.cube)[1].header
+        master_header = fits.open(self.filename)[1].header
         d_ra = master_header['CD1_1']
         d_dec = master_header['CD2_2']
         if d_ra == 0. or d_dec == 0.:
@@ -1002,7 +1038,7 @@ class MuseCube:
                     matrix_elements.append(matrix[i][j])
                 error = np.std(matrix_elements)
                 matrix_errors[i][j] = error
-        hdulist = fits.HDUList.fromfile(self.white)
+        hdulist = fits.HDUList.fromfile(self.filename_white)
         hdulist[1].data = matrix_errors
         hdulist.writeto(fitsname, clobber=True)
         errors = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
@@ -1056,6 +1092,7 @@ class MuseCube:
                 os.system(command_fits)
                 os.system(command_png)
         return video
+
 
     def collapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2, continuum=False):
         """
@@ -1172,6 +1209,75 @@ class MuseCube:
         image_stacker = np.array(image_stacker)
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
+
+    def find_wv_inds(self, wv_array):
+        """
+
+        :param wv_array
+        :return: Returns the indices in the cube, that are closest to wv_array
+        """
+        inds = [np.argmin(np.fabs(wv_ii - self.wavelength)) for wv_ii in wv_array]
+        inds = np.unique(inds)
+        return inds
+
+
+    def sub_cube(self, wv_input):
+        """
+        Returns a cube-like object with fewer wavelength elements
+
+        :param wv_input: tuple or np.array
+        :return: XXXX
+        """
+        if isinstance(wv_input, tuple):
+            if len(wv_input) != 2:
+                raise ValueError("If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
+            wv_inds = self.find_wv_inds(wv_input)
+            ind_min = np.min(wv_inds)
+            ind_max = np.max(wv_inds)
+            sub_cube = self.cube[ind_min:ind_max,:,:]
+        else: #assuming array-like for wv_input
+            wv_inds = self.find_wv_inds(wv_input)
+            sub_cube = self.cube[wv_inds,:,:]
+        return sub_cube
+
+
+    def sum_cube(self, wv_input, fitsname='new_colapsed_cube.fits', n_figure=2):
+        """
+        Sums along the wavelength dimension according to wv_input
+
+        :param wv_input: tuple or np.array
+            If tuple : these are interpreted as limits, thus the sum includes all elements between these two limits
+            If np.array : the sum is over only the elements close to the values in the given array
+        :param fitsname:
+        :param n_figure:
+        :return:
+        """
+
+        sub_cube = self.sub_cube(wv_input)
+        matrix_flat = np.sum(sub_cube, axis=0)
+        self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+        return matrix_flat
+
+
+    def median_cube(self, wv_input, fitsname='new_colapsed_cube.fits', n_figure=2):
+        """
+        Gets the median along the wavelength dimension according to wv_input
+
+        :param wv_input: tuple or np.array
+            If tuple : these are interpreted as limits, thus the sum includes all elements between these two limits
+            If np.array : the sum is over only the elements close to the values in the given array
+        :param fitsname:
+        :param n_figure:
+        :return:
+        """
+
+        sub_cube = self.sub_cube(wv_input)
+        matrix_flat = np.median(sub_cube, axis=0)
+        self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+        return matrix_flat
+
+
+
 
     def normalize_sky(self, flux_sky, normalization_factor):
         """
@@ -1584,7 +1690,7 @@ class MuseCube:
         :return:
         """
         plt.close(self.n)
-        self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
+        self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale()
 
     def create_table(self, input_file):
@@ -1624,7 +1730,7 @@ class MuseCube:
                          the observational seeing of the image defined as the FWHM of the gaussian
         """
         from astropy.modeling import models, fitting
-        hdulist = fits.open(self.white)
+        hdulist = fits.open(self.filename_white)
         data = hdulist[1].data
         w, h = 2 * halfsize + 1, 2 * halfsize + 1
         matrix_data = [[0 for x in range(w)] for y in range(h)]
@@ -1668,8 +1774,8 @@ class MuseCube:
                   Number of pixels of the image in the y-axis
         :return:
         """
-        Nx = len(self.data[0])
-        Ny = len(self.data[0][0])
+        Nx = len(self.cube.data[0])
+        Ny = len(self.cube.data[0][0])
         f = open(filename, 'w')
         for i in xrange(0, Nx):
             for j in xrange(0, Ny):
@@ -1977,10 +2083,10 @@ class MuseCube:
         :param self:
         :return:
         """
-        input = self.cube
+        input = self.filename
         hdulist = fits.open(input)
         hdulist.info()
-        self.data.shape
+        self.cube.data.shape
         print 'X,Y,Lambda'
 
     def get_spectrum_point_aplpy(self, x, y, coord_system, stat=False):
@@ -2009,14 +2115,14 @@ class MuseCube:
             y_pix = y
 
         # DATA.shape ##Z,X,Y
-        nw = len(self.data)
-        ny = len(self.data[0])
-        nx = len(self.data[0][0])
+        nw = len(self.cube.data)
+        ny = len(self.cube.data[0])
+        nx = len(self.cube.data[0][0])
         wave = self.create_wavelength_array()
         spec = []
-        data = self.data
+        data = self.cube.data
         if stat:
-            data = self.stat
+            data = self.stat.data
         for i in xrange(0, len(wave)):
             # print x_pix,y_pix
             # print len(self.data[0])
@@ -2043,7 +2149,7 @@ class MuseCube:
         :return: wave,combined_spec: ndarray
                  wavelength and flux array
         """
-        input = self.cube
+        input = self.filename
         # print x_center
         Region = self.define_ring_region(x_center, y_center, radius_1, radius_2, coord_system)
         N = len(Region)
@@ -2114,12 +2220,14 @@ class MuseCube:
 
         """
 
+
         input = self.cube
         if coord_system == 'wcs':
             if type(radius) == int or type(radius) == float:
                 x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
             elif len(radius) == 3:
                 x_center, y_center, radius = self.elipse_paramters_to_pixel(x_center, y_center, radius)
+
 
         if mask == False:
 
@@ -2192,7 +2300,7 @@ class MuseCube:
 
 
          """
-        input = self.cube
+        input = self.filename
         plt.figure(1)
         self.draw_circle(x_center, y_center, radius, color, coord_system)
         w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=debug)
@@ -2333,7 +2441,7 @@ class MuseCube:
                          name of the new image
         :return:
         """
-        data = self.data
+        data = self.cube.data
         image = data[0]
         n1 = len(image)
         n2 = len(image[0])
