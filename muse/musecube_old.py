@@ -1256,7 +1256,7 @@ class MuseCube:
         hdulist_new = fits.HDUList([hdu1, hdu2])
         hdulist_new.writeto(fitsname, clobber=True)
 
-    def calculate_mag(self, wavelength, flux, filter, zeropoint_mag=5):
+    def calculate_mag(self, wavelength, flux, filter, zeropoint_mag=-11.906003658441422):
         dw = np.diff(wavelength)
         new_flux = flux * filter
         f_mean = (new_flux[:-1] + new_flux[1:]) * 0.5
