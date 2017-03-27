@@ -2086,7 +2086,7 @@ class MuseCube:
         weights = []
         for element in region:
             distance = np.sqrt((x_center - element[0]) ** 2 + (y_center - element[1]) ** 2)
-            weights.append(distance)
+            weights.append(g(distance))
         weights = np.array(weights)
         return weights / np.sum(weights)
 
