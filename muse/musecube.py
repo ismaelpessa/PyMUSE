@@ -1221,6 +1221,26 @@ class MuseCube:
         return inds
 
 
+    def sub_cube(self, wv_input):
+        """
+        Returns a cube-like object with fewer wavelength elements
+
+        :param wv_input: tuple or np.array
+        :return: XXXX
+        """
+        if isinstance(wv_input, tuple):
+            if len(wv_input) != 2:
+                raise ValueError("If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
+            wv_inds = self.find_wv_inds(wv_input)
+            ind_min = np.min(wv_inds)
+            ind_max = np.max(wv_inds)
+            sub_cube = self.cube[ind_min:ind_max,:,:]
+        else: #assuming array-like for wv_input
+            wv_inds = self.find_wv_inds(wv_input)
+            sub_cube = self.cube[wv_inds,:,:]
+        return sub_cube
+
+
     def sum_cube(self, wv_input, fitsname='new_colapsed_cube.fits', n_figure=2):
         """
         Sums along the wavelength dimension according to wv_input
@@ -1232,17 +1252,27 @@ class MuseCube:
         :param n_figure:
         :return:
         """
-        if isinstance(wv_input, tuple):
-            if len(wv_input) != 2:
-                raise ValueError("If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
-            wv_inds = self.find_wv_inds(wv_input)
-            ind_min = np.min(wv_inds)
-            ind_max = np.max(wv_inds)
-            matrix_flat = np.sum(self.cube[ind_min:ind_max,:,:], axis=0)
-        else: #assuming array-like
-            wv_inds = self.find_wv_inds(wv_input)
-            matrix_flat = np.sum(self.cube[wv_inds,:,:], axis=0)
 
+        sub_cube = self.sub_cube(wv_input)
+        matrix_flat = np.sum(sub_cube, axis=0)
+        self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+        return matrix_flat
+
+
+    def median_cube(self, wv_input, fitsname='new_colapsed_cube.fits', n_figure=2):
+        """
+        Gets the median along the wavelength dimension according to wv_input
+
+        :param wv_input: tuple or np.array
+            If tuple : these are interpreted as limits, thus the sum includes all elements between these two limits
+            If np.array : the sum is over only the elements close to the values in the given array
+        :param fitsname:
+        :param n_figure:
+        :return:
+        """
+
+        sub_cube = self.sub_cube(wv_input)
+        matrix_flat = np.median(sub_cube, axis=0)
         self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
         return matrix_flat
 
