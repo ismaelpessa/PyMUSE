@@ -1210,6 +1210,8 @@ class MuseCube:
         self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         print 'Imaged writed in ' + fitsname
 
+
+
     def find_wv_inds(self, wv_array):
         """
 

@@ -121,6 +121,7 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
+        return w,f
 
     def min_max_ra_dec(self, exposure_name, n_figure=2, white=False):
         """
@@ -1255,12 +1256,12 @@ class MuseCube:
         hdulist_new = fits.HDUList([hdu1, hdu2])
         hdulist_new.writeto(fitsname, clobber=True)
 
-    def calculate_mag(self, wavelength, flux, filter, zeropoint_flux=9.275222661263278e-07):
+    def calculate_mag(self, wavelength, flux, filter, zeropoint_mag=5):
         dw = np.diff(wavelength)
         new_flux = flux * filter
         f_mean = (new_flux[:-1] + new_flux[1:]) * 0.5
         total_flux = np.sum(f_mean * dw) * self.flux_units.value
-        mag = -2.5 * np.log10(total_flux / zeropoint_flux)
+        mag = -2.5 * np.log10(total_flux) + zeropoint_mag
         return mag
 
     def get_filter(self, wavelength_spec, filter='r'):
