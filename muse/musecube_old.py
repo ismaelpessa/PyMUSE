@@ -23,7 +23,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom,vmin=0,vmax=5):
         """
         Parameters
         ----------
@@ -40,6 +40,8 @@ class MuseCube:
             XXXXXXXXXX
 
         """
+        self.vmin=vmin
+        self.vmax=vmax
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
@@ -49,7 +51,7 @@ class MuseCube:
         self.stat = hdulist[2].data
         self.white = filename_white
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.cube, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
         plt.close(20)
@@ -1585,7 +1587,7 @@ class MuseCube:
         """
         plt.close(self.n)
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
 
     def create_table(self, input_file):
         """
