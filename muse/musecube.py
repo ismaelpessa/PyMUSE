@@ -1241,40 +1241,21 @@ class MuseCube:
         return sub_cube
 
 
-    def sum_cube(self, wv_input, fitsname='new_colapsed_cube.fits', n_figure=2):
-        """
-        Sums along the wavelength dimension according to wv_input
-
-        :param wv_input: tuple or np.array
-            If tuple : these are interpreted as limits, thus the sum includes all elements between these two limits
-            If np.array : the sum is over only the elements close to the values in the given array
-        :param fitsname:
-        :param n_figure:
-        :return:
-        """
-
+    def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2):
         sub_cube = self.sub_cube(wv_input)
-        matrix_flat = np.sum(sub_cube, axis=0)
+        if type=='sum':
+            matrix_flat = np.sum(sub_cube, axis=0)
+        elif type=='median':
+            matrix_flat = np.median(sub_cube, axis=0)
+        else:
+            raise ValueError('Unknown type, please chose sum or median')
+
         self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
         return matrix_flat
 
 
-    def median_cube(self, wv_input, fitsname='new_colapsed_cube.fits', n_figure=2):
-        """
-        Gets the median along the wavelength dimension according to wv_input
 
-        :param wv_input: tuple or np.array
-            If tuple : these are interpreted as limits, thus the sum includes all elements between these two limits
-            If np.array : the sum is over only the elements close to the values in the given array
-        :param fitsname:
-        :param n_figure:
-        :return:
-        """
 
-        sub_cube = self.sub_cube(wv_input)
-        matrix_flat = np.median(sub_cube, axis=0)
-        self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
-        return matrix_flat
 
 
 
