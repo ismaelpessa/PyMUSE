@@ -873,21 +873,21 @@ class MuseCube:
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
-        theta = self.get_from_table(sextractor_filename, 'THETA_IMAGE')
+        theta = self.get_from_table(sextractor_filename, 'THETA_IMAGE')*-0.0174533
         flags = self.get_from_table(sextractor_filename, 'FLAGS')
         id = self.get_from_table(sextractor_filename, 'NUMBER')
         n = len(x_pix)
         for i in xrange(0, n):
             color = 'Green'
             region = self.define_elipse_region(x_center=int(x_pix[i]), y_center=int(y_pix[i]), a=int(a[i] + 0.6),
-                                               b=int(b[i] + 0.6), theta=-1. * theta[i], coord_system='pix')
+                                               b=int(b[i] + 0.6), theta=theta[i], coord_system='pix')
             if flags[i] > flag_threshold:
                 color = 'Red'
             elif len(region) < 1:
                 flags[i] = flag_threshold + 1
                 color = 'Blue'
 
-            self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], -1 * theta[i], color=color, coord_system='pix')
+            self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color, coord_system='pix')
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id
 
@@ -904,7 +904,7 @@ class MuseCube:
                                                                                 y_center=int(y_pix[i]),
                                                                                 radius=[int(a[i] + 0.6),
                                                                                         int(b[i] + 0.6),
-                                                                                        -1 * theta[i]],
+                                                                                        theta[i]],
                                                                                 sky_radius_1=int(
                                                                                     2 * max(int(a[i]), int(b[i]))),
                                                                                 sky_radius_2=int(
@@ -919,7 +919,7 @@ class MuseCube:
                                                                                 y_center=int(y_pix[i]),
                                                                                 radius=[int(a[i] + 0.6),
                                                                                         int(b[i] + 0.6),
-                                                                                        -1 * theta[i]],
+                                                                                        theta[i]],
                                                                                 sky_radius_1=int(
                                                                                     2 * max(int(a[i]), int(b[i]))),
                                                                                 sky_radius_2=int(
