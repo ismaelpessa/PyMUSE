@@ -1620,8 +1620,11 @@ class MuseCube:
         spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
         substracted_sky_spec = np.array(self.substract_spec(spec, spec_sky_normalized))
         plt.figure(n_figure)
-        plt.plot(w, substracted_sky_spec)
-        plt.plot(w, spec_sky_normalized)
+        plt.plot(w, substracted_sky_spec,label='Spectrum')
+        plt.plot(w, spec_sky_normalized,label='Substracted Sky')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        plt.xlabel('Wavelength (Angstroms)')
+        plt.legend()
 
         if len(range) == 2:
             w_inf = range[0]
@@ -2195,6 +2198,8 @@ class MuseCube:
                              possible values: 'wcs, 'pix', indicates the coordinate system used.
         :param mask: boolean, default = False
                      if true, that means that the spectrum comes from a region defined by a mask, and x_center,y_center and radius are the coordinates of the pixels inside the region and the weights, respectively
+        :param seeing: int.
+                       is the number of pixel that will have the gaussian curve that will convolute with the spectrum inside the aperture, if 0, no convolution is done
         :return: wave: array[]
                        array with the wavelength of the spectrum
                  combined_spec: array[]
