@@ -549,9 +549,9 @@ class MuseCube:
         images_names = []
         fitsnames = []
         for i in xrange(initial_wavelength, final_wavelength):
-            wavelength_range = [i, i + width]
+            wavelength_range = (i, i + width)
             filename = 'colapsed_image_' + str(i) + '_'
-            self.collapse_cube([wavelength_range], fitsname=filename + '.fits', n_figure=15)
+            im=self.get_image(wv_inpu=wavelength_range,fitsname=filename+'.fits',type='sum',save='True')
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
@@ -570,123 +570,6 @@ class MuseCube:
                 os.system(command_fits)
                 os.system(command_png)
         return video
-
-
-    def collapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2, continuum=False):
-        """
-        Function that creates a new image, by collapsing some wavelengths of the cube
-
-        :param wavelength: array[]
-                           wavelength contain the information of the wavelength that will be collapsed
-                           This array can contain either individual values, which represents the wavelengths
-                           that will be collapsed, or arrays of length = 2, which represents wavelengths ranges that will be
-                           collapsed
-        :param fitsname: string, default = 'new_collapsed_cube.fits'
-                         name of the fits image that will be created
-        :param n_figure: int, default = 2
-                         number of the figure that will display the new image created
-        :param continuum: boolean, default = false.
-                          If True, the continuum will be substracted around the wavelengths selected, asuming ranges and not discrete values in wavelength
-
-        :return:
-        """
-        if type(wavelength[0]) == int or type(wavelength[0]) == float or type(wavelength[0]) == np.float64:
-            interval = 0
-        elif type(wavelength[0]) == list or type(wavelength[0]) == np.ndarray:
-            interval = 1
-        else:
-            print 'Type found: '
-            print type(wavelength[0])
-            raise ValueError(
-                'Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
-
-        wave = self.create_wavelength_array()
-        n_wave = len(wave)
-        wave = list(wave)
-        wave_index = []
-        if continuum:
-            left_box_all = []
-            right_box_all = []
-        n = len(wavelength)
-        dw = wave[1] - wave[0]
-        if interval == 0:
-            for i in xrange(0, n):
-                if wavelength[i] < wave[0] or wavelength[i] > wave[len(wave) - 1]:
-                    print str(wavelength[i]) + ' is not a valid wavelength value'
-                else:
-                    index = int(self.closest_element(wave, wavelength[i]))
-                    wave_index.append(index)
-        if interval == 1:
-            for i in xrange(0, n):
-                w_up = wavelength[i][1]
-                w_low = wavelength[i][0]
-                w_aux = w_low
-                if w_low <= wave[0]:
-                    print str(w_low) + ' es menor al valor minimo posible ' + str(
-                        wave[0])
-                    continue
-                if w_up >= wave[len(wave) - 1]:
-                    print str(w_up) + ' es mayor al valor maximo posible ' + str(
-                        wave[len(wave) - 1])
-                    continue
-
-                w_aux = w_low
-                interval_index = []
-                while w_aux < w_up:
-                    index = int(self.closest_element(wave, w_aux))
-                    interval_index.append(index)
-                    wave_index.append(index)
-                    w_aux += dw
-                if continuum:
-                    n_interval = len(interval_index)
-                    index_low = self.closest_element(wave, w_low)
-                    index_up = self.closest_element(wave, w_up)
-                    left_box = np.arange(index_low - n_interval, index_low, 1)
-                    right_box = np.arange(index_up, index_up + n_interval, 1)
-                    for i in xrange(n_interval):
-                        left_box_all.append(left_box[i])
-                        right_box_all.append(right_box[i])
-        if continuum:
-            box_all = []
-            for element in left_box_all:
-                if element < n_wave:
-                    box_all.append(element)
-            for element in right_box_all:
-                if element < n_wave:
-                    box_all.append(element)
-
-        Nw = len(self.data)
-        Nx = len(self.data[0])
-        Ny = len(self.data[0][0])
-        Matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
-        image_stacker = Matrix
-        for count, k in enumerate(wave_index):
-            print 'iteration ' + str(count) + ' of ' + str(len(wave_index))
-            for i in xrange(0, Nx):
-                for j in xrange(0, Ny):
-                    if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
-                        Matrix[i][j] = 0
-                    else:
-                        Matrix[i][j] = self.data[k][i][j]
-            image_stacker = image_stacker + Matrix
-        if continuum:
-            print 'Substracting continuum....'
-            continuum_stacker = np.array([[0. for y in range(Ny)] for x in range(Nx)])
-            for count, k in enumerate(box_all):
-                print 'iteration ' + str(count) + ' of ' + str(len(box_all))
-                for i in xrange(0, Nx):
-                    for j in xrange(0, Ny):
-                        if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
-                            Matrix[i][j] = 0
-                        else:
-                            Matrix[i][j] = self.data[k][i][j]
-                continuum_stacker = continuum_stacker + Matrix / 2.
-
-        if continuum:
-            image_stacker = image_stacker - continuum_stacker
-        image_stacker = np.array(image_stacker)
-        self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
-        print 'Imaged writed in ' + fitsname
 
 
 
@@ -746,6 +629,14 @@ class MuseCube:
             self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
         return matrix_flat
     def get_continuum_range(self,range):
+        """
+
+        :param range: tuple
+                      contain the range of a emission line. Continuum will be computed around this range
+        :return: cont_range_inf: The continuum range at the left of the Emission line, same length than input range
+                 cont_range_sup: The continuum range at the right of the Emission line, same length than input range
+                 n             : The number of element in the wavelength space inside the ranges
+        """
         w_inf=range[0]
         w_sup=range[1]
         wv_inds = self.find_wv_inds(range)
@@ -756,7 +647,7 @@ class MuseCube:
         cont_range_sup=(wv_inds_sup[0],wv_inds_sup[n-1])
         return cont_range_inf,cont_range_sup,n
 
-    def get_image_wv_ranges(self,wv_ranges,substract_cont=True,fitsname='new_collapsed_cube.fits',save=False):
+    def get_image_wv_ranges(self,wv_ranges,substract_cont=True,fitsname='new_collapsed_cube.fits',save=False,n_figure=3):
         image_stacker=np.zeros_like(self.white_data)
         for r in wv_ranges:
             image=self.get_image(r)
@@ -771,17 +662,6 @@ class MuseCube:
         if save:
             self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
-
-
-
-
-
-
-
-
-
-
-
 
 
     def normalize_sky(self, flux_sky, normalization_factor):
@@ -1898,9 +1778,10 @@ class MuseCube:
         images_names = []
         fitsnames = []
         for z in z_array:
+            print 'z = '+str(z)
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
-            self.collapse_cube(ranges, fitsname=filename + '.fits', n_figure=15, continuum=True)
+            image=self.get_image_wv_ranges(wv_ranges=ranges,fitsname=filename+'.fits',save=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
