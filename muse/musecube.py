@@ -48,6 +48,7 @@ class MuseCube:
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
+        self.white_data=fits.open(self.filename_white)[1].data
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale()
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
@@ -720,7 +721,7 @@ class MuseCube:
         return sub_cube
 
 
-    def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2):
+    def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2,save=False):
         """
         Function used to colapse a determined wavelength range in a sum or a median type
         :param wv_input: tuple or list
@@ -730,7 +731,7 @@ class MuseCube:
         :param type: str, possible values: 'sum' or 'median'
                      The type of combination that will be done
         :param n_figure: int
-                         Figure to display the new image
+                         Figure to display the new image if it is saved
         :return:
         """
         sub_cube = self.sub_cube(wv_input)
@@ -741,8 +742,40 @@ class MuseCube:
         else:
             raise ValueError('Unknown type, please chose sum or median')
 
-        self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+        if save:
+            self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
         return matrix_flat
+    def get_continuum_range(self,range):
+        w_inf=range[0]
+        w_sup=range[1]
+        wv_inds = self.find_wv_inds(range)
+        n=len(wv_inds)
+        wv_inds_sup=wv_inds+n
+        wv_inds_inf = wv_inds-n
+        cont_range_inf=(wv_inds_inf[0],wv_inds_inf[n-1])
+        cont_range_sup=(wv_inds_sup[0],wv_inds_sup[n-1])
+        return cont_range_inf,cont_range_sup,n
+
+    def get_image_wv_ranges(self,wv_ranges,substract_cont=True,fitsname='new_collapsed_cube.fits',save=False):
+        image_stacker=np.zeros_like(self.white_data)
+        for r in wv_ranges:
+            image=self.get_image(r)
+            cont_range_inf,cont_range_sup,n=self.get_continuum_range(r)
+            cont_inf_image=self.get_image(cont_range_inf,type='median')
+            cont_sup_image=self.get_image(cont_range_sup,type='median')
+            cont_image=n*(cont_inf_image+cont_sup_image)/2.
+            if substract_cont:
+                image=image-cont_image
+            image_stacker=image_stacker+image.data
+
+        if save:
+            self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
+        return image_stacker
+
+
+
+
+
 
 
 
@@ -792,7 +825,8 @@ class MuseCube:
         :return:
         """
         wave = self.create_wavelength_array()
-        self.collapse_cube(wavelength=wave, fitsname=new_white_fitsname)
+        n=len(wave)
+        self.get_image((wave[0],wave[n-1]),fitsname=new_white_fitsname,save=True)
 
     def spec_to_redmonster_format(self, spec, fitsname, n_id=-1, mag=[0, 0]):
         """
@@ -1237,28 +1271,6 @@ class MuseCube:
         print 'FWHM={:.2f}'.format(seeing)
         return seeing
 
-    def write_coords(self, filename):
-        """
-
-        :param self:
-        :param filename: string
-                         Name of the file that will contain the coordinates
-        :param Nx:int
-                  Number of pixels of the image in the x-axis
-        :param Ny:int
-                  Number of pixels of the image in the y-axis
-        :return:
-        """
-        Nx = len(self.cube.data[0])
-        Ny = len(self.cube.data[0][0])
-        f = open(filename, 'w')
-        for i in xrange(0, Nx):
-            for j in xrange(0, Ny):
-                x_world, y_world = self.gc.pixel2world(np.array([i]), np.array([j]))
-                c = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
-                f.write(str(i) + '\t' + str(j) + '\t' + str(x_world[0]) + '\t' + str(y_world[0]) + '\t' + str(
-                    c.to_string('hmsdms')) + '\n')
-        f.close()
 
     def is_in_ring(self, x_center, y_center, radius_1, radius_2, x, y):
         """
@@ -1911,7 +1923,7 @@ class MuseCube:
 
     def colapse_emission_lines_image(self, nsigma=2, fitsname='colapsed_emission_image.fits'):
         """
-        Function used to colapse only wavelength bins in which the signal to nouse is greater that nsigma value. This will create a new white image
+        Function used to colapse only wavelength bins in which the signal to noise is greater that nsigma value. This will create a new white image
         :param nsigma: float
                        threshold to signal to noise
         :param fitsname: string
