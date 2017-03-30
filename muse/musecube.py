@@ -156,48 +156,6 @@ class MuseCube:
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
 
-    def min_max_ra_dec(self, exposure_name, n_figure=2, white=False):
-        """
-        Funcion to compute the coordinates range in a datacube
-
-        :param exposure_name: string
-                              name of the fits file datacube of the exposure
-        :return: ra_range: array[]
-                           array that contain the minimum and the maximum value for right ascension
-                            in the exposure
-                 dec_range: array[]
-                            array that contain the minimum and the maximum value for declination
-                            in the exposure
-        """
-        exp_hdulist = fits.open(exposure_name)
-        exp_data = exp_hdulist[1].data
-        if white:
-            plt.close(n_figure)
-            aux_cube = aplpy.FITSFigure(exposure_name, figure=plt.figure(n_figure))
-            nx = len(exp_data)
-            ny = len(exp_data[0])
-
-        else:
-            aux_cube = aplpy.FITSFigure(exposure_name, slices=[1], figure=plt.figure(n_figure))
-            plt.close(n_figure)
-            nx = len(exp_data[0])
-            ny = len(exp_data[0][0])
-
-        plt.close(n_figure)
-        corners = [[0, 0], [0, ny - 1], [nx - 1, 0], [nx - 1, ny - 1]]
-        x_corners = []
-        y_corners = []
-        for point in corners:
-            x_corners.append(point[1])
-            y_corners.append(point[0])
-        ra, dec = aux_cube.pixel2world(x_corners, y_corners)
-        ra_min = min(ra)
-        ra_max = max(ra)
-        dec_min = min(dec)
-        dec_max = max(dec)
-        ra_range = [ra_min, ra_max]
-        dec_range = [dec_min, dec_max]
-        return ra_range, dec_range
 
     def create_wavelength_array(self):
         """
@@ -269,77 +227,9 @@ class MuseCube:
             cuted_flux.append(flux[i])
         return cuted_flux
 
-    def __rms_determinate(self, k, plotname='rms_test.png'):
-        '''
-        Function used to check the right number of pixels to cut before measure rms
-        :param k: wavelength index
-        :return:
-        '''
-        # import time
-        masked_flux = self.__matrix2array(k)
-        sorted_flux = np.sort(masked_flux)
-        N = len(sorted_flux)
-        std_array = []
-        n_cuted_elements_array = []
-        j_ini = 0  # Indice desde donde empezar a cortar elementos, todos los anteriores son cortados
-        sorted_flux = self.__cut_bright_pixel(sorted_flux, j_ini)
-        N_new = len(sorted_flux)
-        j_fin = N_new - 10  # Indice en donde acabar de cortar elementos
 
-        for j in xrange(0, j_fin):
-            if j % 1000 == 0:
-                print 'iteracion ' + str(j) + ' de ' + str(j_fin)
-            sorted_flux = self.__cut_bright_pixel(sorted_flux, 1)
-            std = np.std(sorted_flux)
-            n_cuted_elements = j + 1
-            std_array.append(std)
-            n_cuted_elements_array.append(n_cuted_elements)
-        plt.plot(n_cuted_elements_array, std_array)
-        plt.savefig(plotname)
 
-    def __xyz_nan_erase(self, x, y, z):
-        n = len(z)
-        x_out = []
-        y_out = []
-        z_out = []
-        for i in xrange(n):
-            if (z[i] != z[i]) == False:
-                x_out.append(x[i])
-                y_out.append(y[i])
-                z_out.append(z[i])
-        return x_out, y_out, z_out
 
-    def __matrix2array(self, k, stat=False):
-        matrix = self.cube.data[k]
-        if stat == True:
-            matrix = self.stat.data[k]
-        n1 = len(matrix)
-        n2 = len(matrix[0])
-        array_flux = []
-        for i in xrange(n1):
-            for j in xrange(n2):
-                array_flux.append(matrix[i][j])
-        array_flux_aux = np.where(np.isnan(np.array(array_flux)), -1, np.array(array_flux))
-        masked_flux = ma.masked_equal(array_flux_aux, -1)
-        return masked_flux
-
-    def __rms_measure_fraction(self, k, fraction=.05):
-        '''
-
-        :param k: int
-                  index in wavelength array, where the rms will be measured
-        :param fraction: float
-                   fraction of the pixels that will be removed (the brightest) before measure rms
-        :return: rms: flot
-                      value found for rms in the given wavelength
-        '''
-
-        flux = self.__matrix2array(k)
-        n = int(fraction * len(flux))
-        sorted_flux = np.sort(flux)
-        cuted_sorted_flux = self.__cut_bright_pixel(sorted_flux, n)
-        rms = np.std(cuted_sorted_flux)
-        return rms
 
     def __edit_header(self, hdulist, values_list,
                       keywords_list=['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'], hdu=1):
@@ -421,56 +311,8 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
-    def __rms_measure_threshold(self, k, threshold=0.4):
-        # pdb.set_trace()
-        flux = self.__matrix2array(k, stat=False)
-        f = flux.data
-        fmin = min(f)
-        fmax = max(f)
-        nbins = len(f) / 10
-        bin = np.linspace(0, fmax, nbins)
-        plt.close(10)
-        plt.figure(10)
-        n, bines, patch = plt.hist(f, bins=bin)
-        bin_new = np.linspace(min(bin), max(bin), nbins - 1)
-        plt.close(10)
-        n_norm = self.__normalize2max(n)
-        # plt.plot(bin_new, n_norm)
-        limit_hist_index = self.closest_element(n_norm, threshold)
-        limit_flux = bin_new[limit_hist_index]
-        lower_fluxes = self.__cut_over_limit(flux, limit_flux)
-        std = np.std(np.array(lower_fluxes))
-        return std
 
-    def __cut_over_limit(self, flux_array, upper_limit):
-        cuted_flux = []
-        for f in flux_array:
-            if f <= upper_limit and f >= -upper_limit:
-                cuted_flux.append(f)
-        return np.array(cuted_flux)
 
-    def rms_normalize_stat_threshold(self, new_cube_name='new_cube_stat_normalized.fits', threshold=0.4):
-        '''
-        Function that creates a new cube with the stat dimension normalized.
-        :param new_cube_name: string
-                              name of the fits cube that will be created
-
-        :return:
-        '''
-        n_wave = len(self.cube.data)
-        stat_normalized = []
-        print n_wave
-        for k in xrange(n_wave):
-            print 'iteration ' + str(k) + ' of ' + str(n_wave)
-            rms_obs = self.__rms_measure_threshold(k, threshold=threshold)
-            stat = self.__matrix2array(k, stat=True)
-            rms_stat = np.median(stat)
-            normalization_factor = rms_obs / rms_stat
-            stat_normalized.append(self.stat[k] * normalization_factor)
-        stat_normalized = np.array(stat_normalized)
-        self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
-        print 'New cube saved in ' + new_cube_name
-        return stat_normalized
 
     def __normalize2max(self, array):
         m = max(array)
@@ -519,31 +361,7 @@ class MuseCube:
 
         return reg
 
-    def rms_normalize_stat_fraction(self, new_cube_name='new_cube_stat_normalized.fits', fraction=0.5):
-        '''
-        Function that creates a new cube with the stat dimension normalized
-        :param new_cube_name: string
-                              name of the fits cube that will be created
-               n: float
-                  number of pixels that will be ignored to calculate the observed rms
-        :return:
-        '''
 
-        n_wave = len(self.cube.data)
-        stat_normalized = []
-        print n_wave
-        for k in xrange(n_wave):
-            print k
-            rms_obs = self.__rms_measure_fraction(k, fraction=fraction)
-            stat = self.__matrix2array(k, stat=True)
-            rms_stat = np.median(stat)
-            normalization_factor = rms_obs / rms_stat
-            stat_normalized.append(self.stat[k] * normalization_factor)
-
-        stat_normalized = np.array(stat_normalized)
-        self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
-        print 'New cube saved in ' + new_cube_name
-        return stat_normalized
 
     def __find_wavelength_index(self, wavelength):
         wave = self.create_wavelength_array()
@@ -557,24 +375,7 @@ class MuseCube:
             k = self.indexOf(wave, wavelength)
         return k
 
-    def __matrix2line(self, matrix):
-        n1 = len(matrix)
-        n2 = len(matrix[0])
-        out = ''
-        for i in xrange(n1):
-            for j in xrange(n2):
-                out = out + str(matrix[i][j])
-                if j < n2 - 1:
-                    out = out + ' '
-            if i < n1 - 1:
-                out = out + ';'
-        return out
 
-    def __line2file(self, line, filename):
-        f = open(filename, 'a')
-        f.write(line + '\n')
-        f.close()
-        return
 
     def __vignetting_matrix(self, matrix, npixel_x, npixel_y):
         """
@@ -598,44 +399,9 @@ class MuseCube:
                     matrix_out[i][j] = matrix[i][j]
         return matrix_out
 
-    def __filelines2cube(self, filename):
-        cube = []
-        f = open(filename, 'r')
-        i = 1
-        while True:
-            print 'copying line ' + str(i) + ' from file'
-            line = f.readline()
-            if len(line) == 0:
-                break
-            matrix = np.matrix(line)
-            cube.append(matrix)
-            i += 1
-        return np.array(cube)
 
-    def create_complete_cube(self, exposure_names, exposure_white_names, new_cube_name='New_Cube.fits',
-                             fitsname_stat='new_combined_cube_stat.fits',
-                             fitsname_data='new_combined_cube.fits', fitsname_white='new_combined_white.fits',
-                             new_pixel_scale=0.2 * u.arcsec, xoffset_list=[], yoffset_list=[], clobber=True,
-                             vignetting_borders=[]):
-        import gc
-        gc.enable()
-        self.create_combined_white(exposure_white_names, fitsname=fitsname_white, xoffset_list=xoffset_list,
-                                   yoffset_list=yoffset_list, clobber=clobber, new_pixel_scale=new_pixel_scale,
-                                   vignetting_borders=vignetting_borders)
-        self.create_combined_cube(exposure_names, fitsname=fitsname_data, kind='ave', stat=False,
-                                  cubetxt='data_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
-                                  clobber=clobber, new_pixel_scale=new_pixel_scale,
-                                  vignetting_borders=vignetting_borders)
-        self.create_combined_cube(exposure_names, fitsname=fitsname_stat, kind='stat', stat=True,
-                                  cubetxt='stat_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
-                                  clobber=clobber, new_pixel_scale=new_pixel_scale,
-                                  vignetting_borders=vignetting_borders)
 
-        hdulist_stat = fits.open(fitsname_stat)
-        hdulist_data = fits.open(fitsname_data)
-        new_hdulist = hdulist_data
-        new_hdulist[2] = hdulist_stat[2]
-        new_hdulist.writeto(new_cube_name, clobber=True)
+
 
     def region_from_mask(self, mask):
         """
@@ -680,225 +446,9 @@ class MuseCube:
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
         return spectrum
 
-    def create_combined_white(self, exposure_white_names, kind='ave', fitsname='new_combined_white.fits',
-                              xoffset_list=[], yoffset_list=[], clobber=True,
-                              new_pixel_scale=0.2 * u.arcsec, vignetting_borders=[]):
-        """
-        Function used to create a new white image from a list of different white images
-        :param exposure_white_names:
-        :param kind:
-        :param fitsname:
-        :param xoffset_list:
-        :param yoffset_list:
-        :param clobber:
-        :param new_pixel_scale:
-        :param vignetting_borders:
-        :return:
-        """
-        if clobber:
-            os.system('rm ' + fitsname)
-        combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(
-            exposure_names=exposure_white_names, wavelength=0, xoffset_list=xoffset_list,
-            yoffset_list=yoffset_list, kind=kind, new_pixel_scale=new_pixel_scale,
-            white=True, vignetting_borders=vignetting_borders)
-        combined_matrix = np.array(combined_matrix)
-        self.__save2fitsimage(fitsname, combined_matrix, type='white', stat=False, edit_header=[values_list])
-        print 'New white image saved in ' + fitsname
 
-    def create_combined_cube(self, exposure_names, kind='ave', fitsname='new_combined_cube.fits', cubetxt='cube.dat',
-                             xoffset_list=[], yoffset_list=[], clobber=True, new_pixel_scale=0.2 * u.arcsec,
-                             stat=False, vignetting_borders=[]):
-        """
-        Function used to create a new combined cube from a list of diferent cubes
-        :param exposure_names:
-        :param kind:
-        :param fitsname:
-        :param cubetxt:
-        :param xoffset_list:
-        :param yoffset_list:
-        :param clobber:
-        :param new_pixel_scale:
-        :param stat:
-        :param vignetting_borders:
-        :return:
-        """
-        import gc
-        gc.enable()
-        wave = self.create_wavelength_array()
-        if clobber:
-            os.system('rm ' + fitsname)
-            os.system('rm ' + cubetxt)
-        # wave = np.array([4800,4801.25,4802.5,5800,6000,6500,7000,8000,8500,9000])
-        # wave = np.array([4750,4800])
-        for w in wave:
-            print 'wavelength ' + str(w) + ' of ' + str(max(wave))
-            combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
-                                                                                         wavelength=w,
-                                                                                         xoffset_list=xoffset_list,
-                                                                                         yoffset_list=yoffset_list,
-                                                                                         kind=kind,
-                                                                                         new_pixel_scale=new_pixel_scale,
-                                                                                         white=False, stat=stat,
-                                                                                         vignetting_borders=vignetting_borders)
-            matrix_line = self.__matrix2line(combined_matrix)
-            self.__line2file(matrix_line, cubetxt)
 
-        new_cube = self.__filelines2cube(cubetxt)
-        if stat:
-            self.__save2fitsimage(fitsname, new_cube, type='cube', stat=stat,
-                                  edit_header=[values_list, ['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'],
-                                               2])
-        else:
-            self.__save2fitsimage(fitsname, new_cube, type='cube', stat=stat, edit_header=[values_list])
-        print 'New cube saved in ' + fitsname
 
-    def combine_not_aligned(self, exposure_names, wavelength, xoffset_list=[], yoffset_list=[],
-                            new_pixel_scale=0.2 * u.arcsec, kind='ave', white=False, stat=False, vignetting_borders=[]):
-        master_header = fits.open(self.filename)[1].header
-        d_ra = master_header['CD1_1']
-        d_dec = master_header['CD2_2']
-        if d_ra == 0. or d_dec == 0.:
-            raise ValueError('CD1_1 or CD2_2 equals 0, not valid')
-
-        if white == False:
-            k = self.__find_wavelength_index(wavelength)
-        ra_min_exposures = []
-        ra_max_exposures = []
-        dec_min_exposures = []
-        dec_max_exposures = []
-        for exposure in exposure_names:
-            ra_range, dec_range = self.min_max_ra_dec(exposure, white=white)
-            ra_min_exposures.append(ra_range[0])
-            ra_max_exposures.append(ra_range[1])
-            dec_min_exposures.append(dec_range[0])
-            dec_max_exposures.append(dec_range[1])
-        ra_min_all = min(ra_min_exposures)
-        ra_max_all = max(ra_max_exposures)
-        dec_min_all = min(dec_min_exposures)
-        dec_max_all = max(dec_max_exposures)
-
-        pixel_size_deg = new_pixel_scale.to('deg').value
-
-        ra_array = np.arange(ra_max_all, ra_min_all, -1. * pixel_size_deg)
-
-        dec_array = np.arange(dec_min_all, dec_max_all, pixel_size_deg)
-
-        if d_ra > 0.:
-            ra_array = np.arange(ra_min_all, ra_max_all, pixel_size_deg)
-        if d_dec < 0:
-            dec_array = np.arange(dec_max_all, dec_min_all, -1. * pixel_size_deg)
-
-        interpolated_fluxes = []
-        cx = 0
-        cy = 0
-        count_vig = 0
-
-        for exposure in exposure_names:
-            hdulist = fits.open(exposure)
-            if stat:
-                data = hdulist[2].data
-            else:
-                data = hdulist[1].data
-            if white:
-                n1 = len(data)
-                n2 = len(data[0])
-            else:
-                n1 = len(data[0])
-                n2 = len(data[0][0])
-
-            ra_limits, dec_limits = self.min_max_ra_dec(exposure, white=white)
-
-            ra_center = (ra_limits[1] + ra_limits[0]) / 2.
-            dec_center = (dec_limits[1] + dec_limits[0]) / 2.
-
-            n2_half = n2 / 2
-            n1_half = n1 / 2
-            pixel_size_deg_native = self.pixelsize.to('deg').value
-            if n2 % 2 == 0:
-                ra = np.linspace(ra_center + n2_half * pixel_size_deg_native,
-                                 ra_center - (n2_half - 1) * pixel_size_deg_native, n2)
-            if n2 % 2 == 1:
-                ra = np.linspace(ra_center + n2_half * pixel_size_deg_native,
-                                 ra_center - n2_half * pixel_size_deg_native, n2)
-            if n1 % 2 == 0:
-                dec = np.linspace(dec_center - (n1_half - 1) * pixel_size_deg_native,
-                                  dec_center + n1_half * pixel_size_deg_native,
-                                  n1)
-            if n1 % 2 == 1:
-                dec = np.linspace(dec_center - n1_half * pixel_size_deg_native,
-                                  dec_center + n1_half * pixel_size_deg_native, n1)
-
-            if d_ra > 0:
-                if n2 % 2 == 0:
-                    ra = np.linspace(ra_center - n2_half * pixel_size_deg_native,
-                                     ra_center + (n2_half - 1) * pixel_size_deg_native, n2)
-                if n2 % 2 == 1:
-                    ra = np.linspace(ra_center - n2_half * pixel_size_deg_native,
-                                     ra_center + n2_half * pixel_size_deg_native, n2)
-            if d_dec < 0:
-                if n1 % 2 == 0:
-                    dec = np.linspace(dec_center + (n1_half - 1) * pixel_size_deg_native,
-                                      dec_center - n1_half * pixel_size_deg_native,
-                                      n1)
-                if n1 % 2 == 1:
-                    dec = np.linspace(dec_center + n1_half * pixel_size_deg_native,
-                                      dec_center - n1_half * pixel_size_deg_native, n1)
-
-            if len(xoffset_list) == len(exposure_names):
-                ra = ra + xoffset_list[cx] * pixel_size_deg_native
-                cx += 1
-            if len(yoffset_list) == len(exposure_names):
-                dec = dec + yoffset_list[cy] * pixel_size_deg_native
-                cy += 1
-
-            if white:
-                data_matrix = data
-            else:
-                data_matrix = data[k]
-
-            if len(vignetting_borders) == len(exposure_names):
-                npixel_x = vignetting_borders[count_vig][0]
-                npixel_y = vignetting_borders[count_vig][1]
-                data_vignetted = self.__vignetting_matrix(data_matrix, npixel_x=npixel_x, npixel_y=npixel_y)
-                count_vig += 1
-                data_matrix = data_vignetted
-
-            data_aux = np.where(np.isnan(data_matrix), -1, data_matrix)
-
-            data_aux_masked = ma.masked_equal(data_aux, -1)
-            interpolator = interpolate.interp2d(ra, dec, data_aux_masked, bounds_error=False, fill_value=np.nan)
-            flux_new = interpolator(ra_array, dec_array)
-            flux_new_aux = np.where(flux_new < 0, np.nan, flux_new)
-            flux_new2 = np.zeros_like(flux_new_aux)
-            m1 = len(flux_new_aux)
-            m2 = len(flux_new_aux[0])
-            if d_ra < 0. and d_dec > 0.:
-                for i in xrange(m1):
-                    for j in xrange(m2):
-                        flux_new2[i][j] = flux_new_aux[i][m2 - 1 - j]
-            elif d_dec < 0 and d_ra > 0.:
-                for i in xrange(m1):
-                    for j in xrange(m2):
-                        flux_new2[i][j] = flux_new_aux[m1 - 1 - i][j]
-            elif d_dec < 0. and d_ra < 0.:
-                for i in xrange(m1):
-                    for j in xrange(m2):
-                        flux_new2[i][j] = flux_new_aux[m1 - 1 - i][m2 - 1 - j]
-
-            interpolated_fluxes.append(flux_new2)
-            # import pdb; pdb.set_trace()
-        n_ra = len(ra_array)
-        n_dec = len(dec_array)
-        matrix_combined = self.__calculate_combined_matrix(interpolated_fluxes, kind=kind)
-        delta_ra = -1. * pixel_size_deg
-        delta_dec = pixel_size_deg
-        central_ra = ra_array[n_ra / 2]
-        central_dec = dec_array[n_dec / 2]
-        central_j = n_ra / 2.
-        central_i = n_dec / 2.
-
-        data_to_header = [central_j, central_i, delta_ra, delta_dec, central_ra, central_dec]
-        return matrix_combined, interpolated_fluxes, data_to_header
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=16):
         self.clean_canvas()
@@ -962,87 +512,14 @@ class MuseCube:
                                                                                 redmonster_format=False, n_id=id[i])
                     spectrum.write_to_fits(name)
 
-    def __calculate_combined_matrix(self, interpolated_fluxes, kind='ave'):
-        '''
 
-        :param interpolated_fluxes: array[]
-                                    array of matrix, each matrix contain the flux of an exposure at a given wavelength
-               kind: string
-                     default = 'ave', possible values = 'std, 'ave','sum','stat'. Kind of combination of the input matrix in each point
-        :return:
-        '''
-        matrix_combined = np.zeros_like(interpolated_fluxes[0])
-        n1 = len(matrix_combined)
-        n2 = len(matrix_combined[0])
-        for i in xrange(n1):
-            for j in xrange(n2):
-                aux_array = []
-                for matrix in interpolated_fluxes:
-                    aux_array.append(matrix[i][j])
-                if kind == 'std':
-                    matrix_combined[i][j] = np.nanstd(aux_array)
-                    if np.isnan(matrix_combined[i][j]):
-                        matrix_combined[i][j] = 0
-                elif kind == 'ave':
-                    matrix_combined[i][j] = np.nanmean(aux_array)
-                    if np.isnan(matrix_combined[i][j]):
-                        matrix_combined[i][j] = 0
-                elif kind == 'sum':
-                    matrix_combined[i][j] = np.nansum(aux_array)
-                elif kind == 'stat':
-                    aux_array = np.array(aux_array)
-                    matrix_combined[i][j] = np.sqrt(np.nansum(aux_array ** 2))
-                else:
-                    raise ValueError('kind of combination parameter given is not valid, please try std,ave,sum or stat')
-        return matrix_combined
 
     def __read_files(self, input):
         path = input
         files = glob.glob(path)
         return files
 
-    def calculate_error(self, exposures_names, wavelength, fitsname='errors.fits', n_figure=2):
-        """
-        From different exposures of a field, this function computes the error, by calculating the
-        std of all exposures, in all the field, for a given wavelength. The exposures must be aligned.
-        :param exposures_names: array[]
-                                array containing the names of the differents exposures in each position
-        :param wavelength: float
-                           the wavelength in which the error will be calculated
-        :param fitsname: string, default = 'errors.fits'
-                         name of the fits file where the error image will be saved
-        :param n_figure: int, d efault = 2
-                         number of the figure where the image will be displayed
-        :return:
-        """
-        k = self.__find_wavelength_index(wavelength)
 
-        data_matrix_array = []
-        for exposure in exposures_names:
-            hdulist = fits.open(exposure)
-            data_exposure = hdulist[1].data
-            print data_exposure.shape
-            Nw = len(data_exposure)
-            Nx = len(data_exposure[0])
-            Ny = len(data_exposure[0][0])
-            matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
-            for i in xrange(0, Nx):
-                for j in xrange(0, Ny):
-                    matrix[i][j] = data_exposure[k][i][j]
-            data_matrix_array.append(matrix)
-        matrix_errors = np.array([[0. for y in range(Ny)] for x in range(Nx)])
-        for i in xrange(0, Nx):
-            for j in xrange(0, Ny):
-                matrix_elements = []
-                for matrix in data_matrix_array:
-                    matrix_elements.append(matrix[i][j])
-                error = np.std(matrix_elements)
-                matrix_errors[i][j] = error
-        hdulist = fits.HDUList.fromfile(self.filename_white)
-        hdulist[1].data = matrix_errors
-        hdulist.writeto(fitsname, clobber=True)
-        errors = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
-        errors.show_grayscale()
 
     def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='image_video.avi',
                                       erase=True):
@@ -1244,6 +721,18 @@ class MuseCube:
 
 
     def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2):
+        """
+        Function used to colapse a determined wavelength range in a sum or a median type
+        :param wv_input: tuple or list
+                         can be a list of wavelengths or a tuple that will represent a  range
+        :param fitsname: str
+                         The name of the fits that will contain the new image
+        :param type: str, possible values: 'sum' or 'median'
+                     The type of combination that will be done
+        :param n_figure: int
+                         Figure to display the new image
+        :return:
+        """
         sub_cube = self.sub_cube(wv_input)
         if type=='sum':
             matrix_flat = np.sum(sub_cube, axis=0)
