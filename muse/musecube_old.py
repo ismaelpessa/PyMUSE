@@ -23,7 +23,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom,vmin=0,vmax=5):
         """
         Parameters
         ----------
@@ -40,56 +40,21 @@ class MuseCube:
             XXXXXXXXXX
 
         """
-
-        # init
+        self.vmin=vmin
+        self.vmax=vmax
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
-        self.filename = filename_cube
-        self.filename_white = filename_white
-        self.load_data()
-        self.white_data=fits.open(self.filename_white)[1].data
-        self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
-        self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
+        self.cube = filename_cube
+        hdulist = fits.open(self.cube)
+        self.data = hdulist[1].data
+        self.stat = hdulist[2].data
+        self.white = filename_white
+        self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+        self.gc = aplpy.FITSFigure(self.cube, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-
         plt.close(20)
-
-    def load_data(self):
-        hdulist = fits.open(self.filename)
-        # import pdb; pdb.set_trace()
-        self.cube= ma.MaskedArray(hdulist[1].data)
-        self.stat = ma.MaskedArray(hdulist[2].data)
-        #masking
-        self.cube.mask = np.isnan(self.cube) | (self.stat <= 0) | np.isnan(self.stat)
-        self.stat.mask = self.cube.mask
-
-        #wavelength array
-        self.wavelength = self.create_wavelength_array()
-
-
-    def spatial_smooth(self, npix=2, write_to_disk=True):
-        from scipy import ndimage
-        import copy
-        # matrix_flat = np.sum(self.cube[ind_min:ind_max,:,:], axis=0)
-        cube_new = copy.deepcopy(self.cube)
-        ntot = len(self.cube)
-        for wv_ii in range(ntot):
-            print('{}/{}'.format(wv_ii+1, ntot))
-            image_aux = self.cube[wv_ii,:,:]
-            smooth_ii = ndimage.gaussian_filter(image_aux, sigma=npix)
-            cube_new[wv_ii,:,:] = smooth_ii
-            # import pdb; pdb.set_trace()
-        if write_to_disk:
-            hdulist = fits.open(self.filename)
-            hdulist[1].data = cube_new.data
-            prihdr = hdulist[0].header
-            comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
-            print(comment)
-            prihdr['history'] = comment
-            hdulist.writeto("smoothed.fits", clobber=True)
-        return cube_new
 
     def get_mini_image(self, center, halfsize=15):
 
@@ -101,7 +66,7 @@ class MuseCube:
         """
         side = 2 * halfsize + 1
         image = [[0 for x in range(side)] for y in range(side)]
-        data_white = fits.open(self.filename_white)[1].data
+        data_white = fits.open(self.white)[1].data
         center_x = center[0]
         center_y = center[1]
         for i in xrange(center_x - halfsize, center_x + halfsize + 1):
@@ -156,7 +121,50 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
+        return w,f
 
+    def min_max_ra_dec(self, exposure_name, n_figure=2, white=False):
+        """
+        Funcion to compute the coordinates range in a datacube
+
+        :param exposure_name: string
+                              name of the fits file datacube of the exposure
+        :return: ra_range: array[]
+                           array that contain the minimum and the maximum value for right ascension
+                            in the exposure
+                 dec_range: array[]
+                            array that contain the minimum and the maximum value for declination
+                            in the exposure
+        """
+        exp_hdulist = fits.open(exposure_name)
+        exp_data = exp_hdulist[1].data
+        if white:
+            plt.close(n_figure)
+            aux_cube = aplpy.FITSFigure(exposure_name, figure=plt.figure(n_figure))
+            nx = len(exp_data)
+            ny = len(exp_data[0])
+
+        else:
+            aux_cube = aplpy.FITSFigure(exposure_name, slices=[1], figure=plt.figure(n_figure))
+            plt.close(n_figure)
+            nx = len(exp_data[0])
+            ny = len(exp_data[0][0])
+
+        plt.close(n_figure)
+        corners = [[0, 0], [0, ny - 1], [nx - 1, 0], [nx - 1, ny - 1]]
+        x_corners = []
+        y_corners = []
+        for point in corners:
+            x_corners.append(point[1])
+            y_corners.append(point[0])
+        ra, dec = aux_cube.pixel2world(x_corners, y_corners)
+        ra_min = min(ra)
+        ra_max = max(ra)
+        dec_min = min(dec)
+        dec_max = max(dec)
+        ra_range = [ra_min, ra_max]
+        dec_range = [dec_min, dec_max]
+        return ra_range, dec_range
 
     def create_wavelength_array(self):
         """
@@ -165,7 +173,7 @@ class MuseCube:
         :return: w: array[]
                  array which contain an evenly sampled wavelength range
         """
-        hdulist = fits.open(self.filename)
+        hdulist = fits.open(self.cube)
         header = hdulist[1].header
         dw = header['CD3_3']
         w_ini = header['CRVAL3']
@@ -228,9 +236,77 @@ class MuseCube:
             cuted_flux.append(flux[i])
         return cuted_flux
 
+    def __rms_determinate(self, k, plotname='rms_test.png'):
+        '''
+        Function used to check the right number of pixels to cut before measure rms
+        :param k: wavelength index
+        :return:
+        '''
+        # import time
+        masked_flux = self.__matrix2array(k)
+        sorted_flux = np.sort(masked_flux)
+        N = len(sorted_flux)
+        std_array = []
+        n_cuted_elements_array = []
+        j_ini = 0  # Indice desde donde empezar a cortar elementos, todos los anteriores son cortados
+        sorted_flux = self.__cut_bright_pixel(sorted_flux, j_ini)
+        N_new = len(sorted_flux)
+        j_fin = N_new - 10  # Indice en donde acabar de cortar elementos
 
+        for j in xrange(0, j_fin):
+            if j % 1000 == 0:
+                print 'iteracion ' + str(j) + ' de ' + str(j_fin)
+            sorted_flux = self.__cut_bright_pixel(sorted_flux, 1)
+            std = np.std(sorted_flux)
+            n_cuted_elements = j + 1
+            std_array.append(std)
+            n_cuted_elements_array.append(n_cuted_elements)
+        plt.plot(n_cuted_elements_array, std_array)
+        plt.savefig(plotname)
 
+    def __xyz_nan_erase(self, x, y, z):
+        n = len(z)
+        x_out = []
+        y_out = []
+        z_out = []
+        for i in xrange(n):
+            if (z[i] != z[i]) == False:
+                x_out.append(x[i])
+                y_out.append(y[i])
+                z_out.append(z[i])
+        return x_out, y_out, z_out
 
+    def __matrix2array(self, k, stat=False):
+        matrix = self.data[k]
+        if stat == True:
+            matrix = self.stat[k]
+        n1 = len(matrix)
+        n2 = len(matrix[0])
+        array_flux = []
+        for i in xrange(n1):
+            for j in xrange(n2):
+                array_flux.append(matrix[i][j])
+        array_flux_aux = np.where(np.isnan(np.array(array_flux)), -1, np.array(array_flux))
+        masked_flux = ma.masked_equal(array_flux_aux, -1)
+        return masked_flux
+
+    def __rms_measure_fraction(self, k, fraction=.05):
+        '''
+
+        :param k: int
+                  index in wavelength array, where the rms will be measured
+        :param fraction: float
+                   fraction of the pixels that will be removed (the brightest) before measure rms
+        :return: rms: flot
+                      value found for rms in the given wavelength
+        '''
+
+        flux = self.__matrix2array(k)
+        n = int(fraction * len(flux))
+        sorted_flux = np.sort(flux)
+        cuted_sorted_flux = self.__cut_bright_pixel(sorted_flux, n)
+        rms = np.std(cuted_sorted_flux)
+        return rms
 
     def __edit_header(self, hdulist, values_list,
                       keywords_list=['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'], hdu=1):
@@ -250,7 +326,7 @@ class MuseCube:
 
     def __save2fitsimage(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2, edit_header=[]):
         if type == 'white':
-            hdulist = fits.HDUList.fromfile(self.filename_white)
+            hdulist = fits.HDUList.fromfile(self.white)
             hdulist[1].data = data_to_save
             if len(edit_header) == 0:
                 hdulist.writeto(fitsname, clobber=True)
@@ -280,7 +356,7 @@ class MuseCube:
                 im.show_grayscale()
 
         if type == 'cube':
-            hdulist = fits.HDUList.fromfile(self.filename)
+            hdulist = fits.HDUList.fromfile(self.cube)
             if stat == False:
                 hdulist[1].data = data_to_save
             if stat == True:
@@ -312,8 +388,56 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
+    def __rms_measure_threshold(self, k, threshold=0.4):
+        # pdb.set_trace()
+        flux = self.__matrix2array(k, stat=False)
+        f = flux.data
+        fmin = min(f)
+        fmax = max(f)
+        nbins = len(f) / 10
+        bin = np.linspace(0, fmax, nbins)
+        plt.close(10)
+        plt.figure(10)
+        n, bines, patch = plt.hist(f, bins=bin)
+        bin_new = np.linspace(min(bin), max(bin), nbins - 1)
+        plt.close(10)
+        n_norm = self.__normalize2max(n)
+        # plt.plot(bin_new, n_norm)
+        limit_hist_index = self.closest_element(n_norm, threshold)
+        limit_flux = bin_new[limit_hist_index]
+        lower_fluxes = self.__cut_over_limit(flux, limit_flux)
+        std = np.std(np.array(lower_fluxes))
+        return std
 
+    def __cut_over_limit(self, flux_array, upper_limit):
+        cuted_flux = []
+        for f in flux_array:
+            if f <= upper_limit and f >= -upper_limit:
+                cuted_flux.append(f)
+        return np.array(cuted_flux)
 
+    def rms_normalize_stat_threshold(self, new_cube_name='new_cube_stat_normalized.fits', threshold=0.4):
+        '''
+        Function that creates a new cube with the stat dimension normalized.
+        :param new_cube_name: string
+                              name of the fits cube that will be created
+
+        :return:
+        '''
+        n_wave = len(self.data)
+        stat_normalized = []
+        print n_wave
+        for k in xrange(n_wave):
+            print 'iteration ' + str(k) + ' of ' + str(n_wave)
+            rms_obs = self.__rms_measure_threshold(k, threshold=threshold)
+            stat = self.__matrix2array(k, stat=True)
+            rms_stat = np.median(stat)
+            normalization_factor = rms_obs / rms_stat
+            stat_normalized.append(self.stat[k] * normalization_factor)
+        stat_normalized = np.array(stat_normalized)
+        self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
+        print 'New cube saved in ' + new_cube_name
+        return stat_normalized
 
     def __normalize2max(self, array):
         m = max(array)
@@ -362,7 +486,31 @@ class MuseCube:
 
         return reg
 
+    def rms_normalize_stat_fraction(self, new_cube_name='new_cube_stat_normalized.fits', fraction=0.5):
+        '''
+        Function that creates a new cube with the stat dimension normalized
+        :param new_cube_name: string
+                              name of the fits cube that will be created
+               n: float
+                  number of pixels that will be ignored to calculate the observed rms
+        :return:
+        '''
 
+        n_wave = len(self.data)
+        stat_normalized = []
+        print n_wave
+        for k in xrange(n_wave):
+            print k
+            rms_obs = self.__rms_measure_fraction(k, fraction=fraction)
+            stat = self.__matrix2array(k, stat=True)
+            rms_stat = np.median(stat)
+            normalization_factor = rms_obs / rms_stat
+            stat_normalized.append(self.stat[k] * normalization_factor)
+
+        stat_normalized = np.array(stat_normalized)
+        self.__save2fitsimage(new_cube_name, stat_normalized, stat=True, type='cube')
+        print 'New cube saved in ' + new_cube_name
+        return stat_normalized
 
     def __find_wavelength_index(self, wavelength):
         wave = self.create_wavelength_array()
@@ -376,7 +524,24 @@ class MuseCube:
             k = self.indexOf(wave, wavelength)
         return k
 
+    def __matrix2line(self, matrix):
+        n1 = len(matrix)
+        n2 = len(matrix[0])
+        out = ''
+        for i in xrange(n1):
+            for j in xrange(n2):
+                out = out + str(matrix[i][j])
+                if j < n2 - 1:
+                    out = out + ' '
+            if i < n1 - 1:
+                out = out + ';'
+        return out
 
+    def __line2file(self, line, filename):
+        f = open(filename, 'a')
+        f.write(line + '\n')
+        f.close()
+        return
 
     def __vignetting_matrix(self, matrix, npixel_x, npixel_y):
         """
@@ -400,9 +565,44 @@ class MuseCube:
                     matrix_out[i][j] = matrix[i][j]
         return matrix_out
 
+    def __filelines2cube(self, filename):
+        cube = []
+        f = open(filename, 'r')
+        i = 1
+        while True:
+            print 'copying line ' + str(i) + ' from file'
+            line = f.readline()
+            if len(line) == 0:
+                break
+            matrix = np.matrix(line)
+            cube.append(matrix)
+            i += 1
+        return np.array(cube)
 
+    def create_complete_cube(self, exposure_names, exposure_white_names, new_cube_name='New_Cube.fits',
+                             fitsname_stat='new_combined_cube_stat.fits',
+                             fitsname_data='new_combined_cube.fits', fitsname_white='new_combined_white.fits',
+                             new_pixel_scale=0.2 * u.arcsec, xoffset_list=[], yoffset_list=[], clobber=True,
+                             vignetting_borders=[]):
+        import gc
+        gc.enable()
+        self.create_combined_white(exposure_white_names, fitsname=fitsname_white, xoffset_list=xoffset_list,
+                                   yoffset_list=yoffset_list, clobber=clobber, new_pixel_scale=new_pixel_scale,
+                                   vignetting_borders=vignetting_borders)
+        self.create_combined_cube(exposure_names, fitsname=fitsname_data, kind='ave', stat=False,
+                                  cubetxt='data_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
+                                  clobber=clobber, new_pixel_scale=new_pixel_scale,
+                                  vignetting_borders=vignetting_borders)
+        self.create_combined_cube(exposure_names, fitsname=fitsname_stat, kind='stat', stat=True,
+                                  cubetxt='stat_cube.dat', xoffset_list=xoffset_list, yoffset_list=yoffset_list,
+                                  clobber=clobber, new_pixel_scale=new_pixel_scale,
+                                  vignetting_borders=vignetting_borders)
 
-
+        hdulist_stat = fits.open(fitsname_stat)
+        hdulist_data = fits.open(fitsname_data)
+        new_hdulist = hdulist_data
+        new_hdulist[2] = hdulist_stat[2]
+        new_hdulist.writeto(new_cube_name, clobber=True)
 
     def region_from_mask(self, mask):
         """
@@ -447,9 +647,225 @@ class MuseCube:
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
         return spectrum
 
+    def create_combined_white(self, exposure_white_names, kind='ave', fitsname='new_combined_white.fits',
+                              xoffset_list=[], yoffset_list=[], clobber=True,
+                              new_pixel_scale=0.2 * u.arcsec, vignetting_borders=[]):
+        """
+        Function used to create a new white image from a list of different white images
+        :param exposure_white_names:
+        :param kind:
+        :param fitsname:
+        :param xoffset_list:
+        :param yoffset_list:
+        :param clobber:
+        :param new_pixel_scale:
+        :param vignetting_borders:
+        :return:
+        """
+        if clobber:
+            os.system('rm ' + fitsname)
+        combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(
+            exposure_names=exposure_white_names, wavelength=0, xoffset_list=xoffset_list,
+            yoffset_list=yoffset_list, kind=kind, new_pixel_scale=new_pixel_scale,
+            white=True, vignetting_borders=vignetting_borders)
+        combined_matrix = np.array(combined_matrix)
+        self.__save2fitsimage(fitsname, combined_matrix, type='white', stat=False, edit_header=[values_list])
+        print 'New white image saved in ' + fitsname
 
+    def create_combined_cube(self, exposure_names, kind='ave', fitsname='new_combined_cube.fits', cubetxt='cube.dat',
+                             xoffset_list=[], yoffset_list=[], clobber=True, new_pixel_scale=0.2 * u.arcsec,
+                             stat=False, vignetting_borders=[]):
+        """
+        Function used to create a new combined cube from a list of diferent cubes
+        :param exposure_names:
+        :param kind:
+        :param fitsname:
+        :param cubetxt:
+        :param xoffset_list:
+        :param yoffset_list:
+        :param clobber:
+        :param new_pixel_scale:
+        :param stat:
+        :param vignetting_borders:
+        :return:
+        """
+        import gc
+        gc.enable()
+        wave = self.create_wavelength_array()
+        if clobber:
+            os.system('rm ' + fitsname)
+            os.system('rm ' + cubetxt)
+        # wave = np.array([4800,4801.25,4802.5,5800,6000,6500,7000,8000,8500,9000])
+        # wave = np.array([4750,4800])
+        for w in wave:
+            print 'wavelength ' + str(w) + ' of ' + str(max(wave))
+            combined_matrix, interpolated_fluxes, values_list = self.combine_not_aligned(exposure_names=exposure_names,
+                                                                                         wavelength=w,
+                                                                                         xoffset_list=xoffset_list,
+                                                                                         yoffset_list=yoffset_list,
+                                                                                         kind=kind,
+                                                                                         new_pixel_scale=new_pixel_scale,
+                                                                                         white=False, stat=stat,
+                                                                                         vignetting_borders=vignetting_borders)
+            matrix_line = self.__matrix2line(combined_matrix)
+            self.__line2file(matrix_line, cubetxt)
 
+        new_cube = self.__filelines2cube(cubetxt)
+        if stat:
+            self.__save2fitsimage(fitsname, new_cube, type='cube', stat=stat,
+                                  edit_header=[values_list, ['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'],
+                                               2])
+        else:
+            self.__save2fitsimage(fitsname, new_cube, type='cube', stat=stat, edit_header=[values_list])
+        print 'New cube saved in ' + fitsname
 
+    def combine_not_aligned(self, exposure_names, wavelength, xoffset_list=[], yoffset_list=[],
+                            new_pixel_scale=0.2 * u.arcsec, kind='ave', white=False, stat=False, vignetting_borders=[]):
+        master_header = fits.open(self.cube)[1].header
+        d_ra = master_header['CD1_1']
+        d_dec = master_header['CD2_2']
+        if d_ra == 0. or d_dec == 0.:
+            raise ValueError('CD1_1 or CD2_2 equals 0, not valid')
+
+        if white == False:
+            k = self.__find_wavelength_index(wavelength)
+        ra_min_exposures = []
+        ra_max_exposures = []
+        dec_min_exposures = []
+        dec_max_exposures = []
+        for exposure in exposure_names:
+            ra_range, dec_range = self.min_max_ra_dec(exposure, white=white)
+            ra_min_exposures.append(ra_range[0])
+            ra_max_exposures.append(ra_range[1])
+            dec_min_exposures.append(dec_range[0])
+            dec_max_exposures.append(dec_range[1])
+        ra_min_all = min(ra_min_exposures)
+        ra_max_all = max(ra_max_exposures)
+        dec_min_all = min(dec_min_exposures)
+        dec_max_all = max(dec_max_exposures)
+
+        pixel_size_deg = new_pixel_scale.to('deg').value
+
+        ra_array = np.arange(ra_max_all, ra_min_all, -1. * pixel_size_deg)
+
+        dec_array = np.arange(dec_min_all, dec_max_all, pixel_size_deg)
+
+        if d_ra > 0.:
+            ra_array = np.arange(ra_min_all, ra_max_all, pixel_size_deg)
+        if d_dec < 0:
+            dec_array = np.arange(dec_max_all, dec_min_all, -1. * pixel_size_deg)
+
+        interpolated_fluxes = []
+        cx = 0
+        cy = 0
+        count_vig = 0
+
+        for exposure in exposure_names:
+            hdulist = fits.open(exposure)
+            if stat:
+                data = hdulist[2].data
+            else:
+                data = hdulist[1].data
+            if white:
+                n1 = len(data)
+                n2 = len(data[0])
+            else:
+                n1 = len(data[0])
+                n2 = len(data[0][0])
+
+            ra_limits, dec_limits = self.min_max_ra_dec(exposure, white=white)
+
+            ra_center = (ra_limits[1] + ra_limits[0]) / 2.
+            dec_center = (dec_limits[1] + dec_limits[0]) / 2.
+
+            n2_half = n2 / 2
+            n1_half = n1 / 2
+            pixel_size_deg_native = self.pixelsize.to('deg').value
+            if n2 % 2 == 0:
+                ra = np.linspace(ra_center + n2_half * pixel_size_deg_native,
+                                 ra_center - (n2_half - 1) * pixel_size_deg_native, n2)
+            if n2 % 2 == 1:
+                ra = np.linspace(ra_center + n2_half * pixel_size_deg_native,
+                                 ra_center - n2_half * pixel_size_deg_native, n2)
+            if n1 % 2 == 0:
+                dec = np.linspace(dec_center - (n1_half - 1) * pixel_size_deg_native,
+                                  dec_center + n1_half * pixel_size_deg_native,
+                                  n1)
+            if n1 % 2 == 1:
+                dec = np.linspace(dec_center - n1_half * pixel_size_deg_native,
+                                  dec_center + n1_half * pixel_size_deg_native, n1)
+
+            if d_ra > 0:
+                if n2 % 2 == 0:
+                    ra = np.linspace(ra_center - n2_half * pixel_size_deg_native,
+                                     ra_center + (n2_half - 1) * pixel_size_deg_native, n2)
+                if n2 % 2 == 1:
+                    ra = np.linspace(ra_center - n2_half * pixel_size_deg_native,
+                                     ra_center + n2_half * pixel_size_deg_native, n2)
+            if d_dec < 0:
+                if n1 % 2 == 0:
+                    dec = np.linspace(dec_center + (n1_half - 1) * pixel_size_deg_native,
+                                      dec_center - n1_half * pixel_size_deg_native,
+                                      n1)
+                if n1 % 2 == 1:
+                    dec = np.linspace(dec_center + n1_half * pixel_size_deg_native,
+                                      dec_center - n1_half * pixel_size_deg_native, n1)
+
+            if len(xoffset_list) == len(exposure_names):
+                ra = ra + xoffset_list[cx] * pixel_size_deg_native
+                cx += 1
+            if len(yoffset_list) == len(exposure_names):
+                dec = dec + yoffset_list[cy] * pixel_size_deg_native
+                cy += 1
+
+            if white:
+                data_matrix = data
+            else:
+                data_matrix = data[k]
+
+            if len(vignetting_borders) == len(exposure_names):
+                npixel_x = vignetting_borders[count_vig][0]
+                npixel_y = vignetting_borders[count_vig][1]
+                data_vignetted = self.__vignetting_matrix(data_matrix, npixel_x=npixel_x, npixel_y=npixel_y)
+                count_vig += 1
+                data_matrix = data_vignetted
+
+            data_aux = np.where(np.isnan(data_matrix), -1, data_matrix)
+
+            data_aux_masked = ma.masked_equal(data_aux, -1)
+            interpolator = interpolate.interp2d(ra, dec, data_aux_masked, bounds_error=False, fill_value=np.nan)
+            flux_new = interpolator(ra_array, dec_array)
+            flux_new_aux = np.where(flux_new < 0, np.nan, flux_new)
+            flux_new2 = np.zeros_like(flux_new_aux)
+            m1 = len(flux_new_aux)
+            m2 = len(flux_new_aux[0])
+            if d_ra < 0. and d_dec > 0.:
+                for i in xrange(m1):
+                    for j in xrange(m2):
+                        flux_new2[i][j] = flux_new_aux[i][m2 - 1 - j]
+            elif d_dec < 0 and d_ra > 0.:
+                for i in xrange(m1):
+                    for j in xrange(m2):
+                        flux_new2[i][j] = flux_new_aux[m1 - 1 - i][j]
+            elif d_dec < 0. and d_ra < 0.:
+                for i in xrange(m1):
+                    for j in xrange(m2):
+                        flux_new2[i][j] = flux_new_aux[m1 - 1 - i][m2 - 1 - j]
+
+            interpolated_fluxes.append(flux_new2)
+            # import pdb; pdb.set_trace()
+        n_ra = len(ra_array)
+        n_dec = len(dec_array)
+        matrix_combined = self.__calculate_combined_matrix(interpolated_fluxes, kind=kind)
+        delta_ra = -1. * pixel_size_deg
+        delta_dec = pixel_size_deg
+        central_ra = ra_array[n_ra / 2]
+        central_dec = dec_array[n_dec / 2]
+        central_j = n_ra / 2.
+        central_i = n_dec / 2.
+
+        data_to_header = [central_j, central_i, delta_ra, delta_dec, central_ra, central_dec]
+        return matrix_combined, interpolated_fluxes, data_to_header
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=16):
         self.clean_canvas()
@@ -457,7 +873,7 @@ class MuseCube:
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
-        theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))*-0.0174533
+        theta = self.get_from_table(sextractor_filename, 'THETA_IMAGE')*-0.0174533
         flags = self.get_from_table(sextractor_filename, 'FLAGS')
         id = self.get_from_table(sextractor_filename, 'NUMBER')
         n = len(x_pix)
@@ -472,7 +888,7 @@ class MuseCube:
                 color = 'Blue'
 
             self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color, coord_system='pix')
-            plt.text(x_pix[i], y_pix[i], id[i], color='White')
+            plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
@@ -513,13 +929,87 @@ class MuseCube:
                                                                                 redmonster_format=False, n_id=id[i])
                     spectrum.write_to_fits(name)
 
+    def __calculate_combined_matrix(self, interpolated_fluxes, kind='ave'):
+        '''
+
+        :param interpolated_fluxes: array[]
+                                    array of matrix, each matrix contain the flux of an exposure at a given wavelength
+               kind: string
+                     default = 'ave', possible values = 'std, 'ave','sum','stat'. Kind of combination of the input matrix in each point
+        :return:
+        '''
+        matrix_combined = np.zeros_like(interpolated_fluxes[0])
+        n1 = len(matrix_combined)
+        n2 = len(matrix_combined[0])
+        for i in xrange(n1):
+            for j in xrange(n2):
+                aux_array = []
+                for matrix in interpolated_fluxes:
+                    aux_array.append(matrix[i][j])
+                if kind == 'std':
+                    matrix_combined[i][j] = np.nanstd(aux_array)
+                    if np.isnan(matrix_combined[i][j]):
+                        matrix_combined[i][j] = 0
+                elif kind == 'ave':
+                    matrix_combined[i][j] = np.nanmean(aux_array)
+                    if np.isnan(matrix_combined[i][j]):
+                        matrix_combined[i][j] = 0
+                elif kind == 'sum':
+                    matrix_combined[i][j] = np.nansum(aux_array)
+                elif kind == 'stat':
+                    aux_array = np.array(aux_array)
+                    matrix_combined[i][j] = np.sqrt(np.nansum(aux_array ** 2))
+                else:
+                    raise ValueError('kind of combination parameter given is not valid, please try std,ave,sum or stat')
+        return matrix_combined
 
     def __read_files(self, input):
         path = input
         files = glob.glob(path)
         return files
 
+    def calculate_error(self, exposures_names, wavelength, fitsname='errors.fits', n_figure=2):
+        """
+        From different exposures of a field, this function computes the error, by calculating the
+        std of all exposures, in all the field, for a given wavelength. The exposures must be aligned.
+        :param exposures_names: array[]
+                                array containing the names of the differents exposures in each position
+        :param wavelength: float
+                           the wavelength in which the error will be calculated
+        :param fitsname: string, default = 'errors.fits'
+                         name of the fits file where the error image will be saved
+        :param n_figure: int, d efault = 2
+                         number of the figure where the image will be displayed
+        :return:
+        """
+        k = self.__find_wavelength_index(wavelength)
 
+        data_matrix_array = []
+        for exposure in exposures_names:
+            hdulist = fits.open(exposure)
+            data_exposure = hdulist[1].data
+            print data_exposure.shape
+            Nw = len(data_exposure)
+            Nx = len(data_exposure[0])
+            Ny = len(data_exposure[0][0])
+            matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
+            for i in xrange(0, Nx):
+                for j in xrange(0, Ny):
+                    matrix[i][j] = data_exposure[k][i][j]
+            data_matrix_array.append(matrix)
+        matrix_errors = np.array([[0. for y in range(Ny)] for x in range(Nx)])
+        for i in xrange(0, Nx):
+            for j in xrange(0, Ny):
+                matrix_elements = []
+                for matrix in data_matrix_array:
+                    matrix_elements.append(matrix[i][j])
+                error = np.std(matrix_elements)
+                matrix_errors[i][j] = error
+        hdulist = fits.HDUList.fromfile(self.white)
+        hdulist[1].data = matrix_errors
+        hdulist.writeto(fitsname, clobber=True)
+        errors = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+        errors.show_grayscale()
 
     def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='image_video.avi',
                                       erase=True):
@@ -548,9 +1038,9 @@ class MuseCube:
         images_names = []
         fitsnames = []
         for i in xrange(initial_wavelength, final_wavelength):
-            wavelength_range = (i, i + width)
+            wavelength_range = [i, i + width]
             filename = 'colapsed_image_' + str(i) + '_'
-            im=self.get_image(wv_inpu=wavelength_range,fitsname=filename+'.fits',type='sum',save='True')
+            self.collapse_cube([wavelength_range], fitsname=filename + '.fits', n_figure=15)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
@@ -570,97 +1060,121 @@ class MuseCube:
                 os.system(command_png)
         return video
 
-
-
-    def find_wv_inds(self, wv_array):
+    def collapse_cube(self, wavelength, fitsname='new_colapsed_cube.fits', n_figure=2, continuum=False):
         """
+        Function that creates a new image, by collapsing some wavelengths of the cube
 
-        :param wv_array
-        :return: Returns the indices in the cube, that are closest to wv_array
-        """
-        inds = [np.argmin(np.fabs(wv_ii - self.wavelength)) for wv_ii in wv_array]
-        inds = np.unique(inds)
-        return inds
+        :param wavelength: array[]
+                           wavelength contain the information of the wavelength that will be collapsed
+                           This array can contain either individual values, which represents the wavelengths
+                           that will be collapsed, or arrays of length = 2, which represents wavelengths ranges that will be
+                           collapsed
+        :param fitsname: string, default = 'new_collapsed_cube.fits'
+                         name of the fits image that will be created
+        :param n_figure: int, default = 2
+                         number of the figure that will display the new image created
+        :param continuum: boolean, default = false.
+                          If True, the continuum will be substracted around the wavelengths selected, asuming ranges and not discrete values in wavelength
 
-
-    def sub_cube(self, wv_input):
-        """
-        Returns a cube-like object with fewer wavelength elements
-
-        :param wv_input: tuple or np.array
-        :return: XXXX
-        """
-        if isinstance(wv_input, tuple):
-            if len(wv_input) != 2:
-                raise ValueError("If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
-            wv_inds = self.find_wv_inds(wv_input)
-            ind_min = np.min(wv_inds)
-            ind_max = np.max(wv_inds)
-            sub_cube = self.cube[ind_min:ind_max,:,:]
-        else: #assuming array-like for wv_input
-            wv_inds = self.find_wv_inds(wv_input)
-            sub_cube = self.cube[wv_inds,:,:]
-        return sub_cube
-
-
-    def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2,save=False):
-        """
-        Function used to colapse a determined wavelength range in a sum or a median type
-        :param wv_input: tuple or list
-                         can be a list of wavelengths or a tuple that will represent a  range
-        :param fitsname: str
-                         The name of the fits that will contain the new image
-        :param type: str, possible values: 'sum' or 'median'
-                     The type of combination that will be done
-        :param n_figure: int
-                         Figure to display the new image if it is saved
         :return:
         """
-        sub_cube = self.sub_cube(wv_input)
-        if type=='sum':
-            matrix_flat = np.sum(sub_cube, axis=0)
-        elif type=='median':
-            matrix_flat = np.median(sub_cube, axis=0)
+        if type(wavelength[0]) == int or type(wavelength[0]) == float or type(wavelength[0]) == np.float64:
+            interval = 0
+        elif type(wavelength[0]) == list or type(wavelength[0]) == np.ndarray:
+            interval = 1
         else:
-            raise ValueError('Unknown type, please chose sum or median')
+            print 'Type found: '
+            print type(wavelength[0])
+            raise ValueError(
+                'Unkown format for wavelength, please use only int and float, or 1-D arrays with 2 elements')
 
-        if save:
-            self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
-        return matrix_flat
-    def get_continuum_range(self,range):
-        """
+        wave = self.create_wavelength_array()
+        n_wave = len(wave)
+        wave = list(wave)
+        wave_index = []
+        if continuum:
+            left_box_all = []
+            right_box_all = []
+        n = len(wavelength)
+        dw = wave[1] - wave[0]
+        if interval == 0:
+            for i in xrange(0, n):
+                if wavelength[i] < wave[0] or wavelength[i] > wave[len(wave) - 1]:
+                    print str(wavelength[i]) + ' is not a valid wavelength value'
+                else:
+                    index = int(self.closest_element(wave, wavelength[i]))
+                    wave_index.append(index)
+        if interval == 1:
+            for i in xrange(0, n):
+                w_up = wavelength[i][1]
+                w_low = wavelength[i][0]
+                w_aux = w_low
+                if w_low <= wave[0]:
+                    print str(w_low) + ' es menor al valor minimo posible ' + str(
+                        wave[0])
+                    continue
+                if w_up >= wave[len(wave) - 1]:
+                    print str(w_up) + ' es mayor al valor maximo posible ' + str(
+                        wave[len(wave) - 1])
+                    continue
 
-        :param range: tuple
-                      contain the range of a emission line. Continuum will be computed around this range
-        :return: cont_range_inf: The continuum range at the left of the Emission line, same length than input range
-                 cont_range_sup: The continuum range at the right of the Emission line, same length than input range
-                 n             : The number of element in the wavelength space inside the ranges
-        """
-        w_inf=range[0]
-        w_sup=range[1]
-        wv_inds = self.find_wv_inds(range)
-        n=len(wv_inds)
-        wv_inds_sup=wv_inds+n
-        wv_inds_inf = wv_inds-n
-        cont_range_inf=(wv_inds_inf[0],wv_inds_inf[n-1])
-        cont_range_sup=(wv_inds_sup[0],wv_inds_sup[n-1])
-        return cont_range_inf,cont_range_sup,n
+                w_aux = w_low
+                interval_index = []
+                while w_aux < w_up:
+                    index = int(self.closest_element(wave, w_aux))
+                    interval_index.append(index)
+                    wave_index.append(index)
+                    w_aux += dw
+                if continuum:
+                    n_interval = len(interval_index)
+                    index_low = self.closest_element(wave, w_low)
+                    index_up = self.closest_element(wave, w_up)
+                    left_box = np.arange(index_low - n_interval, index_low, 1)
+                    right_box = np.arange(index_up, index_up + n_interval, 1)
+                    for i in xrange(n_interval):
+                        left_box_all.append(left_box[i])
+                        right_box_all.append(right_box[i])
+        if continuum:
+            box_all = []
+            for element in left_box_all:
+                if element < n_wave:
+                    box_all.append(element)
+            for element in right_box_all:
+                if element < n_wave:
+                    box_all.append(element)
 
-    def get_image_wv_ranges(self,wv_ranges,substract_cont=True,fitsname='new_collapsed_cube.fits',save=False,n_figure=3):
-        image_stacker=np.zeros_like(self.white_data)
-        for r in wv_ranges:
-            image=self.get_image(r)
-            cont_range_inf,cont_range_sup,n=self.get_continuum_range(r)
-            cont_inf_image=self.get_image(cont_range_inf,type='median')
-            cont_sup_image=self.get_image(cont_range_sup,type='median')
-            cont_image=n*(cont_inf_image+cont_sup_image)/2.
-            if substract_cont:
-                image=image-cont_image
-            image_stacker=image_stacker+image.data
+        Nw = len(self.data)
+        Nx = len(self.data[0])
+        Ny = len(self.data[0][0])
+        Matrix = np.array([[0. for y in range(Ny)] for x in range(Nx)])
+        image_stacker = Matrix
+        for count, k in enumerate(wave_index):
+            print 'iteration ' + str(count) + ' of ' + str(len(wave_index))
+            for i in xrange(0, Nx):
+                for j in xrange(0, Ny):
+                    if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
+                        Matrix[i][j] = 0
+                    else:
+                        Matrix[i][j] = self.data[k][i][j]
+            image_stacker = image_stacker + Matrix
+        if continuum:
+            print 'Substracting continuum....'
+            continuum_stacker = np.array([[0. for y in range(Ny)] for x in range(Nx)])
+            for count, k in enumerate(box_all):
+                print 'iteration ' + str(count) + ' of ' + str(len(box_all))
+                for i in xrange(0, Nx):
+                    for j in xrange(0, Ny):
+                        if np.isnan(self.data[k][i][j]) or self.data[k][i][j] < 0:
+                            Matrix[i][j] = 0
+                        else:
+                            Matrix[i][j] = self.data[k][i][j]
+                continuum_stacker = continuum_stacker + Matrix / 2.
 
-        if save:
-            self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
-        return image_stacker
+        if continuum:
+            image_stacker = image_stacker - continuum_stacker
+        image_stacker = np.array(image_stacker)
+        self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
+        print 'Imaged writed in ' + fitsname
 
     def normalize_sky(self, flux_sky, normalization_factor):
         """
@@ -703,8 +1217,7 @@ class MuseCube:
         :return:
         """
         wave = self.create_wavelength_array()
-        n=len(wave)
-        self.get_image((wave[0],wave[n-1]),fitsname=new_white_fitsname,save=True)
+        self.collapse_cube(wavelength=wave, fitsname=new_white_fitsname)
 
     def spec_to_redmonster_format(self, spec, fitsname, n_id=-1, mag=[0, 0]):
         """
@@ -743,29 +1256,19 @@ class MuseCube:
         hdulist_new = fits.HDUList([hdu1, hdu2])
         hdulist_new.writeto(fitsname, clobber=True)
 
-    def calculate_mag(self, wavelength, flux, _filter, zeropoint_flux=9.275222661263278e-07):
+    def calculate_mag(self, wavelength, flux, filter, zeropoint_mag=-11.906003658441422):
         dw = np.diff(wavelength)
-        new_flux = flux * _filter
+        new_flux = flux * filter
         f_mean = (new_flux[:-1] + new_flux[1:]) * 0.5
         total_flux = np.sum(f_mean * dw) * self.flux_units.value
-        mag = -2.5 * np.log10(total_flux / zeropoint_flux)
+        mag = -2.5 * np.log10(total_flux) + zeropoint_mag
         return mag
 
-    def get_filter(self, wavelength_spec, _filter='r'):
-       
-       wave_u = np.arange(2980,4155,25)
-        
-       wave_g = np.arange(3630,5855,25)
-       
-       wave_r = np.arange(5830,7255,25)
-       
-       wave_i = np.arange(6430,8655,25)
-    
-       wave_z = np.arange(7730,11255,25)
-       
-       
-
-        
+    def get_filter(self, wavelength_spec, filter='r'):
+        wave_u = np.array(
+            [2980, 3005, 3030, 3055, 3080, 3105, 3130, 3155, 3180, 3205, 3230, 3255, 3280, 3305, 3330, 3355, 3380, 3405,
+             3430, 3455, 3480, 3505, 3530, 3555, 3580, 3605, 3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855,
+             3880, 3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130])
         flux_u = np.array(
             [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
              9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
@@ -775,7 +1278,16 @@ class MuseCube:
              1.02400000e-01, 9.66000000e-02, 8.87000000e-02, 7.87000000e-02, 6.72000000e-02, 5.49000000e-02,
              4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
              1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-       
+        wave_g = np.array(
+            [3630, 3655, 3680, 3705, 3730, 3755, 3780, 3805, 3830, 3855, 3880,
+             3905, 3930, 3955, 3980, 4005, 4030, 4055, 4080, 4105, 4130, 4155,
+             4180, 4205, 4230, 4255, 4280, 4305, 4330, 4355, 4380, 4405, 4430,
+             4455, 4480, 4505, 4530, 4555, 4580, 4605, 4630, 4655, 4680, 4705,
+             4730, 4755, 4780, 4805, 4830, 4855, 4880, 4905, 4930, 4955, 4980,
+             5005, 5030, 5055, 5080, 5105, 5130, 5155, 5180, 5205, 5230, 5255,
+             5280, 5305, 5330, 5355, 5380, 5405, 5430, 5455, 5480, 5505, 5530,
+             5555, 5580, 5605, 5630, 5655, 5680, 5705, 5730, 5755, 5780, 5805,
+             5830])
         flux_g = np.array(
             [0.00000000e+00, 3.00000000e-04, 8.00000000e-04,
              1.30000000e-03, 1.90000000e-03, 2.40000000e-03,
@@ -807,7 +1319,14 @@ class MuseCube:
              1.00000000e-03, 9.00000000e-04, 8.00000000e-04,
              6.00000000e-04, 5.00000000e-04, 3.00000000e-04,
              1.00000000e-04, 0.00000000e+00])
-            
+        wave_r = np.array(
+            [5380, 5405, 5430, 5455, 5480, 5505, 5530, 5555, 5580, 5605, 5630,
+             5655, 5680, 5705, 5730, 5755, 5780, 5805, 5830, 5855, 5880, 5905,
+             5930, 5955, 5980, 6005, 6030, 6055, 6080, 6105, 6130, 6155, 6180,
+             6205, 6230, 6255, 6280, 6305, 6330, 6355, 6380, 6405, 6430, 6455,
+             6480, 6505, 6530, 6555, 6580, 6605, 6630, 6655, 6680, 6705, 6730,
+             6755, 6780, 6805, 6830, 6855, 6880, 6905, 6930, 6955, 6980, 7005,
+             7030, 7055, 7080, 7105, 7130, 7155, 7180, 7205, 7230])
         flux_r = np.array(
             [0.00000000e+00, 1.40000000e-03, 9.90000000e-03,
              2.60000000e-02, 4.98000000e-02, 8.09000000e-02,
@@ -834,8 +1353,17 @@ class MuseCube:
              2.80000000e-03, 2.00000000e-03, 1.60000000e-03,
              1.30000000e-03, 1.00000000e-03, 7.00000000e-04,
              4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-       
-       flux_i = np.array(
+        wave_i = np.array(
+            [6430, 6455, 6480, 6505, 6530, 6555, 6580, 6605, 6630, 6655, 6680,
+             6705, 6730, 6755, 6780, 6805, 6830, 6855, 6880, 6905, 6930, 6955,
+             6980, 7005, 7030, 7055, 7080, 7105, 7130, 7155, 7180, 7205, 7230,
+             7255, 7280, 7305, 7330, 7355, 7380, 7405, 7430, 7455, 7480, 7505,
+             7530, 7555, 7580, 7605, 7630, 7655, 7680, 7705, 7730, 7755, 7780,
+             7805, 7830, 7855, 7880, 7905, 7930, 7955, 7980, 8005, 8030, 8055,
+             8080, 8105, 8130, 8155, 8180, 8205, 8230, 8255, 8280, 8305, 8330,
+             8355, 8380, 8405, 8430, 8455, 8480, 8505, 8530, 8555, 8580, 8605,
+             8630])
+        flux_i = np.array(
             [0.00000000e+00, 1.00000000e-04, 3.00000000e-04,
              4.00000000e-04, 4.00000000e-04, 4.00000000e-04,
              3.00000000e-04, 4.00000000e-04, 9.00000000e-04,
@@ -866,8 +1394,23 @@ class MuseCube:
              1.40000000e-03, 1.10000000e-03, 1.00000000e-03,
              1.00000000e-03, 9.00000000e-04, 6.00000000e-04,
              3.00000000e-04, 0.00000000e+00])
-        
-            
+        wave_z = np.array(
+            [7730, 7755, 7780, 7805, 7830, 7855, 7880, 7905, 7930,
+             7955, 7980, 8005, 8030, 8055, 8080, 8105, 8130, 8155,
+             8180, 8205, 8230, 8255, 8280, 8305, 8330, 8355, 8380,
+             8405, 8430, 8455, 8480, 8505, 8530, 8555, 8580, 8605,
+             8630, 8655, 8680, 8705, 8730, 8755, 8780, 8805, 8830,
+             8855, 8880, 8905, 8930, 8955, 8980, 9005, 9030, 9055,
+             9080, 9105, 9130, 9155, 9180, 9205, 9230, 9255, 9280,
+             9305, 9330, 9355, 9380, 9405, 9430, 9455, 9480, 9505,
+             9530, 9555, 9580, 9605, 9630, 9655, 9680, 9705, 9730,
+             9755, 9780, 9805, 9830, 9855, 9880, 9905, 9930, 9955,
+             9980, 10005, 10030, 10055, 10080, 10105, 10130, 10155, 10180,
+             10205, 10230, 10255, 10280, 10305, 10330, 10355, 10380, 10405,
+             10430, 10455, 10480, 10505, 10530, 10555, 10580, 10605, 10630,
+             10655, 10680, 10705, 10730, 10755, 10780, 10805, 10830, 10855,
+             10880, 10905, 10930, 10955, 10980, 11005, 11030, 11055, 11080,
+             11105, 11130, 11155, 11180, 11205, 11230])
         flux_z = np.array(
             [0., 0., 0.0001, 0.0001, 0.0001, 0.0002, 0.0002,
              0.0003, 0.0005, 0.0007, 0.0011, 0.0017, 0.0027, 0.004,
@@ -889,24 +1432,23 @@ class MuseCube:
              0.0012, 0.0011, 0.001, 0.0009, 0.0008, 0.0008, 0.0007,
              0.0006, 0.0006, 0.0006, 0.0005, 0.0005, 0.0004, 0.0004,
              0.0003, 0.0003, 0.0002, 0.0002, 0.0001, 0.0001, 0., 0.])
-        if _filter == 'u':
+        if filter == 'u':
             wave_filter = wave_u
             flux_filter = flux_u
-        if _filter == 'g':
+        if filter == 'g':
             wave_filter = wave_g
             flux_filter = flux_g
-        if _filter == 'r':
+        if filter == 'r':
             wave_filter = wave_r
             flux_filter = flux_r
-        if _filter == 'i':
+        if filter == 'i':
             wave_filter = wave_i
             flux_filter = flux_i
-        if _filter == 'z':
+        if filter == 'z':
             wave_filter = wave_z
             flux_filter = flux_z
-        #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confuciones.
-       
-       new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
+
+        new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
         interpolator = interpolate.interp1d(wave_filter, flux_filter)
         new_filter_flux = interpolator(new_filter_wavelength)
 
@@ -1048,8 +1590,8 @@ class MuseCube:
         :return:
         """
         plt.close(self.n)
-        self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
+        self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
 
     def create_table(self, input_file):
         """
@@ -1088,7 +1630,7 @@ class MuseCube:
                          the observational seeing of the image defined as the FWHM of the gaussian
         """
         from astropy.modeling import models, fitting
-        hdulist = fits.open(self.filename_white)
+        hdulist = fits.open(self.white)
         data = hdulist[1].data
         w, h = 2 * halfsize + 1, 2 * halfsize + 1
         matrix_data = [[0 for x in range(w)] for y in range(h)]
@@ -1120,6 +1662,28 @@ class MuseCube:
         print 'FWHM={:.2f}'.format(seeing)
         return seeing
 
+    def write_coords(self, filename):
+        """
+
+        :param self:
+        :param filename: string
+                         Name of the file that will contain the coordinates
+        :param Nx:int
+                  Number of pixels of the image in the x-axis
+        :param Ny:int
+                  Number of pixels of the image in the y-axis
+        :return:
+        """
+        Nx = len(self.data[0])
+        Ny = len(self.data[0][0])
+        f = open(filename, 'w')
+        for i in xrange(0, Nx):
+            for j in xrange(0, Ny):
+                x_world, y_world = self.gc.pixel2world(np.array([i]), np.array([j]))
+                c = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+                f.write(str(i) + '\t' + str(j) + '\t' + str(x_world[0]) + '\t' + str(y_world[0]) + '\t' + str(
+                    c.to_string('hmsdms')) + '\n')
+        f.close()
 
     def is_in_ring(self, x_center, y_center, radius_1, radius_2, x, y):
         """
@@ -1419,10 +1983,10 @@ class MuseCube:
         :param self:
         :return:
         """
-        input = self.filename
+        input = self.cube
         hdulist = fits.open(input)
         hdulist.info()
-        self.cube.data.shape
+        self.data.shape
         print 'X,Y,Lambda'
 
     def get_spectrum_point_aplpy(self, x, y, coord_system, stat=False):
@@ -1451,14 +2015,14 @@ class MuseCube:
             y_pix = y
 
         # DATA.shape ##Z,X,Y
-        nw = len(self.cube.data)
-        ny = len(self.cube.data[0])
-        nx = len(self.cube.data[0][0])
+        nw = len(self.data)
+        ny = len(self.data[0])
+        nx = len(self.data[0][0])
         wave = self.create_wavelength_array()
         spec = []
-        data = self.cube.data
+        data = self.data
         if stat:
-            data = self.stat.data
+            data = self.stat
         for i in xrange(0, len(wave)):
             # print x_pix,y_pix
             # print len(self.data[0])
@@ -1485,7 +2049,7 @@ class MuseCube:
         :return: wave,combined_spec: ndarray
                  wavelength and flux array
         """
-        input = self.filename
+        input = self.cube
         # print x_center
         Region = self.define_ring_region(x_center, y_center, radius_1, radius_2, coord_system)
         N = len(Region)
@@ -1558,14 +2122,12 @@ class MuseCube:
 
         """
 
-
         input = self.cube
         if coord_system == 'wcs':
             if type(radius) == int or type(radius) == float:
                 x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
             elif len(radius) == 3:
                 x_center, y_center, radius = self.elipse_paramters_to_pixel(x_center, y_center, radius)
-
 
         if mask == False:
 
@@ -1638,7 +2200,7 @@ class MuseCube:
 
 
          """
-        input = self.filename
+        input = self.cube
         plt.figure(1)
         self.draw_circle(x_center, y_center, radius, color, coord_system)
         w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=debug)
@@ -1747,10 +2309,9 @@ class MuseCube:
         images_names = []
         fitsnames = []
         for z in z_array:
-            print 'z = '+str(z)
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
-            image=self.get_image_wv_ranges(wv_ranges=ranges,fitsname=filename+'.fits',save=True)
+            self.collapse_cube(ranges, fitsname=filename + '.fits', n_figure=15, continuum=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
@@ -1773,14 +2334,14 @@ class MuseCube:
 
     def colapse_emission_lines_image(self, nsigma=2, fitsname='colapsed_emission_image.fits'):
         """
-        Function used to colapse only wavelength bins in which the signal to noise is greater that nsigma value. This will create a new white image
+        Function used to colapse only wavelength bins in which the signal to nouse is greater that nsigma value. This will create a new white image
         :param nsigma: float
                        threshold to signal to noise
         :param fitsname: string
                          name of the new image
         :return:
         """
-        data = self.cube.data
+        data = self.data
         image = data[0]
         n1 = len(image)
         n2 = len(image[0])
