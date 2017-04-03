@@ -868,6 +868,14 @@ class MuseCube:
         return matrix_combined, interpolated_fluxes, data_to_header
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=16):
+        """
+        Function used to plot on the canvas the regions identified by SExtractor
+        :param sextractor_filename: string
+                                    The name of the output file of SExtractor
+        :param flag_threshold: int
+                               All the regions with a SExtractor flag over this number will be ploted in red
+        :return:
+        """
         self.clean_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
@@ -893,6 +901,20 @@ class MuseCube:
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
                               n_figure=2):
+        """
+        Function used to save the spectrum of a set of sources provided by a SExtractor output file
+        :param sextractor_filename: str
+                                    The name of the SExtractor output file
+        :param flag_threshold: int
+                               The maximum value for the SExtractor flag accepted to save an spectrum
+        :param redmonster_format: boolean, default = True
+                                  If True, the spectrum will be saved in a Redmonster redeable format
+        :param sky_method: string, default = none
+                         The method to do the sky substraction
+        :param n_figure: int
+                         The figure number where every spectrum will be displayed
+        :return:
+        """
         x_pix, y_pix, a, b, theta, flags, id = self.plot_sextractor_regions(sextractor_filename=sextractor_filename,
                                                                             flag_threshold=flag_threshold)
         self.clean_canvas()
