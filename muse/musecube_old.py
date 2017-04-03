@@ -1598,6 +1598,8 @@ class MuseCube:
                 hdulist_spec = fits.open(spec_fits_name)
                 hdulist_spec[0].header['ID'] = n_id
                 hdulist_spec.writeto(spec_fits_name + '.fits', clobber=True)
+            else:
+                spectrum.write_to_fits(spec_fits_name)
 
             return spectrum, spec_fits_name
 
