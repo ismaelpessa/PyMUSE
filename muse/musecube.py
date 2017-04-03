@@ -766,7 +766,7 @@ class MuseCube:
        
 
         
-        flux_u = np.array(
+       flux_u = np.array(
             [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
              9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
              5.61000000e-02, 6.34000000e-02, 7.00000000e-02, 7.56000000e-02, 8.03000000e-02, 8.48000000e-02,
@@ -775,8 +775,8 @@ class MuseCube:
              1.02400000e-01, 9.66000000e-02, 8.87000000e-02, 7.87000000e-02, 6.72000000e-02, 5.49000000e-02,
              4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
              1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-       
-        flux_g = np.array(
+
+       flux_g = np.array(
             [0.00000000e+00, 3.00000000e-04, 8.00000000e-04,
              1.30000000e-03, 1.90000000e-03, 2.40000000e-03,
              3.40000000e-03, 5.50000000e-03, 1.03000000e-02,
@@ -808,7 +808,7 @@ class MuseCube:
              6.00000000e-04, 5.00000000e-04, 3.00000000e-04,
              1.00000000e-04, 0.00000000e+00])
             
-        flux_r = np.array(
+       flux_r = np.array(
             [0.00000000e+00, 1.40000000e-03, 9.90000000e-03,
              2.60000000e-02, 4.98000000e-02, 8.09000000e-02,
              1.19000000e-01, 1.63000000e-01, 2.10000000e-01,
@@ -868,7 +868,7 @@ class MuseCube:
              3.00000000e-04, 0.00000000e+00])
         
             
-        flux_z = np.array(
+       flux_z = np.array(
             [0., 0., 0.0001, 0.0001, 0.0001, 0.0002, 0.0002,
              0.0003, 0.0005, 0.0007, 0.0011, 0.0017, 0.0027, 0.004,
              0.0057, 0.0079, 0.0106, 0.0139, 0.0178, 0.0222, 0.0271,
@@ -889,36 +889,36 @@ class MuseCube:
              0.0012, 0.0011, 0.001, 0.0009, 0.0008, 0.0008, 0.0007,
              0.0006, 0.0006, 0.0006, 0.0005, 0.0005, 0.0004, 0.0004,
              0.0003, 0.0003, 0.0002, 0.0002, 0.0001, 0.0001, 0., 0.])
-        if _filter == 'u':
+       if _filter == 'u':
             wave_filter = wave_u
             flux_filter = flux_u
-        if _filter == 'g':
+       if _filter == 'g':
             wave_filter = wave_g
             flux_filter = flux_g
-        if _filter == 'r':
+       if _filter == 'r':
             wave_filter = wave_r
             flux_filter = flux_r
-        if _filter == 'i':
+       if _filter == 'i':
             wave_filter = wave_i
             flux_filter = flux_i
-        if _filter == 'z':
+       if _filter == 'z':
             wave_filter = wave_z
             flux_filter = flux_z
         #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confuciones.
        
        new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
-        interpolator = interpolate.interp1d(wave_filter, flux_filter)
-        new_filter_flux = interpolator(new_filter_wavelength)
+       interpolator = interpolate.interp1d(wave_filter, flux_filter)
+       new_filter_flux = interpolator(new_filter_wavelength)
 
-        final_flux_filter = []
+       final_flux_filter = []
 
-        for j, w in enumerate(wavelength_spec):
+       for j, w in enumerate(wavelength_spec):
             k = self.indexOf(new_filter_wavelength, w)
             if k >= 0:
                 final_flux_filter.append(new_filter_flux[k])
             else:
                 final_flux_filter.append(0.)
-        return np.array(final_flux_filter)
+       return np.array(final_flux_filter)
 
     def overlap_filter(self, wave_filter, wavelength_spec):
         n = len(wave_filter)
