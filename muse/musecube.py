@@ -69,6 +69,16 @@ class MuseCube:
         self.wavelength = self.create_wavelength_array()
 
 
+    def smooth_white(self,npix=2,write_to_disk=True):
+        from scipy import ndimage
+        hdulist=fits.open(self.filename_white)
+        im=hdulist[1].data
+        smooth_im=ndimage.gaussian_filter(im,sigma=npix)
+        if write_to_disk:
+            hdulist[1].data=smooth_im
+            hdulist.writeto('smoothed_white.fits',clobber=True)
+        return smooth_im
+
     def spatial_smooth(self, npix=2, write_to_disk=True):
         from scipy import ndimage
         import copy
@@ -88,7 +98,7 @@ class MuseCube:
             comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
             print(comment)
             prihdr['history'] = comment
-            hdulist.writeto("smoothed.fits", clobber=True)
+            hdulist.writeto("smoothed_cube.fits", clobber=True)
         return cube_new
 
     def get_mini_image(self, center, halfsize=15):
