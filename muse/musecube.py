@@ -11,7 +11,7 @@ import glob
 import os
 import pdb
 from linetools.spectra.xspectrum1d import XSpectrum1D
-
+import pyregion
 
 # spec = XSpectrum1D.from
 
@@ -22,7 +22,7 @@ class MuseCube:
 
     """
 
-    def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
+    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
                  flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom):
         """
         Parameters
@@ -46,15 +46,21 @@ class MuseCube:
         self.n = n_fig
         plt.close(self.n)
         self.filename = filename_cube
-        self.filename_white = filename_white
         self.load_data()
-        self.white_data=fits.open(self.filename_white)[1].data
-        self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
-        self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
+        if filename_white:
+           self.filename_white = filename_white
+           self.white_data=fits.open(self.filename_white)[1].data
+        else:
+           self.filename_white = 'white_from_colapse.fits'
+           self.create_white()
+        
+      #  self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
+     #   self.gc2.show_grayscale()
+    #    self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-
-        plt.close(20)
+        self.data = self.cube.data[0,:,:]
+        
+        #plt.close(20)
 
     def load_data(self):
         hdulist = fits.open(self.filename)
@@ -65,6 +71,8 @@ class MuseCube:
         self.cube.mask = np.isnan(self.cube) | (self.stat <= 0) | np.isnan(self.stat)
         self.stat.mask = self.cube.mask
 
+        self.header = hdulist[1].header
+        self.primary = hdulist[0]
         #wavelength array
         self.wavelength = self.create_wavelength_array()
 
@@ -260,12 +268,13 @@ class MuseCube:
 
     def __save2fitsimage(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2, edit_header=[]):
         if type == 'white':
-            hdulist = fits.HDUList.fromfile(self.filename_white)
-            hdulist[1].data = data_to_save
+            hdulist = fits.HDUList()
+            hdulist.append(self.primary)
+            hdulist.append(fits.ImageHDU(data = data_to_save , header = self.header))
             if len(edit_header) == 0:
                 hdulist.writeto(fitsname, clobber=True)
-                im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
-                im.show_grayscale()
+     #           im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
+                #im.show_grayscale()
             elif len(edit_header) == 1:
                 values_list = edit_header[0]
                 hdulist_edited = self.__edit_header(hdulist, values_list=values_list)
@@ -1862,3 +1871,20 @@ class MuseCube:
         return vid
 
         # Un radio de 4 pixeles es equivalente a un radio de 0.0002 en wcs
+        def get_spec(region):
+            
+            """
+            returns the spectrum associated with a ds9-like region within the
+            image
+            """
+            r = pyregion.parse(region)
+            mask = r.get_mask(self)
+            N = np.count_nonzero(mask)
+            wl = len(self.wavelength)
+            spectro = np.empty((N,wl))
+            for i in range(wl):
+                spectro[:,i] = self.cube[i,:,:][mask]
+
+            spectro_final = spectro.sum(axis=0)
+            return spectro_final
+
