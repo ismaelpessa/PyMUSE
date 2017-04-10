@@ -171,6 +171,7 @@ class MuseCube:
         w_ini = header['CRVAL3']
         N = header['NAXIS3']
         w_fin = w_ini + (N - 1) * dw
+        # w_aux = w_ini + dw*np.arange(0, N) #todo: check whether w_aux and w are the same
         w = np.linspace(w_ini, w_fin, N)
         # print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
         return w
