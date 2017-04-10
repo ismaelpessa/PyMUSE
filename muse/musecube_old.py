@@ -868,6 +868,14 @@ class MuseCube:
         return matrix_combined, interpolated_fluxes, data_to_header
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=16):
+        """
+        Function used to plot on the canvas the regions identified by SExtractor
+        :param sextractor_filename: string
+                                    The name of the output file of SExtractor
+        :param flag_threshold: int
+                               All the regions with a SExtractor flag over this number will be ploted in red
+        :return:
+        """
         self.clean_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
@@ -892,7 +900,21 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
-                              n_figure=2):
+                              n_figure=2,zeropoint_mag=-11.906003658441422):
+        """
+        Function used to save the spectrum of a set of sources provided by a SExtractor output file
+        :param sextractor_filename: str
+                                    The name of the SExtractor output file
+        :param flag_threshold: int
+                               The maximum value for the SExtractor flag accepted to save an spectrum
+        :param redmonster_format: boolean, default = True
+                                  If True, the spectrum will be saved in a Redmonster redeable format
+        :param sky_method: string, default = none
+                         The method to do the sky substraction
+        :param n_figure: int
+                         The figure number where every spectrum will be displayed
+        :return:
+        """
         x_pix, y_pix, a, b, theta, flags, id = self.plot_sextractor_regions(sextractor_filename=sextractor_filename,
                                                                             flag_threshold=flag_threshold)
         self.clean_canvas()
@@ -911,7 +933,7 @@ class MuseCube:
                                                                                     3 * max(int(a[i]), int(b[i]))),
                                                                                 coord_system='pix', n_figure=n_figure,
                                                                                 errors=True, sky_method=sky_method,
-                                                                                redmonster_format=True, n_id=id[i])
+                                                                                redmonster_format=True, n_id=id[i],zeropoint_mag=zeropoint_mag)
         else:
             for i in xrange(n):
                 if flags[i] < flag_threshold:
@@ -926,7 +948,7 @@ class MuseCube:
                                                                                     3 * max(int(a[i]), int(b[i]))),
                                                                                 coord_system='pix', n_figure=n_figure,
                                                                                 errors=True, sky_method=sky_method,
-                                                                                redmonster_format=False, n_id=id[i])
+                                                                                redmonster_format=False, n_id=id[i],zeropoint_mag=zeropoint_mag)
                     spectrum.write_to_fits(name)
 
     def __calculate_combined_matrix(self, interpolated_fluxes, kind='ave'):
@@ -1474,7 +1496,7 @@ class MuseCube:
 
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
                                               coord_system, n_figure=2, errors=True, sky_method='med',
-                                              redmonster_format=True, n_id=-1, filter='r', range=[]):
+                                              redmonster_format=True, n_id=-1, filter='r', range=[],zeropoint_mag=-11.906003658441422):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -1561,7 +1583,7 @@ class MuseCube:
         spec_fits_name = name_from_coord(coords)
         if redmonster_format:
             photo_filter = self.get_filter(w, filter=filter)
-            mag = self.calculate_mag(w, substracted_sky_spec, photo_filter)
+            mag = self.calculate_mag(w, substracted_sky_spec, photo_filter,zeropoint_mag=zeropoint_mag)
             keyword_mag = 'MAG_' + filter.upper()
             mag_tuple = [keyword_mag, mag]
             spec_tuple_aux = (w, substracted_sky_spec, err)
@@ -1576,6 +1598,8 @@ class MuseCube:
                 hdulist_spec = fits.open(spec_fits_name)
                 hdulist_spec[0].header['ID'] = n_id
                 hdulist_spec.writeto(spec_fits_name + '.fits', clobber=True)
+            else:
+                spectrum.write_to_fits(spec_fits_name)
 
             return spectrum, spec_fits_name
 
