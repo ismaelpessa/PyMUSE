@@ -124,8 +124,20 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
+    def get_spec(self,x_center,y_center,radius,coord_system='pix',npix=4):
+        mini_cube=self.get_mini_cube(x_center=x_center,y_center=y_center,radius=radius,coord_system=coord_system)
+        w,f=self.spec_from_minicube(mini_cube,npix=npix)
+        return w,f
+
+
 
     def spec_from_minicube(self,mini_cube,npix=4):
+        """
+
+        :param mini_cube: mini_cube obtained from the function get_mini_cube
+        :param npix: is the standard deviation of the gaussian that will be convoluted with the image
+        :return:
+        """
         from scipy import ndimage
         n = len(mini_cube)
         w = self.create_wavelength_array()
@@ -509,7 +521,7 @@ class MuseCube:
         if coord_system=='wcs':
             x_center,y_center,radius=self.elipse_paramters_to_pixel(xc=x_center,yc=y_center,radius=[a,b,theta])
 
-
+        self.draw_elipse(Xc=x_center,Yc=y_center,a=a,b=b,theta=theta,color='Green',coord_system='pix')
         complete_mask_new=self.create_new_mask(x_center=x_center,y_center=y_center,a=a,b=b,theta=theta)
         import copy
         mini_cube=copy.deepcopy(self.cube)
@@ -1870,7 +1882,7 @@ class MuseCube:
             image=self.get_image_wv_ranges(wv_ranges=ranges,fitsname=filename+'.fits',save=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale(vmin=self,vmin,vmax=self.vmax)
+            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
             plt.title('Emission lines image at z = ' + str(z))
             image.save(filename=filename + '.png')
             images_names.append(filename + '.png')
