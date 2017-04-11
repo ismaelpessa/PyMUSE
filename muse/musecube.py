@@ -469,9 +469,9 @@ class MuseCube:
             b=radius
             theta=0
         elif type(radius)==list or type(radius)==tuple or type(radius)==ndarray:
-            a=max(a[:2])
-            b=min(a[:2])
-            theta=a[2]
+            a=max(radius[:2])
+            b=min(radius[:2])
+            theta=radius[2]
         else:
             raise ValueError('The type of the radius is not valid')
 
@@ -488,7 +488,7 @@ class MuseCube:
         import copy
         mini_cube=copy.deepcopy(self.cube)
         mini_cube.mask=complete_mask_new
-        return mini_cube
+        return mini_cube,mask_new,complete_mask_new
 
 
 
