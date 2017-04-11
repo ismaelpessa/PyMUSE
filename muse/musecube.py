@@ -338,7 +338,11 @@ class MuseCube:
         Xaux, Yaux, a2 = self.xyr_to_pixel(xc, yc, a)
         xc2, yc2, b2 = self.xyr_to_pixel(xc, yc, b)
         radius2 = [a2, b2, radius[2]]
-        return xc2, yc2, radius
+        return xc2, yc2, radius2
+
+
+
+
 
     def define_elipse_region(self, x_center, y_center, a, b, theta, coord_system):
         Xc = x_center
@@ -456,6 +460,37 @@ class MuseCube:
         spec_tuple = (np.array(w), np.array(f))
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
         return spectrum
+
+
+    def get_mini_cube(self,x_center,y_center,radius,coord_system='pix'):
+        import cv2
+        if type(radius)==int or type(radius)==float:
+            a=radius
+            b=radius
+            theta=0
+        elif type(radius)==list or type(radius)==tuple or type(radius)==ndarray:
+            a=max(a[:2])
+            b=min(a[:2])
+            theta=a[2]
+        else:
+            raise ValueError('The type of the radius is not valid')
+
+        if coord_system=='wcs':
+            x_center,y_center,radius=self.elipse_paramters_to_pixel(xc=x_center,yc=y_center,radius=[a,b,theta])
+
+
+        mask_new = np.ones_like(self.white_data)
+        mask_new=cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
+        mask_new[np.where(mask_new!=1)]=0
+        complete_mask_new=mask_new+self.cube.mask
+        complete_mask_new[np.where(complete_mask_new==2)]=1
+        complete_mask_new.dtype=bool
+        import copy
+        mini_cube=copy.deepcopy(self.cube)
+        mini_cube.mask=complete_mask_new
+        return mini_cube
+
+
 
 
 
@@ -611,6 +646,34 @@ class MuseCube:
             wv_inds = self.find_wv_inds(wv_input)
             sub_cube = self.cube[wv_inds,:,:]
         return sub_cube
+
+<<<<<<< Updated upstream
+=======
+    def get_filtered_image(self,_filter='r',save=True,n_figure = 5):
+        """
+        Function used to produce a filtered image from the cube
+        :param _filter: string, default = r
+                        possible values: u,g,r,i,z , sdss filter to get the new image
+        :param save: Boolean, default = True
+                     If True, the image will be saved
+        :return:
+        """
+        w=self.create_wavelength_array()
+        filter_curve=self.get_filter(wavelength_spec=w,_filter=_filter)
+        fitsname = 'new_image_'+_filter+'_filter.fits'
+        sub_cube=self.sub_cube(wv_input=w)
+        extra_dims=sub_cube.ndim-filter_curve.ndim
+        new_shape = filter_curve.shape + (1,)*extra_dims
+        new_filter_curve=filter_curve.reshape(new_shape)
+        new_filtered_cube=sub_cube*new_filter_curve
+        new_filtered_image=np.sum(new_filtered_cube,axis=0)
+        if save:
+            self.__save2fitsimage(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
+        return new_filtered_image
+
+
+>>>>>>> Stashed changes
+
 
 
     def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2,save=False):
