@@ -647,8 +647,6 @@ class MuseCube:
             sub_cube = self.cube[wv_inds,:,:]
         return sub_cube
 
-<<<<<<< Updated upstream
-=======
     def get_filtered_image(self,_filter='r',save=True,n_figure = 5):
         """
         Function used to produce a filtered image from the cube
