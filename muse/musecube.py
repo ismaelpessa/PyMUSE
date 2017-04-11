@@ -466,6 +466,8 @@ class MuseCube:
         return spectrum
 
 
+
+
     def get_mini_cube(self,x_center,y_center,radius,coord_system='pix'):
         """
         Function that will select a portion ofn  the cube that corresponds to the aperture defined by center, a, b and theta elliptical parameters
