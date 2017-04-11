@@ -3,6 +3,7 @@ import numpy.ma as ma
 from scipy import interpolate
 import math as m
 import aplpy
+import gc
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy import units as u
@@ -53,7 +54,7 @@ class MuseCube:
         self.gc2.show_grayscale()
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-
+        gc.enable()
         plt.close(20)
 
     def load_data(self):
