@@ -482,8 +482,8 @@ class MuseCube:
         mask_new = np.ones_like(self.white_data)
         mask_new=cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
         mask_new[np.where(mask_new!=1)]=0
-        complete_mask_new=mask_new and self.cube.mask
-        #complete_mask_new[np.where(complete_mask_new>=1)]=1
+        complete_mask_new=mask_new + self.cube.mask
+        complete_mask_new[np.where(complete_mask_new>=1)]=1
         import copy
         mini_cube=copy.deepcopy(self.cube)
         mini_cube.mask=complete_mask_new
