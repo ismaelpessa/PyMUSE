@@ -435,7 +435,7 @@ class MuseCube:
         for i in xrange(n1):
             for j in xrange(n2):
                 if mask[i][j] > 0:
-                    reg.append([i, j])  ##PUEDE SER [i][j] o [j][i] no estoy seguro!!!!! PROBAAAR!
+                    reg.append([i, j])
                     weights.append(mask[i][j])
         return reg, weights
 
@@ -672,7 +672,7 @@ class MuseCube:
         return new_filtered_image
 
 
->>>>>>> Stashed changes
+
 
 
 
