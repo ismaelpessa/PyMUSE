@@ -149,7 +149,7 @@ class MuseCube:
                 smooth_ii.mask=im.mask
             else:
                 smooth_ii=im
-            f.append(np.sum(smooth_ii))
+            f.append(np.nansum(smooth_ii))
         return w,np.array(f)
 
 
