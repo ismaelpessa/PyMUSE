@@ -24,7 +24,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom,vmin=0,vmax=5):
         """
         Parameters
         ----------
@@ -43,6 +43,8 @@ class MuseCube:
         """
 
         # init
+        self.vmin=vmin
+        self.vmax=vmax
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
@@ -51,7 +53,7 @@ class MuseCube:
         self.load_data()
         self.white_data=fits.open(self.filename_white)[1].data
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
         gc.enable()
@@ -167,6 +169,7 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
+        return w,f
 
 
     def create_wavelength_array(self):
@@ -464,7 +467,14 @@ class MuseCube:
 
 
     def get_mini_cube(self,x_center,y_center,radius,coord_system='pix'):
-        import cv2
+        """
+        Function that will select a portion ofn  the cube that corresponds to the aperture defined by center, a, b and theta elliptical parameters
+        :param x_center: center of the elliptical aperture
+        :param y_center: center of the elliptical aperture
+        :param radius: can be a single radius of an circular aperture, or a (a,b,theta) tuple
+        :param coord_system: default: pix, possible values: pix, wcs
+        :return: mini_cube: a smaller cube that contains only the aperture data
+        """
         if type(radius)==int or type(radius)==float:
             a=radius
             b=radius
@@ -480,15 +490,22 @@ class MuseCube:
             x_center,y_center,radius=self.elipse_paramters_to_pixel(xc=x_center,yc=y_center,radius=[a,b,theta])
 
 
+        complete_mask_new=self.create_new_mask(x_center=x_center,y_center=y_center,a=a,b=b,theta=theta)
+        import copy
+        mini_cube=copy.deepcopy(self.cube)
+        mini_cube.mask=complete_mask_new
+        return mini_cube
+    def create_new_mask(self,x_center,y_center,a,b,theta):
+        import cv2
         mask_new = np.ones_like(self.white_data)
         mask_new=cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
         mask_new[np.where(mask_new!=1)]=0
         complete_mask_new=mask_new + self.cube.mask
-        complete_mask_new[np.where(complete_mask_new>=1)]=1
-        import copy
-        mini_cube=copy.deepcopy(self.cube)
-        mini_cube.mask=complete_mask_new
-        return mini_cube,mask_new,complete_mask_new
+        return complete_mask_new
+
+
+
+
 
 
 
@@ -598,7 +615,7 @@ class MuseCube:
             im=self.get_image(wv_inpu=wavelength_range,fitsname=filename+'.fits',type='sum',save='True')
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale()
+            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
             image.save(filename=filename + '.png')
             fitsnames.append(filename + '.fits')
             images_names.append(filename + '.png')
@@ -1120,7 +1137,7 @@ class MuseCube:
         """
         plt.close(self.n)
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
 
     def create_table(self, input_file):
         """
@@ -1824,7 +1841,7 @@ class MuseCube:
             image=self.get_image_wv_ranges(wv_ranges=ranges,fitsname=filename+'.fits',save=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale()
+            image.show_grayscale(vmin=self,vmin,vmax=self.vmax)
             plt.title('Emission lines image at z = ' + str(z))
             image.save(filename=filename + '.png')
             images_names.append(filename + '.png')
