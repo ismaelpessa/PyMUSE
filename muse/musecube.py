@@ -124,6 +124,24 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
+
+    def spec_from_minicube(self,mini_cube,npix=4):
+        from scipy import ndimage
+        n = len(mini_cube)
+        w = self.create_wavelength_array()
+        f = []
+        for wv_ii in xrange(n):
+            im = mini_cube[wv_ii]
+            if npix>0:
+                smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(im, sigma=npix))
+                smooth_ii.mask=im.mask
+            else:
+                smooth_ii=im
+            f.append(np.sum(smooth_ii))
+        return w,np.array(f)
+
+
+
     def get_spec_image(self, center, halfsize=15, n_fig=3):
 
         """
