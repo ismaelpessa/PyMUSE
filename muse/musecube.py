@@ -498,6 +498,15 @@ class MuseCube:
         mini_cube.mask=complete_mask_new
         return mini_cube
     def create_new_mask(self,x_center,y_center,a,b,theta):
+        """
+        Create a mask cube that will mask every pixel except thatcontained in the aperture defined by the parameters
+        :param x_center: x coordinate  of the center of the  aperture
+        :param y_center: y coordinate of the center of the aperture
+        :param a: longer semiaxis
+        :param b: smaller semiaxis
+        :param theta: angle of incllination
+        :return: complete_mask_new: ndarray that will mask the new cube.
+        """
         import cv2
         mask_new = np.ones_like(self.white_data)
         mask_new=cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
