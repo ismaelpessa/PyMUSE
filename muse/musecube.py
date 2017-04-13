@@ -3,6 +3,7 @@ import numpy.ma as ma
 from scipy import interpolate
 import math as m
 import aplpy
+import gc
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy import units as u
@@ -23,7 +24,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom,vmin=0,vmax=5):
         """
         Parameters
         ----------
@@ -42,6 +43,8 @@ class MuseCube:
         """
 
         # init
+        self.vmin=vmin
+        self.vmax=vmax
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
@@ -50,10 +53,10 @@ class MuseCube:
         self.load_data()
         self.white_data=fits.open(self.filename_white)[1].data
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-
+        gc.enable()
         plt.close(20)
 
     def load_data(self):
@@ -121,6 +124,36 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
+    def get_spec(self,x_center,y_center,radius,coord_system='pix',npix=4):
+        mini_cube=self.get_mini_cube(x_center=x_center,y_center=y_center,radius=radius,coord_system=coord_system)
+        w,f=self.spec_from_minicube(mini_cube,npix=npix)
+        return w,f
+
+
+
+    def spec_from_minicube(self,mini_cube,npix=4):
+        """
+
+        :param mini_cube: mini_cube obtained from the function get_mini_cube
+        :param npix: is the standard deviation of the gaussian that will be convoluted with the image
+        :return:
+        """
+        from scipy import ndimage
+        n = len(mini_cube)
+        w = self.create_wavelength_array()
+        f = []
+        for wv_ii in xrange(n):
+            im = mini_cube[wv_ii]
+            if npix>0:
+                smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(im, sigma=npix))
+                smooth_ii.mask=im.mask
+            else:
+                smooth_ii=im
+            f.append(np.nansum(smooth_ii))
+        return w,np.array(f)
+
+
+
     def get_spec_image(self, center, halfsize=15, n_fig=3):
 
         """
@@ -166,6 +199,7 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
+        return w,f
 
 
     def create_wavelength_array(self):
@@ -339,7 +373,11 @@ class MuseCube:
         Xaux, Yaux, a2 = self.xyr_to_pixel(xc, yc, a)
         xc2, yc2, b2 = self.xyr_to_pixel(xc, yc, b)
         radius2 = [a2, b2, radius[2]]
-        return xc2, yc2, radius
+        return xc2, yc2, radius2
+
+
+
+
 
     def define_elipse_region(self, x_center, y_center, a, b, theta, coord_system):
         Xc = x_center
@@ -432,7 +470,7 @@ class MuseCube:
         for i in xrange(n1):
             for j in xrange(n2):
                 if mask[i][j] > 0:
-                    reg.append([i, j])  ##PUEDE SER [i][j] o [j][i] no estoy seguro!!!!! PROBAAAR!
+                    reg.append([i, j])
                     weights.append(mask[i][j])
         return reg, weights
 
@@ -461,6 +499,61 @@ class MuseCube:
 
 
 
+    def get_mini_cube(self,x_center,y_center,radius,coord_system='pix'):
+        """
+        Function that will select a portion ofn  the cube that corresponds to the aperture defined by center, a, b and theta elliptical parameters
+        :param x_center: center of the elliptical aperture
+        :param y_center: center of the elliptical aperture
+        :param radius: can be a single radius of an circular aperture, or a (a,b,theta) tuple
+        :param coord_system: default: pix, possible values: pix, wcs
+        :return: mini_cube: a smaller cube that contains only the aperture data
+        """
+        if type(radius)==int or type(radius)==float:
+            a=radius
+            b=radius
+            theta=0
+        elif type(radius)==list or type(radius)==tuple or type(radius)==ndarray:
+            a=max(radius[:2])
+            b=min(radius[:2])
+            theta=radius[2]
+        else:
+            raise ValueError('The type of the radius is not valid')
+
+        if coord_system=='wcs':
+            x_center,y_center,radius=self.elipse_paramters_to_pixel(xc=x_center,yc=y_center,radius=[a,b,theta])
+
+        self.draw_elipse(Xc=x_center,Yc=y_center,a=a,b=b,theta=theta,color='Green',coord_system='pix')
+        complete_mask_new=self.create_new_mask(x_center=x_center,y_center=y_center,a=a,b=b,theta=theta)
+        import copy
+        mini_cube=copy.deepcopy(self.cube)
+        mini_cube.mask=complete_mask_new
+        return mini_cube
+    def create_new_mask(self,x_center,y_center,a,b,theta):
+        """
+        Create a mask cube that will mask every pixel except thatcontained in the aperture defined by the parameters
+        :param x_center: x coordinate  of the center of the  aperture
+        :param y_center: y coordinate of the center of the aperture
+        :param a: longer semiaxis
+        :param b: smaller semiaxis
+        :param theta: angle of incllination
+        :return: complete_mask_new: ndarray that will mask the new cube.
+        """
+        import cv2
+        mask_new = np.ones_like(self.white_data)
+        mask_new=cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
+        mask_new[np.where(mask_new!=1)]=0
+        complete_mask_new=mask_new + self.cube.mask
+        return complete_mask_new
+
+
+
+
+
+
+
+
+
+
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=16):
         self.clean_canvas()
@@ -483,7 +576,7 @@ class MuseCube:
                 color = 'Blue'
 
             self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color, coord_system='pix')
-            plt.text(x_pix[i], y_pix[i], id[i], color='White')
+            plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
@@ -564,7 +657,7 @@ class MuseCube:
             im=self.get_image(wv_inpu=wavelength_range,fitsname=filename+'.fits',type='sum',save='True')
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale()
+            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
             image.save(filename=filename + '.png')
             fitsnames.append(filename + '.fits')
             images_names.append(filename + '.png')
@@ -612,6 +705,32 @@ class MuseCube:
             wv_inds = self.find_wv_inds(wv_input)
             sub_cube = self.cube[wv_inds,:,:]
         return sub_cube
+
+    def get_filtered_image(self,_filter='r',save=True,n_figure = 5):
+        """
+        Function used to produce a filtered image from the cube
+        :param _filter: string, default = r
+                        possible values: u,g,r,i,z , sdss filter to get the new image
+        :param save: Boolean, default = True
+                     If True, the image will be saved
+        :return:
+        """
+        w=self.create_wavelength_array()
+        filter_curve=self.get_filter(wavelength_spec=w,_filter=_filter)
+        fitsname = 'new_image_'+_filter+'_filter.fits'
+        sub_cube=self.sub_cube(wv_input=w)
+        extra_dims=sub_cube.ndim-filter_curve.ndim
+        new_shape = filter_curve.shape + (1,)*extra_dims
+        new_filter_curve=filter_curve.reshape(new_shape)
+        new_filtered_cube=sub_cube*new_filter_curve
+        new_filtered_image=np.sum(new_filtered_cube,axis=0)
+        if save:
+            self.__save2fitsimage(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
+        return new_filtered_image
+
+
+
+
 
 
     def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2,save=False):
@@ -1060,7 +1179,7 @@ class MuseCube:
         """
         plt.close(self.n)
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale()
+        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
 
     def create_table(self, input_file):
         """
@@ -1069,7 +1188,7 @@ class MuseCube:
                            name of the SExtractor output file
         :return: table
         """
-        from astropy.io.ascii.sextractor import SExtractor
+            from astropy.io.ascii.sextractor import SExtractor
         sex = SExtractor()
         table = sex.read(input_file)
         return table
@@ -1764,7 +1883,7 @@ class MuseCube:
             image=self.get_image_wv_ranges(wv_ranges=ranges,fitsname=filename+'.fits',save=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale()
+            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
             plt.title('Emission lines image at z = ' + str(z))
             image.save(filename=filename + '.png')
             images_names.append(filename + '.png')
