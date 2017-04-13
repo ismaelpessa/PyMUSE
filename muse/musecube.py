@@ -24,7 +24,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom,vmin=0,vmax=5):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5):
         """
         Parameters
         ----------
@@ -71,8 +71,7 @@ class MuseCube:
         #wavelength array
         self.wavelength = self.create_wavelength_array()
 
-
-    def smooth_white(self,npix=2,write_to_disk=True):
+    def smooth_white(self, npix=2, write_to_disk=True):
         from scipy import ndimage
         hdulist=fits.open(self.filename_white)
         im=hdulist[1].data
@@ -892,9 +891,6 @@ class MuseCube:
        wave_i = np.arange(6430,8655,25)
     
        wave_z = np.arange(7730,11255,25)
-       
-       
-
         
        flux_u = np.array(
             [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
@@ -996,7 +992,6 @@ class MuseCube:
              1.40000000e-03, 1.10000000e-03, 1.00000000e-03,
              1.00000000e-03, 9.00000000e-04, 6.00000000e-04,
              3.00000000e-04, 0.00000000e+00])
-        
             
        flux_z = np.array(
             [0., 0., 0.0001, 0.0001, 0.0001, 0.0002, 0.0002,
@@ -1249,7 +1244,6 @@ class MuseCube:
         seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
         print 'FWHM={:.2f}'.format(seeing)
         return seeing
-
 
     def is_in_ring(self, x_center, y_center, radius_1, radius_2, x, y):
         """
