@@ -575,7 +575,7 @@ class MuseCube:
                 color = 'Blue'
 
             self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color, coord_system='pix')
-            plt.text(x_pix[i], y_pix[i], id[i], color='White')
+            plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
@@ -1187,7 +1187,7 @@ class MuseCube:
                            name of the SExtractor output file
         :return: table
         """
-        from astropy.io.ascii.sextractor import SExtractor
+            from astropy.io.ascii.sextractor import SExtractor
         sex = SExtractor()
         table = sex.read(input_file)
         return table
