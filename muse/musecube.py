@@ -1187,7 +1187,7 @@ class MuseCube:
                            name of the SExtractor output file
         :return: table
         """
-            from astropy.io.ascii.sextractor import SExtractor
+        from astropy.io.ascii.sextractor import SExtractor
         sex = SExtractor()
         table = sex.read(input_file)
         return table
