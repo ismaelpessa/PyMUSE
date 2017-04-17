@@ -886,7 +886,7 @@ class MuseCube:
         
        wave_g = np.arange(3630,5855,25)
        
-       wave_r = np.arange(5830,7255,25)
+       wave_r = np.arange(5380,7255,25)
        
        wave_i = np.arange(6430,8655,25)
     
@@ -1029,7 +1029,7 @@ class MuseCube:
        if _filter == 'z':
             wave_filter = wave_z
             flux_filter = flux_z
-        #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confuciones.
+        #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confusiones.
        
        new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
        interpolator = interpolate.interp1d(wave_filter, flux_filter)
