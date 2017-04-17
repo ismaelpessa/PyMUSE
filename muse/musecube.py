@@ -714,10 +714,11 @@ class MuseCube:
                      If True, the image will be saved
         :return:
         """
+        import copy
         w=self.create_wavelength_array()
         filter_curve=self.get_filter(wavelength_spec=w,_filter=_filter)
         fitsname = 'new_image_'+_filter+'_filter.fits'
-        sub_cube=self.sub_cube(wv_input=w)
+        sub_cube=copy.deepcopy(self.cube)
         extra_dims=sub_cube.ndim-filter_curve.ndim
         new_shape = filter_curve.shape + (1,)*extra_dims
         new_filter_curve=filter_curve.reshape(new_shape)
