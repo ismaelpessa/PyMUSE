@@ -717,11 +717,13 @@ class MuseCube:
         import copy
         w=self.create_wavelength_array()
         filter_curve=self.get_filter(wavelength_spec=w,_filter=_filter)
+        condition = np.where(filter_curve>0)[0]
         fitsname = 'new_image_'+_filter+'_filter.fits'
-        sub_cube=copy.deepcopy(self.cube)
-        extra_dims=sub_cube.ndim-filter_curve.ndim
-        new_shape = filter_curve.shape + (1,)*extra_dims
-        new_filter_curve=filter_curve.reshape(new_shape)
+        sub_cube=self.cube[condition]
+        filter_curve_final=filter_curve[condition]
+        extra_dims=sub_cube.ndim-filter_curve_final.ndim
+        new_shape = filter_curve_final.shape + (1,)*extra_dims
+        new_filter_curve=filter_curve_final.reshape(new_shape)
         new_filtered_cube=sub_cube*new_filter_curve
         new_filtered_image=np.sum(new_filtered_cube,axis=0)
         if save:
