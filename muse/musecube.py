@@ -81,7 +81,7 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits',clobber=True)
         return smooth_im
 
-    def spatial_smooth(self, npix=2, write_to_disk=True):
+    def spatial_smooth(self, npix=2, write_to_disk=True, test=False):
         from scipy import ndimage
         import copy
         # matrix_flat = np.sum(self.cube[ind_min:ind_max,:,:], axis=0)
@@ -90,9 +90,22 @@ class MuseCube:
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii+1, ntot))
             image_aux = self.cube[wv_ii,:,:]
-            smooth_ii = ndimage.gaussian_filter(image_aux, sigma=npix)
+            smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix))
+            smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
+
+            # test the fluxes are the same
+            if test:
+                gd_pix = ~smooth_ii.mask
+                try:
+                    med_1 = np.nansum(smooth_ii[gd_pix])
+                    med_2 = np.nansum(image_aux[gd_pix])
+                    print(med_1, med_2, (med_1 - med_2)/med_1)
+                    np.testing.assert_allclose(med_1, med_2, decimal=4)
+                except AssertionError:
+                    import pdb; pdb.set_trace()
             cube_new[wv_ii,:,:] = smooth_ii
             # import pdb; pdb.set_trace()
+
         if write_to_disk:
             hdulist = fits.open(self.filename)
             hdulist[1].data = cube_new.data
@@ -1183,7 +1196,7 @@ class MuseCube:
                            name of the SExtractor output file
         :return: table
         """
-            from astropy.io.ascii.sextractor import SExtractor
+        from astropy.io.ascii.sextractor import SExtractor
         sex = SExtractor()
         table = sex.read(input_file)
         return table
