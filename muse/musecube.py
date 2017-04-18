@@ -378,6 +378,7 @@ class MuseCube:
 
 
 
+
     def __normalize2max(self, array):
         m = max(array)
         normalized_array = []
@@ -519,27 +520,32 @@ class MuseCube:
         """
 
         # pass to pixels
-        if coord_system == 'wcs':
-            x_center, y_center, radius = self.elipse_parameters_to_pixel(xc=x_c, yc=y_c, radius=params)
-        else: #already in pixel
-            x_center, y_center, radius =  x_c, y_c, params
 
-        if not isinstance(radius, (int, float, tuple, list, np.array)):
+
+        if not isinstance(params, (int, float, tuple, list, np.array)):
             raise ValueError('Not ready for this `radius` type.')
 
-        if isinstance(radius, (int, float)):
-            a = radius
-            b = radius
+        if isinstance(params, (int, float)):
+            a = params
+            b = params
             theta = 0
-        elif isiterable(radius) and (len(radius)==3):
-                a = max(radius[:2])
-                b = min(radius[:2])
-                theta = radius[2]
+        elif isiterable(params) and (len(params)==3):
+                a = max(params[:2])
+                b = min(params[:2])
+                theta = params[2]
         else:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float ')
 
+        if coord_system == 'wcs':
+            x_center, y_center, radius = self.elipse_parameters_to_pixel(xc=x_c, yc=y_c, radius=[a,b,theta])
+            a = radius[0]
+            b = radius[1]
+        else: #already in pixel
+            x_center, y_center, radius = x_c, y_c, params
+
 
         self.draw_elipse(Xc=x_center, Yc=y_center, a=a, b=b, theta=theta, color='Green', coord_system='pix')
+
         complete_mask_new = self.create_new_mask(x_center=x_center, y_center=y_center, a=a, b=b, theta=theta)
 
         if new_cube:
@@ -550,6 +556,9 @@ class MuseCube:
             self.cube.mask = complete_mask_new
             self.stat.mask = complete_mask_new
             return
+
+    def draw_elliptical_mask(self,Xc,Yc,a,b,theta,color = 'Green',coord_system='pix'):
+
 
     def create_new_mask(self,x_center,y_center,a,b,theta):
         """
