@@ -61,20 +61,28 @@ class MuseCube:
         self.pixelsize = pixelsize
         gc.enable()
         plt.close(20)
+        print("MuseCube: Ready!")
 
     def load_data(self):
         hdulist = fits.open(self.filename)
+        print("MuseCube: Loading the cube fluxes and variances...")
+
         # import pdb; pdb.set_trace()
         self.cube= ma.MaskedArray(hdulist[1].data)
         self.stat = ma.MaskedArray(hdulist[2].data)
 
+        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
         #masking
-        self.mask_init = np.isnan(self.cube) | (self.stat <= 0) | np.isnan(self.stat) | np.isinf(self.cube)
+        self.mask_init = np.isnan(self.cube) | np.isnan(self.stat)
         self.cube.mask = self.mask_init
         self.stat.mask = self.mask_init
 
+        #for ivar weighting ; consider creating it in init
+        #self.flux_over_ivar = self.cube / self.stat
+
         #wavelength array
         self.wavelength = self.create_wavelength_array()
+
 
     def smooth_white(self, npix=2, write_to_disk=True):
 
@@ -140,17 +148,17 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_spec(self,x_c, y_c, params, coord_system='pix', npix=4):
+    def get_spec(self,x_c, y_c, params, coord_system='pix', mode='ivar'):
 
         self.get_mini_cube(x_c, y_c, params, coord_system=coord_system, new_cube=False)
         # the cube masks have changed internally because new_cube = False in get_mini_cube
-        w,f=self.spec_from_minicube(self.cube, self.stat, npix=npix)
+        spec = self.spec_from_minicube(self.cube, self.stat, mode=mode)
         # get original mask back
         self.cube.mask = self.mask_init
         self.cube.stat = self.mask_init
-        return w,f
+        return spec
 
-    def spec_from_minicube(self,mini_cube, mini_stat, npix=4):
+    def spec_from_minicube_old(self,mini_cube, mini_stat):
         """
 
         :param mini_cube: mini_cube obtained from the function get_mini_cube
@@ -168,9 +176,31 @@ class MuseCube:
             else:
                 smooth_ii=im
             f.append(np.nansum(smooth_ii))
-        return self.wavelength, np.array(f)
 
+        return XSpectrum1D.from_tuple((self.wavelength, f))
 
+    def spec_from_minicube(self, mini_cube, mini_stat, mode='ivar'):
+        n = len(mini_cube)
+        fl = np.zeros(n)
+        er = np.zeros(n)
+        if mode not in ['ivar', 'sum']:
+            raise ValueError("Not ready for this tyme of `mode`.")
+
+        for wv_ii in xrange(n):
+            mask = mini_cube[wv_ii].mask
+            mask = np.where(mask !=0, True, False)
+            im_fl = mini_cube[wv_ii][~mask]
+            im_var = mini_stat[wv_ii][~mask]
+            if mode == 'ivar':
+                flux_ivar = im_fl / im_var
+                fl[wv_ii] = np.sum(~mask) * np.sum(flux_ivar) / np.sum(1. / im_var)
+                er[wv_ii] = np.sum(~mask) * np.sqrt( 1. / np.sum(1. / im_var) )
+            elif mode == 'sum':
+                fl[wv_ii] = np.sum(im_fl)
+                er[wv_ii] = np.sqrt(np.sum(im_var))
+
+        # import pdb;pdb.set_trace()
+        return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
     def get_spec_image(self, center, halfsize=15, n_fig=3):
 
@@ -568,6 +598,7 @@ class MuseCube:
         #mask_new[np.where(mask_new != 1)] = 0
         mask_new = np.where(mask_new != 1, False, True)
         complete_mask_new = mask_new + self.cube.mask
+        complete_mask_new = np.where(complete_mask_new != 0, True, False)
         return complete_mask_new
 
 
