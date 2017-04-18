@@ -168,7 +168,7 @@ class MuseCube:
             else:
                 smooth_ii=im
             f.append(np.nansum(smooth_ii))
-        return w,np.array(f)
+        return self.wavelength, np.array(f)
 
 
 
