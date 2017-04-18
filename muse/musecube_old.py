@@ -23,7 +23,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom,vmin=0,vmax=5):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5):
         """
         Parameters
         ----------
@@ -40,8 +40,8 @@ class MuseCube:
             XXXXXXXXXX
 
         """
-        self.vmin=vmin
-        self.vmax=vmax
+        self.vmin = vmin
+        self.vmax = vmax
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
@@ -51,7 +51,7 @@ class MuseCube:
         self.stat = hdulist[2].data
         self.white = filename_white
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.cube, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
         plt.close(20)
@@ -121,7 +121,7 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
-        return w,f
+        return w, f
 
     def min_max_ra_dec(self, exposure_name, n_figure=2, white=False):
         """
@@ -881,9 +881,10 @@ class MuseCube:
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
-        theta = self.get_from_table(sextractor_filename, 'THETA_IMAGE')*-0.0174533
+        theta = self.get_from_table(sextractor_filename, 'THETA_IMAGE') * -0.0174533
         flags = self.get_from_table(sextractor_filename, 'FLAGS')
         id = self.get_from_table(sextractor_filename, 'NUMBER')
+        mag = self.get_from_table(sextractor_filename,'MAG_AUTO')
         n = len(x_pix)
         for i in xrange(0, n):
             color = 'Green'
@@ -897,10 +898,10 @@ class MuseCube:
 
             self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color, coord_system='pix')
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
-        return x_pix, y_pix, a, b, theta, flags, id
+        return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
-                              n_figure=2,zeropoint_mag=-11.906003658441422):
+                              n_figure=2, zeropoint_mag=0):
         """
         Function used to save the spectrum of a set of sources provided by a SExtractor output file
         :param sextractor_filename: str
@@ -915,7 +916,7 @@ class MuseCube:
                          The figure number where every spectrum will be displayed
         :return:
         """
-        x_pix, y_pix, a, b, theta, flags, id = self.plot_sextractor_regions(sextractor_filename=sextractor_filename,
+        x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(sextractor_filename=sextractor_filename,
                                                                             flag_threshold=flag_threshold)
         self.clean_canvas()
         n = len(x_pix)
@@ -933,7 +934,8 @@ class MuseCube:
                                                                                     3 * max(int(a[i]), int(b[i]))),
                                                                                 coord_system='pix', n_figure=n_figure,
                                                                                 errors=True, sky_method=sky_method,
-                                                                                redmonster_format=True, n_id=id[i],zeropoint_mag=zeropoint_mag)
+                                                                                redmonster_format=True, n_id=id[i],
+                                                                                zeropoint_mag=zeropoint_mag,sex_mag=mag[i])
         else:
             for i in xrange(n):
                 if flags[i] < flag_threshold:
@@ -948,7 +950,8 @@ class MuseCube:
                                                                                     3 * max(int(a[i]), int(b[i]))),
                                                                                 coord_system='pix', n_figure=n_figure,
                                                                                 errors=True, sky_method=sky_method,
-                                                                                redmonster_format=False, n_id=id[i],zeropoint_mag=zeropoint_mag)
+                                                                                redmonster_format=False, n_id=id[i],
+                                                                                zeropoint_mag=zeropoint_mag,sex_mag=mag[i])
                     spectrum.write_to_fits(name)
 
     def __calculate_combined_matrix(self, interpolated_fluxes, kind='ave'):
@@ -1065,7 +1068,7 @@ class MuseCube:
             self.collapse_cube([wavelength_range], fitsname=filename + '.fits', n_figure=15)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+            image.show_grayscale(vmin=self.vmin, vmax=self.vmax)
             image.save(filename=filename + '.png')
             fitsnames.append(filename + '.fits')
             images_names.append(filename + '.png')
@@ -1496,7 +1499,8 @@ class MuseCube:
 
     def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
                                               coord_system, n_figure=2, errors=True, sky_method='med',
-                                              redmonster_format=True, n_id=-1, filter='r', range=[],zeropoint_mag=-11.906003658441422):
+                                              redmonster_format=True, n_id=-1, filter='r', range=[],
+                                              zeropoint_mag=0,sex_mag=None):
         """
         Function to obtain and display the spectrum of a source in circular region of R = radius,
         substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
@@ -1556,8 +1560,8 @@ class MuseCube:
         spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
         substracted_sky_spec = np.array(self.substract_spec(spec, spec_sky_normalized))
         plt.figure(n_figure)
-        plt.plot(w, substracted_sky_spec,label='Spectrum')
-        plt.plot(w, spec_sky_normalized,label='Substracted Sky')
+        plt.plot(w, substracted_sky_spec, label='Spectrum')
+        plt.plot(w, spec_sky_normalized, label='Substracted Sky')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.legend()
@@ -1583,7 +1587,10 @@ class MuseCube:
         spec_fits_name = name_from_coord(coords)
         if redmonster_format:
             photo_filter = self.get_filter(w, filter=filter)
-            mag = self.calculate_mag(w, substracted_sky_spec, photo_filter,zeropoint_mag=zeropoint_mag)
+            if sex_mag==None:
+                mag = self.calculate_mag(w, substracted_sky_spec, photo_filter, zeropoint_mag=zeropoint_mag)
+            else:
+                mag = sex_mag
             keyword_mag = 'MAG_' + filter.upper()
             mag_tuple = [keyword_mag, mag]
             spec_tuple_aux = (w, substracted_sky_spec, err)
@@ -1615,7 +1622,7 @@ class MuseCube:
         """
         plt.close(self.n)
         self.gc2 = aplpy.FITSFigure(self.white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
 
     def create_table(self, input_file):
         """
@@ -2338,7 +2345,7 @@ class MuseCube:
             self.collapse_cube(ranges, fitsname=filename + '.fits', n_figure=15, continuum=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+            image.show_grayscale(vmin=self.vmin, vmax=self.vmax)
             plt.title('Emission lines image at z = ' + str(z))
             image.save(filename=filename + '.png')
             images_names.append(filename + '.png')

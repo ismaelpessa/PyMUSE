@@ -727,13 +727,16 @@ class MuseCube:
                      If True, the image will be saved
         :return:
         """
+        import copy
         w=self.create_wavelength_array()
         filter_curve=self.get_filter(wavelength_spec=w,_filter=_filter)
+        condition = np.where(filter_curve>0)[0]
         fitsname = 'new_image_'+_filter+'_filter.fits'
-        sub_cube=self.sub_cube(wv_input=w)
-        extra_dims=sub_cube.ndim-filter_curve.ndim
-        new_shape = filter_curve.shape + (1,)*extra_dims
-        new_filter_curve=filter_curve.reshape(new_shape)
+        sub_cube=self.cube[condition]
+        filter_curve_final=filter_curve[condition]
+        extra_dims=sub_cube.ndim-filter_curve_final.ndim
+        new_shape = filter_curve_final.shape + (1,)*extra_dims
+        new_filter_curve=filter_curve_final.reshape(new_shape)
         new_filtered_cube=sub_cube*new_filter_curve
         new_filtered_image=np.sum(new_filtered_cube,axis=0)
         if save:
@@ -899,7 +902,7 @@ class MuseCube:
         
        wave_g = np.arange(3630,5855,25)
        
-       wave_r = np.arange(5830,7255,25)
+       wave_r = np.arange(5380,7255,25)
        
        wave_i = np.arange(6430,8655,25)
     
@@ -1042,7 +1045,7 @@ class MuseCube:
        if _filter == 'z':
             wave_filter = wave_z
             flux_filter = flux_z
-        #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confuciones.
+        #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confusiones.
        
        new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
        interpolator = interpolate.interp1d(wave_filter, flux_filter)
