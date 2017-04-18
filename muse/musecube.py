@@ -1,17 +1,20 @@
 import numpy as np
 import numpy.ma as ma
 from scipy import interpolate
+from scipy import ndimage
 import math as m
 import aplpy
 import gc
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy import units as u
+from astropy.utils import isiterable
 from matplotlib import pyplot as plt
 import glob
 import os
 import pdb
 from linetools.spectra.xspectrum1d import XSpectrum1D
+import copy
 
 
 # spec = XSpectrum1D.from
@@ -64,15 +67,17 @@ class MuseCube:
         # import pdb; pdb.set_trace()
         self.cube= ma.MaskedArray(hdulist[1].data)
         self.stat = ma.MaskedArray(hdulist[2].data)
+
         #masking
-        self.cube.mask = np.isnan(self.cube) | (self.stat <= 0) | np.isnan(self.stat)
-        self.stat.mask = self.cube.mask
+        self.mask_init = np.isnan(self.cube) | (self.stat <= 0) | np.isnan(self.stat) | np.isinf(self.cube)
+        self.cube.mask = self.mask_init
+        self.stat.mask = self.mask_init
 
         #wavelength array
         self.wavelength = self.create_wavelength_array()
 
     def smooth_white(self, npix=2, write_to_disk=True):
-        from scipy import ndimage
+
         hdulist=fits.open(self.filename_white)
         im=hdulist[1].data
         smooth_im=ndimage.gaussian_filter(im,sigma=npix)
@@ -81,18 +86,30 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits',clobber=True)
         return smooth_im
 
-    def spatial_smooth(self, npix=2, write_to_disk=True):
-        from scipy import ndimage
-        import copy
+    def spatial_smooth(self, npix=2, write_to_disk=True, test=False):
+
         # matrix_flat = np.sum(self.cube[ind_min:ind_max,:,:], axis=0)
         cube_new = copy.deepcopy(self.cube)
         ntot = len(self.cube)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii+1, ntot))
             image_aux = self.cube[wv_ii,:,:]
-            smooth_ii = ndimage.gaussian_filter(image_aux, sigma=npix)
+            smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix))
+            smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
+
+            # test the fluxes are the same
+            if test:
+                gd_pix = ~smooth_ii.mask
+                try:
+                    med_1 = np.nansum(smooth_ii[gd_pix])
+                    med_2 = np.nansum(image_aux[gd_pix])
+                    print(med_1, med_2, (med_1 - med_2)/med_1)
+                    np.testing.assert_allclose(med_1, med_2, decimal=4)
+                except AssertionError:
+                    import pdb; pdb.set_trace()
             cube_new[wv_ii,:,:] = smooth_ii
             # import pdb; pdb.set_trace()
+
         if write_to_disk:
             hdulist = fits.open(self.filename)
             hdulist[1].data = cube_new.data
@@ -124,22 +141,24 @@ class MuseCube:
         return image
 
     def get_spec(self,x_center,y_center,radius,coord_system='pix',npix=4):
-        mini_cube=self.get_mini_cube(x_center=x_center,y_center=y_center,radius=radius,coord_system=coord_system)
-        w,f=self.spec_from_minicube(mini_cube,npix=npix)
+
+        self.get_mini_cube(x_center=x_center,y_center=y_center,radius=radius,coord_system=coord_system, new_cube=False)
+        # the cube masks have changed internally because new_cube = False in get_mini_cube
+        w,f=self.spec_from_minicube(self.cube, self.stat, npix=npix)
+        # get original mask back
+        self.cube.mask = self.mask_init
+        self.cube.stat = self.mask_init
         return w,f
 
-
-
-    def spec_from_minicube(self,mini_cube,npix=4):
+    def spec_from_minicube(self,mini_cube, mini_stat, npix=4):
         """
 
         :param mini_cube: mini_cube obtained from the function get_mini_cube
         :param npix: is the standard deviation of the gaussian that will be convoluted with the image
         :return:
         """
-        from scipy import ndimage
+
         n = len(mini_cube)
-        w = self.create_wavelength_array()
         f = []
         for wv_ii in xrange(n):
             im = mini_cube[wv_ii]
@@ -366,7 +385,7 @@ class MuseCube:
             normalized_array.append(element / m)
         return normalized_array
 
-    def elipse_paramters_to_pixel(self, xc, yc, radius):
+    def elipse_parameters_to_pixel(self, xc, yc, radius):
         a = radius[0]
         b = radius[1]
         Xaux, Yaux, a2 = self.xyr_to_pixel(xc, yc, a)
@@ -424,8 +443,6 @@ class MuseCube:
             k = self.indexOf(wave, wavelength)
         return k
 
-
-
     def __vignetting_matrix(self, matrix, npixel_x, npixel_y):
         """
         Function used to mask the edges of the images
@@ -447,10 +464,6 @@ class MuseCube:
                 else:
                     matrix_out[i][j] = matrix[i][j]
         return matrix_out
-
-
-
-
 
     def region_from_mask(self, mask):
         """
@@ -495,53 +508,66 @@ class MuseCube:
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
         return spectrum
 
-
-
-
-    def get_mini_cube(self,x_center,y_center,radius,coord_system='pix'):
+    def get_mini_cube(self, x_c, y_c, params, coord_system='pix', new_cube=True):
         """
         Function that will select a portion ofn  the cube that corresponds to the aperture defined by center, a, b and theta elliptical parameters
-        :param x_center: center of the elliptical aperture
-        :param y_center: center of the elliptical aperture
-        :param radius: can be a single radius of an circular aperture, or a (a,b,theta) tuple
+        :param x_c: center of the elliptical aperture
+        :param y_c: center of the elliptical aperture
+        :param params: can be a single radius (float) of an circular aperture, or a (a,b,theta) tuple
         :param coord_system: default: pix, possible values: pix, wcs
         :return: mini_cube: a smaller cube that contains only the aperture data
         """
-        if type(radius)==int or type(radius)==float:
-            a=radius
-            b=radius
-            theta=0
-        elif type(radius)==list or type(radius)==tuple or type(radius)==ndarray:
-            a=max(radius[:2])
-            b=min(radius[:2])
-            theta=radius[2]
+
+        # pass to pixels
+        if coord_system == 'wcs':
+            x_center, y_center, radius = self.elipse_parameters_to_pixel(xc=x_c, yc=y_c, radius=params)
+        else: #already in pixel
+            x_center, y_center, radius =  x_c, y_c, params
+
+        if not isinstance(radius, (int, float, tuple, list, np.array)):
+            raise ValueError('Not ready for this `radius` type.')
+
+        if isinstance(radius, (int, float)):
+            a = radius
+            b = radius
+            theta = 0
+        elif isiterable(radius) and (len(radius)==3):
+                a = max(radius[:2])
+                b = min(radius[:2])
+                theta = radius[2]
         else:
-            raise ValueError('The type of the radius is not valid')
+            raise ValueError('If iterable, the length of radius must be == 3; otherwise try float ')
 
-        if coord_system=='wcs':
-            x_center,y_center,radius=self.elipse_paramters_to_pixel(xc=x_center,yc=y_center,radius=[a,b,theta])
 
-        self.draw_elipse(Xc=x_center,Yc=y_center,a=a,b=b,theta=theta,color='Green',coord_system='pix')
-        complete_mask_new=self.create_new_mask(x_center=x_center,y_center=y_center,a=a,b=b,theta=theta)
-        import copy
-        mini_cube=copy.deepcopy(self.cube)
-        mini_cube.mask=complete_mask_new
-        return mini_cube
+        self.draw_elipse(Xc=x_center, Yc=y_center, a=a, b=b, theta=theta, color='Green', coord_system='pix')
+        complete_mask_new = self.create_new_mask(x_center=x_center, y_center=y_center, a=a, b=b, theta=theta)
+
+        if new_cube:
+            mini_cube = copy.deepcopy(self.cube)
+            mini_cube.mask = complete_mask_new
+            return mini_cube
+        else:
+            self.cube.mask = complete_mask_new
+            self.stat.mask = complete_mask_new
+            return
+
     def create_new_mask(self,x_center,y_center,a,b,theta):
         """
-        Create a mask cube that will mask every pixel except thatcontained in the aperture defined by the parameters
+        Create a mask cube that will mask every pixel except those contained in the aperture defined
+        by the parameters
         :param x_center: x coordinate  of the center of the  aperture
         :param y_center: y coordinate of the center of the aperture
-        :param a: longer semiaxis
-        :param b: smaller semiaxis
-        :param theta: angle of incllination
+        :param a: semi-major axis
+        :param b: semi-minor axis
+        :param theta: angle of inclination
         :return: complete_mask_new: ndarray that will mask the new cube.
         """
         import cv2
         mask_new = np.ones_like(self.white_data)
-        mask_new=cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
-        mask_new[np.where(mask_new!=1)]=0
-        complete_mask_new=mask_new + self.cube.mask
+        mask_new = cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
+        #mask_new[np.where(mask_new != 1)] = 0
+        mask_new = np.where(mask_new != 1, False, True)
+        complete_mask_new = mask_new + self.cube.mask
         return complete_mask_new
 
 
@@ -714,7 +740,7 @@ class MuseCube:
                      If True, the image will be saved
         :return:
         """
-        import copy
+
         w=self.create_wavelength_array()
         filter_curve=self.get_filter(wavelength_spec=w,_filter=_filter)
         condition = np.where(filter_curve>0)[0]
@@ -1691,7 +1717,7 @@ class MuseCube:
             if type(radius) == int or type(radius) == float:
                 x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
             elif len(radius) == 3:
-                x_center, y_center, radius = self.elipse_paramters_to_pixel(x_center, y_center, radius)
+                x_center, y_center, radius = self.elipse_parameters_to_pixel(x_center, y_center, radius)
 
 
         if mask == False:
