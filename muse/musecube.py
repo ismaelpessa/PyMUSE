@@ -15,6 +15,7 @@ import os
 import pdb
 from linetools.spectra.xspectrum1d import XSpectrum1D
 import copy
+import pyregion
 
 
 # spec = XSpectrum1D.from
@@ -184,7 +185,7 @@ class MuseCube:
         fl = np.zeros(n)
         er = np.zeros(n)
         if mode not in ['ivar', 'sum']:
-            raise ValueError("Not ready for this tyme of `mode`.")
+            raise ValueError("Not ready for this type of `mode`.")
 
         for wv_ii in xrange(n):
             mask = mini_cube[wv_ii].mask
@@ -496,48 +497,8 @@ class MuseCube:
                     matrix_out[i][j] = matrix[i][j]
         return matrix_out
 
-    def region_from_mask(self, mask):
-        """
-        :param mask: ndarray
-                     mask has to be a matrix with the same shape of the white image of the cube, containing in each place, the wight of the pixel in the spectrum
 
-        :return: reg: list
-                      list containing the x,y physical coordinates of the pixels inside the mask
-                 weigths: list
-                          list containing the weights of each pixel in reg
-        """
-        reg = []
-        weights = []
-        n1 = len(mask)
-        n2 = len(mask[0])
-        for i in xrange(n1):
-            for j in xrange(n2):
-                if mask[i][j] > 0:
-                    reg.append([i, j])
-                    weights.append(mask[i][j])
-        return reg, weights
 
-    def plot_mask_spec(self, mask, n_figure=2):
-        """
-        function to get the spectrum of a region caracterized by a mask of the image
-        :param mask: ndarrayy
-                     mask has to be a matrix with the same shape of the white image of the cube, containing in each place, the wight of the pixel in the spectrum
-
-        :return:
-        """
-        reg, weights = self.region_from_mask(mask)
-        x_reg = []
-        y_reg = []
-        N = len(reg)
-        for i in xrange(N):
-            x_reg.append(reg[i][1])
-            y_reg.append(reg[i][0])
-        w, f = self.spectrum_region(x_reg, y_reg, weights, coord_system='pix', mask=True)
-        plt.plot(x_reg, y_reg, 'x', color='Blue', figure=plt.figure(self.n))
-        plt.plot(w, f, figure=plt.figure(n_figure))
-        spec_tuple = (np.array(w), np.array(f))
-        spectrum = XSpectrum1D.from_tuple(spec_tuple)
-        return spectrum
 
     def get_mini_cube(self, x_c, y_c, params, coord_system='pix', new_cube=True):
         """
@@ -572,11 +533,6 @@ class MuseCube:
             b = radius[1]
         else: #already in pixel
             x_center, y_center, radius = x_c, y_c, params
-
-
-
-
-
         region_string = self.ellipse_param_to_ds9_region_string(x_center,y_center,a,b,theta)
         complete_mask_new = self.create_new_mask(region_string)
 
@@ -603,7 +559,7 @@ class MuseCube:
         im_aux = np.ones_like(self.white_data)
         hdu_aux=fits.open(self.filename_white)
         hdu_aux.data = im_aux
-        r = pyregion.parse(reg)
+        r = pyregion.parse(region_string)[0]
         mask_new = r.get_mask(hdu = hdu_aux.data)
         mask_new_inverse = np.where(mask_new == True, False, True)
         complete_mask_new = mask_new_inverse + self.mask_init
