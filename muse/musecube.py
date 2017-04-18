@@ -140,9 +140,9 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_spec(self,x_center,y_center,radius,coord_system='pix',npix=4):
+    def get_spec(self,x_c, y_c, params, coord_system='pix', npix=4):
 
-        self.get_mini_cube(x_center=x_center,y_center=y_center,radius=radius,coord_system=coord_system, new_cube=False)
+        self.get_mini_cube(x_c, y_c, params, coord_system=coord_system, new_cube=False)
         # the cube masks have changed internally because new_cube = False in get_mini_cube
         w,f=self.spec_from_minicube(self.cube, self.stat, npix=npix)
         # get original mask back
@@ -168,7 +168,7 @@ class MuseCube:
             else:
                 smooth_ii=im
             f.append(np.nansum(smooth_ii))
-        return w,np.array(f)
+        return self.wavelength, np.array(f)
 
 
 
