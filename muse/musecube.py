@@ -150,48 +150,37 @@ class MuseCube:
         return image
 
     def get_spec(self,x_c, y_c, params, coord_system='pix', mode='ivar'):
-
-        self.get_mini_cube(x_c, y_c, params, coord_system=coord_system, new_cube=False)
+        new_mask=self.get_mini_cube_mask(x_c, y_c, params, coord_system=coord_system, new_cube=False)
         # the cube masks have changed internally because new_cube = False in get_mini_cube
-        spec = self.spec_from_minicube(self.cube, self.stat, mode=mode)
+        spec = self.spec_from_minicube_mask(new_mask, mode=mode)
         # get original mask back
         self.cube.mask = self.mask_init
         self.cube.stat = self.mask_init
         return spec
 
-    def spec_from_minicube_old(self,mini_cube, npix=4):
-        """
 
-        :param mini_cube: mini_cube obtained from the function get_mini_cube
-        :param npix: is the standard deviation of the gaussian that will be convoluted with the image
-        :return:
-        """
+    def draw_pyregion(self,region_string):
+        hdulist = fits.open(self.filename_white)
+        r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
+        fig = plt.figure(self.n)
+        ax = fig.axes[0]
+        patch_list, artist_list = r2.get_mpl_patches_texts()
+        patch=patch_list[0]
+        ax.add_patch(patch)
 
-        n = len(mini_cube)
-        f = []
-        for wv_ii in xrange(n):
-            im = mini_cube[wv_ii]
-            if npix>0:
-                smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(im, sigma=npix))
-                smooth_ii.mask=im.mask
-            else:
-                smooth_ii=im
-            f.append(np.nansum(smooth_ii))
-
-        return XSpectrum1D.from_tuple((self.wavelength, f))
-
-    def spec_from_minicube(self, mini_cube, mini_stat, mode='ivar'):
-        n = len(mini_cube)
+    def spec_from_minicube_mask(self, new_mask, mode='ivar'):
+        n = len(self.wavelength)
         fl = np.zeros(n)
         er = np.zeros(n)
+        self.cube.mask=new_mask
+        self.stat.mask=new_mask
         if mode not in ['ivar', 'sum']:
             raise ValueError("Not ready for this type of `mode`.")
-
         for wv_ii in xrange(n):
-            mask = mini_cube[wv_ii].mask
+            mask = new_mask[wv_ii]
             mask = np.where(mask !=0, True, False)
-            im_fl = mini_cube[wv_ii][~mask]
-            im_var = mini_stat[wv_ii][~mask]
+            im_fl = self.cube[wv_ii][~mask]
+            im_var = self.stat[wv_ii][~mask]
             if mode == 'ivar':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(~mask) * np.sum(flux_ivar) / np.sum(1. / im_var)
@@ -500,14 +489,14 @@ class MuseCube:
 
 
 
-    def get_mini_cube(self, x_c, y_c, params, coord_system='pix', new_cube=True):
+    def get_mini_cube_mask(self, x_c, y_c, params, coord_system='pix', new_cube=True):
         """
         Function that will select a portion ofn  the cube that corresponds to the aperture defined by center, a, b and theta elliptical parameters
         :param x_c: center of the elliptical aperture
         :param y_c: center of the elliptical aperture
         :param params: can be a single radius (float) of an circular aperture, or a (a,b,theta) tuple
         :param coord_system: default: pix, possible values: pix, wcs
-        :return: mini_cube: a smaller cube that contains only the aperture data
+        :return: complete_mask_new: a new mask for the cube
         """
 
         # pass to pixels
@@ -536,14 +525,7 @@ class MuseCube:
         region_string = self.ellipse_param_to_ds9_region_string(x_center,y_center,a,b,theta)
         complete_mask_new = self.create_new_mask(region_string)
 
-        if new_cube:
-            mini_cube = copy.deepcopy(self.cube)
-            mini_cube.mask = complete_mask_new
-            return mini_cube
-        else:
-            self.cube.mask = complete_mask_new
-            self.stat.mask = complete_mask_new
-            return
+        return complete_mask_new
 
     def ellipse_param_to_ds9_region_string(self,xc,yc,a,b,theta,color = 'green', coord_system = 'pix'):
         if coord_system=='wcs':
@@ -564,6 +546,7 @@ class MuseCube:
         mask_new_inverse = np.where(mask_new == True, False, True)
         complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
+        self.draw_pyregion(region_string)
         return complete_mask_new
 
 
