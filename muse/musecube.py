@@ -159,7 +159,7 @@ class MuseCube:
         return spec
 
 
-    def draw_pyregion(self,region_string):
+    def draw_pyregion(self, region_string):
         hdulist = fits.open(self.filename_white)
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
@@ -535,15 +535,12 @@ class MuseCube:
         region_string = 'physical;ellipse({},{},{},{},{}) # color ={}'.format(x_center,y_center,radius[0],radius[1],radius[2],color)
         return region_string
 
-
-
     def create_new_mask(self,region_string):
-        im_aux = np.ones_like(self.white_data)
+
         hdu_aux=fits.open(self.filename_white)
-        hdu_aux.data = im_aux
-        r = pyregion.parse(region_string)[0]
-        mask_new = r.get_mask(hdu = hdu_aux.data)
-        mask_new_inverse = np.where(mask_new == True, False, True)
+        r = pyregion.parse(region_string)  # we want r to be ShapeList
+        mask_new = r.get_mask(hdu = hdu_aux[1])  # we want the image header
+        mask_new_inverse = ~mask_new
         complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
