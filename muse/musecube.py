@@ -158,7 +158,7 @@ class MuseCube:
         self.cube.stat = self.mask_init
         return spec
 
-    def spec_from_minicube_old(self,mini_cube, mini_stat):
+    def spec_from_minicube_old(self,mini_cube, npix=4):
         """
 
         :param mini_cube: mini_cube obtained from the function get_mini_cube
@@ -574,9 +574,11 @@ class MuseCube:
             x_center, y_center, radius = x_c, y_c, params
 
 
-        self.draw_elipse(Xc=x_center, Yc=y_center, a=a, b=b, theta=theta, color='Green', coord_system='pix')
 
-        complete_mask_new = self.create_new_mask(x_center=x_center, y_center=y_center, a=a, b=b, theta=theta)
+
+
+        region_string = self.ellipse_param_to_ds9_region_string(x_center,y_center,a,b,theta)
+        complete_mask_new = self.create_new_mask(region_string)
 
         if new_cube:
             mini_cube = copy.deepcopy(self.cube)
@@ -587,26 +589,24 @@ class MuseCube:
             self.stat.mask = complete_mask_new
             return
 
-    def draw_elliptical_mask(self,Xc,Yc,a,b,theta,color = 'Green',coord_system='pix'):
+    def ellipse_param_to_ds9_region_string(self,xc,yc,a,b,theta,color = 'green', coord_system = 'pix'):
+        if coord_system=='wcs':
+            x_center,y_center,radius=self.elipse_parameters_to_pixel(xc,yc,radius=[a,b,theta])
+        else:
+            x_center,y_center,radius=xc,yc,[a,b,theta]
+        region_string = 'physical;ellipse({},{},{},{},{}) # color ={}'.format(x_center,y_center,radius[0],radius[1],radius[2],color)
+        return region_string
 
 
-    def create_new_mask(self,x_center,y_center,a,b,theta):
-        """
-        Create a mask cube that will mask every pixel except those contained in the aperture defined
-        by the parameters
-        :param x_center: x coordinate  of the center of the  aperture
-        :param y_center: y coordinate of the center of the aperture
-        :param a: semi-major axis
-        :param b: semi-minor axis
-        :param theta: angle of inclination
-        :return: complete_mask_new: ndarray that will mask the new cube.
-        """
-        import cv2
-        mask_new = np.ones_like(self.white_data)
-        mask_new = cv2.ellipse(mask_new, center=(x_center, y_center), axes=(a,b), angle=theta, startAngle=0, endAngle=360, color=(255,255,255), thickness=-1)
-        #mask_new[np.where(mask_new != 1)] = 0
-        mask_new = np.where(mask_new != 1, False, True)
-        complete_mask_new = mask_new + self.cube.mask
+
+    def create_new_mask(self,region_string):
+        im_aux = np.ones_like(self.white_data)
+        hdu_aux=fits.open(self.filename_white)
+        hdu_aux.data = im_aux
+        r = pyregion.parse(reg)
+        mask_new = r.get_mask(hdu = hdu_aux.data)
+        mask_new_inverse = np.where(mask_new == True, False, True)
+        complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         return complete_mask_new
 
