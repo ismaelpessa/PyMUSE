@@ -164,7 +164,7 @@ class MuseCube:
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r2.get_mpl_patches_texts()
+        patch_list, artist_list = r.get_mpl_patches_texts()
         patch=patch_list[0]
         ax.add_patch(patch)
 
@@ -521,7 +521,7 @@ class MuseCube:
             a = radius[0]
             b = radius[1]
         else: #already in pixel
-            x_center, y_center, radius = x_c, y_c, params
+            x_center, y_center, radius = x_c, y_c, [a,b,theta]
         region_string = self.ellipse_param_to_ds9_region_string(x_center,y_center,a,b,theta)
         complete_mask_new = self.create_new_mask(region_string)
 
@@ -532,17 +532,23 @@ class MuseCube:
             x_center,y_center,radius=self.elipse_parameters_to_pixel(xc,yc,radius=[a,b,theta])
         else:
             x_center,y_center,radius=xc,yc,[a,b,theta]
-        region_string = 'physical;ellipse({},{},{},{},{}) # color ={}'.format(x_center,y_center,radius[0],radius[1],radius[2],color)
+        region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center,y_center,radius[0],radius[1],radius[2],color)
         return region_string
 
 
+    def test_mask(self,region_string,alpha = 0.8):
+        complete_mask = self.create_new_mask(region_string)
+        mask_slice = complete_mask[0]
+        plt.figure(self.n)
+        plt.imshow(mask_slice,alpha=alpha)
+        self.draw_pyregion(region_string)
 
     def create_new_mask(self,region_string):
         im_aux = np.ones_like(self.white_data)
-        hdu_aux=fits.open(self.filename_white)
+        hdu_aux=fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
-        r = pyregion.parse(region_string)[0]
-        mask_new = r.get_mask(hdu = hdu_aux.data)
+        r = pyregion.parse(region_string)
+        mask_new = r.get_mask(hdu = hdu_aux)
         mask_new_inverse = np.where(mask_new == True, False, True)
         complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
