@@ -173,7 +173,7 @@ class MuseCube:
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
 
-        new_mask=self.get_mini_cube_mask(x_c, y_c, params, coord_system=coord_system, new_cube=False)
+        new_mask=self.get_mini_cube_mask(x_c, y_c, params, coord_system=coord_system)
         # the cube masks have changed internally because new_cube = False in get_mini_cube
         spec = self.spec_from_minicube_mask(new_mask, mode=mode)
         # get original mask back
