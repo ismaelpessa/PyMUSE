@@ -216,11 +216,12 @@ class MuseCube:
         n = len(self.wavelength)
         fl = np.zeros(n)
         er = np.zeros(n)
-        self.cube.mask=new_3dmask
-        self.stat.mask=new_3dmask
+        # I think we can avoid redefining the masks
+        # self.cube.mask=new_3dmask
+        # self.stat.mask=new_3dmask
 
         for wv_ii in xrange(n):
-            mask = new_mask[wv_ii]  # 2-D mask
+            mask = new_3dmask[wv_ii]  # 2-D mask
             mask = np.where(mask != 0, True, False)  # not sure if this is needed
             im_fl = self.cube[wv_ii][~mask]
             im_var = self.stat[wv_ii][~mask]
@@ -512,7 +513,7 @@ class MuseCube:
         else:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
 
-        region_string = self.ellipse_param_to_ds9reg_string(x_center, y_center, a, b, theta)
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta)
         complete_mask_new = self.create_new_3dmask(region_string)
         return complete_mask_new
 
