@@ -115,7 +115,7 @@ class MuseCube:
         ------
         Writes a new file to disk.
 
-        """"
+        """
         if not isinstance(npix, int)
             raise ValueError("npix must be integer.")
 
