@@ -116,7 +116,7 @@ class MuseCube:
         Writes a new file to disk.
 
         """
-        if not isinstance(npix, int)
+        if not isinstance(npix, int):
             raise ValueError("npix must be integer.")
 
         cube_new = copy.deepcopy(self.cube)
