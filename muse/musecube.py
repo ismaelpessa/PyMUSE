@@ -78,8 +78,8 @@ class MuseCube:
         self.cube.mask = self.mask_init
         self.stat.mask = self.mask_init
 
-        #for ivar weighting ; consider creating it in init
-        self.flux_over_ivar = self.cube / self.stat
+        #for ivar weighting ; consider creating it in init ; takes long
+        # self.flux_over_ivar = self.cube / self.stat
 
         #wavelength array
         self.wavelength = self.create_wavelength_array()
