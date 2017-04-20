@@ -17,7 +17,7 @@ You can get an spectrum of a geometrical region by using::
 
     sp1 = cube.get_spec(134, 219, 5, mode='mean')
 
-This `sp1` is an `XSpectrum1D` object of the spaxels within a circle of radius 5 at position xy=(134, 219).
+This ``sp1`` is an ``XSpectrum1D`` object of the spaxels within a circle of radius 5 at position xy=(134, 219).
 
 
 

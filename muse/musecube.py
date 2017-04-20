@@ -169,7 +169,7 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_spec(self,x_c, y_c, params, coord_system='pix', mode='ivar'):
+    def get_spec(self, x_c, y_c, params, coord_system='pix', mode='ivar'):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
 
