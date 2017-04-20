@@ -95,18 +95,39 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits',clobber=True)
         return smooth_im
 
-    def spatial_smooth(self, npix=2, write_to_disk=True, test=False):
+    def spatial_smooth(self, npix, output="smoothed.fits", test=False, **krargs):
+        """Applies Gaussian filter of std=npix in both spatial directions
+        and writes it to disk as a new MUSE Cube.
+        Notes: the STAT cube is not touched.
 
-        # matrix_flat = np.sum(self.cube[ind_min:ind_max,:,:], axis=0)
+        Parameters
+        ----------
+        npix : int
+            Std of Gaussian kernel in spaxel units.
+        output : str, optional
+            Name of the output file
+        test : bool, optional
+            Whether to check for flux being conserved
+
+        **kwargs are passed down to scipy.ndimage.gaussian_filter()
+
+        Return
+        ------
+        Writes a new file to disk.
+
+        """"
+        if not isinstance(npix, int)
+            raise ValueError("npix must be integer.")
+
         cube_new = copy.deepcopy(self.cube)
         ntot = len(self.cube)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii+1, ntot))
             image_aux = self.cube[wv_ii,:,:]
-            smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix))
+            smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
-            # test the fluxes are the same
+            # test the fluxes are conserved
             if test:
                 gd_pix = ~smooth_ii.mask
                 try:
@@ -119,15 +140,14 @@ class MuseCube:
             cube_new[wv_ii,:,:] = smooth_ii
             # import pdb; pdb.set_trace()
 
-        if write_to_disk:
-            hdulist = fits.open(self.filename)
-            hdulist[1].data = cube_new.data
-            prihdr = hdulist[0].header
-            comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
-            print(comment)
-            prihdr['history'] = comment
-            hdulist.writeto("smoothed_cube.fits", clobber=True)
-        return cube_new
+        hdulist = fits.open(self.filename)
+        hdulist[1].data = cube_new.data
+        prihdr = hdulist[0].header
+        comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
+        print(comment)
+        prihdr['history'] = comment
+        hdulist.writeto(output, clobber=True)
+        print("MuseCube: new smoothed cube written to {}".format(output))
 
     def get_mini_image(self, center, halfsize=15):
 
@@ -150,6 +170,9 @@ class MuseCube:
         return image
 
     def get_spec(self,x_c, y_c, params, coord_system='pix', mode='ivar'):
+        """Obtains a combined spectrum of spaxels within a geometrical region defined by
+        x_c, y_c, params."""
+
         new_mask=self.get_mini_cube_mask(x_c, y_c, params, coord_system=coord_system, new_cube=False)
         # the cube masks have changed internally because new_cube = False in get_mini_cube
         spec = self.spec_from_minicube_mask(new_mask, mode=mode)
@@ -157,7 +180,6 @@ class MuseCube:
         self.cube.mask = self.mask_init
         self.cube.stat = self.mask_init
         return spec
-
 
     def draw_pyregion(self,region_string):
         hdulist = fits.open(self.filename_white)
@@ -168,17 +190,38 @@ class MuseCube:
         patch=patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_mask, mode='ivar'):
+    def spec_from_minicube_mask(self, new_3dmask, mode='ivar'):
+        """Given a 3D mask, this function provides a combined spectrum
+        of all non-masked voxels.
+
+        Parameters
+        ----------
+        new_3dmask : np.array of same shape as self.cube
+            The 3D mask
+        mode : str
+            Mode for combining spaxels:
+              * `ivar` - inverse variance weighting
+              * `sum` - Sum
+
+        Returns
+        -------
+        An XSpectrum1D object (from linetools) with the combined spectrum.
+
+        """
+        if mode not in ['ivar', 'sum']:
+            raise ValueError("Not ready for this type of `mode`.")
+        if np.shape(new_3dmask) != np.shape(self.cube.mask):
+            raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
+
         n = len(self.wavelength)
         fl = np.zeros(n)
         er = np.zeros(n)
-        self.cube.mask=new_mask
-        self.stat.mask=new_mask
-        if mode not in ['ivar', 'sum']:
-            raise ValueError("Not ready for this type of `mode`.")
+        self.cube.mask=new_3dmask
+        self.stat.mask=new_3dmask
+
         for wv_ii in xrange(n):
-            mask = new_mask[wv_ii]
-            mask = np.where(mask !=0, True, False)
+            mask = new_mask[wv_ii]  # 2-D mask
+            mask = np.where(mask != 0, True, False)  # not sure if this is needed
             im_fl = self.cube[wv_ii][~mask]
             im_var = self.stat[wv_ii][~mask]
             if mode == 'ivar':
@@ -239,7 +282,6 @@ class MuseCube:
         plt.xlim([0, 2 * halfsize])
         return w,f
 
-
     def create_wavelength_array(self):
         """
         Creates the wavelength array for the spectrum. The values of dw, and limits will depend
@@ -257,22 +299,6 @@ class MuseCube:
         w = np.linspace(w_ini, w_fin, N)
         # print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
         return w
-
-    def indexOf(self, array, element):
-        """
-        Function to search a given element in a given array
-
-        :param array: array[]
-                      array that will be explored
-        :param element: any type
-                        element that will be searched in array
-        :return: the index of the first location of element in array. -1 if the element is not found
-        """
-        n = len(array)
-        for i in xrange(0, n):
-            if float(array[i]) == float(element):
-                return i
-        return -1
 
     def closest_element(self, array, element):
         """
@@ -310,10 +336,6 @@ class MuseCube:
         for i in xrange(0, N - n):
             cuted_flux.append(flux[i])
         return cuted_flux
-
-
-
-
 
     def __edit_header(self, hdulist, values_list,
                       keywords_list=['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'], hdu=1):
@@ -395,10 +417,6 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
-
-
-
-
     def __normalize2max(self, array):
         m = max(array)
         normalized_array = []
@@ -406,17 +424,13 @@ class MuseCube:
             normalized_array.append(element / m)
         return normalized_array
 
-    def elipse_parameters_to_pixel(self, xc, yc, radius):
+    def ellipse_params_to_pixel(self, xc, yc, radius):
         a = radius[0]
         b = radius[1]
         Xaux, Yaux, a2 = self.xyr_to_pixel(xc, yc, a)
         xc2, yc2, b2 = self.xyr_to_pixel(xc, yc, b)
         radius2 = [a2, b2, radius[2]]
         return xc2, yc2, radius2
-
-
-
-
 
     def define_elipse_region(self, x_center, y_center, a, b, theta, coord_system):
         Xc = x_center
@@ -447,22 +461,7 @@ class MuseCube:
                 k = self.closest_element(x_2, i)
                 if j <= y_positive_2[k] and j >= y_negative_2[k]:
                     reg.append([i, j])
-
         return reg
-
-
-
-    def __find_wavelength_index(self, wavelength):
-        wave = self.create_wavelength_array()
-        if wavelength < min(wave) or wavelength > max(wave):
-            raise ValueError('Longitud de onda dada no esta dentro del rango valido')
-        elif wavelength >= min(wave) and wavelength <= max(wave) and self.indexOf(wave, wavelength) == -1:
-            print 'Longitud de onda en rango valido, pero el valor asignado no esta definido'
-            k = int(self.closest_element(wave, wavelength))
-            print 'Se usara wavelength = ' + str(wave[k])
-        elif wavelength >= min(wave) and wavelength <= max(wave) and self.indexOf(wave, wavelength) >= 0:
-            k = self.indexOf(wave, wavelength)
-        return k
 
     def __vignetting_matrix(self, matrix, npixel_x, npixel_y):
         """
@@ -486,21 +485,18 @@ class MuseCube:
                     matrix_out[i][j] = matrix[i][j]
         return matrix_out
 
-
-
-
-    def get_mini_cube_mask(self, x_c, y_c, params, coord_system='pix', new_cube=True):
+    def get_mini_cube_mask(self, x_c, y_c, params, coord_system='pix'):
         """
-        Function that will select a portion ofn  the cube that corresponds to the aperture defined by center, a, b and theta elliptical parameters
+        Creates a 3D mask where all original masked voxels are masked out,
+        plus all voxels associated to spaxels outside the elliptical region
+        defined by the given parameters.
+
         :param x_c: center of the elliptical aperture
         :param y_c: center of the elliptical aperture
         :param params: can be a single radius (float) of an circular aperture, or a (a,b,theta) tuple
         :param coord_system: default: pix, possible values: pix, wcs
         :return: complete_mask_new: a new mask for the cube
         """
-
-        # pass to pixels
-
 
         if not isinstance(params, (int, float, tuple, list, np.array)):
             raise ValueError('Not ready for this `radius` type.')
@@ -510,46 +506,59 @@ class MuseCube:
             b = params
             theta = 0
         elif isiterable(params) and (len(params)==3):
-                a = max(params[:2])
-                b = min(params[:2])
-                theta = params[2]
+            a = max(params[:2])
+            b = min(params[:2])
+            theta = params[2]
         else:
-            raise ValueError('If iterable, the length of radius must be == 3; otherwise try float ')
+            raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
 
-        if coord_system == 'wcs':
-            x_center, y_center, radius = self.elipse_parameters_to_pixel(xc=x_c, yc=y_c, radius=[a,b,theta])
-            a = radius[0]
-            b = radius[1]
-        else: #already in pixel
-            x_center, y_center, radius = x_c, y_c, [a,b,theta]
-        region_string = self.ellipse_param_to_ds9_region_string(x_center,y_center,a,b,theta)
-        complete_mask_new = self.create_new_mask(region_string)
-
+        region_string = self.ellipse_param_to_ds9reg_string(x_center, y_center, a, b, theta)
+        complete_mask_new = self.create_new_3dmask(region_string)
         return complete_mask_new
 
-    def ellipse_param_to_ds9_region_string(self,xc,yc,a,b,theta,color = 'green', coord_system = 'pix'):
+    def ellipse_param_to_ds9reg_string(self, xc, yc, a, b, theta, color ='green', coord_system ='pix'):
+        """Creates a string that defines an elliptical region given by the
+        parameters using the DS9 convention.
+        """
         if coord_system=='wcs':
-            x_center,y_center,radius=self.elipse_parameters_to_pixel(xc,yc,radius=[a,b,theta])
-        else:
+            x_center,y_center,radius=self.ellipse_params_to_pixel(xc, yc, radius=[a, b, theta])
+        else: # already in pixels
             x_center,y_center,radius=xc,yc,[a,b,theta]
         region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center,y_center,radius[0],radius[1],radius[2],color)
         return region_string
 
-
-    def test_mask(self,region_string,alpha = 0.8):
-        complete_mask = self.create_new_mask(region_string)
+    def test_3dmask(self,region_string,alpha = 0.8):
+        complete_mask = self.create_new_3dmask(region_string)
         mask_slice = complete_mask[0]
         plt.figure(self.n)
         plt.imshow(mask_slice,alpha=alpha)
         self.draw_pyregion(region_string)
 
-    def create_new_mask(self,region_string):
+    def create_new_3dmask(self, region_string):
+        """Creates a 3D mask for the cube that also mask out
+        spaxels that are outside the gemoetrical redion defined by
+        region_string.
+
+        Parameters
+        ----------
+        region_string : str
+            A string that defines a geometrical region using the
+            DS9 format (e.g. see http://ds9.si.edu/doc/ref/region.html)
+
+        Returns
+        -------
+        A 3D mask that includes already masked voxels from the original cube,
+        plus all spaxels outside the region defined by region_string.
+
+        Notes: It uses pyregion package.
+
+        """
         im_aux = np.ones_like(self.white_data)
         hdu_aux=fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
         r = pyregion.parse(region_string)
         mask_new = r.get_mask(hdu = hdu_aux)
-        mask_new_inverse = np.where(mask_new == True, False, True)
+        mask_new_inverse = ~mask_new
         complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
@@ -1702,7 +1711,7 @@ class MuseCube:
             if type(radius) == int or type(radius) == float:
                 x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
             elif len(radius) == 3:
-                x_center, y_center, radius = self.elipse_parameters_to_pixel(x_center, y_center, radius)
+                x_center, y_center, radius = self.ellipse_params_to_pixel(x_center, y_center, radius)
 
 
         if mask == False:
