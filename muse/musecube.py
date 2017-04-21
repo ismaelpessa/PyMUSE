@@ -1,21 +1,22 @@
+import copy
+import gc
+import glob
+import math as m
+import os
+
+import aplpy
 import numpy as np
 import numpy.ma as ma
-from scipy import interpolate
-from scipy import ndimage
-import math as m
-import aplpy
-import gc
+import pyregion
+from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy import units as u
 from astropy.utils import isiterable
-from matplotlib import pyplot as plt
-import glob
-import os
-import pdb
 from linetools.spectra.xspectrum1d import XSpectrum1D
-import copy
-import pyregion
+from linetools.utils import name_from_coord
+from matplotlib import pyplot as plt
+from scipy import interpolate
+from scipy import ndimage
 
 
 # spec = XSpectrum1D.from
@@ -47,17 +48,17 @@ class MuseCube:
         """
 
         # init
-        self.vmin=vmin
-        self.vmax=vmax
+        self.vmin = vmin
+        self.vmax = vmax
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
-        self.white_data=fits.open(self.filename_white)[1].data
+        self.white_data = fits.open(self.filename_white)[1].data
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
         gc.enable()
@@ -69,30 +70,29 @@ class MuseCube:
         print("MuseCube: Loading the cube fluxes and variances...")
 
         # import pdb; pdb.set_trace()
-        self.cube= ma.MaskedArray(hdulist[1].data)
+        self.cube = ma.MaskedArray(hdulist[1].data)
         self.stat = ma.MaskedArray(hdulist[2].data)
 
         print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
-        #masking
+        # masking
         self.mask_init = np.isnan(self.cube) | np.isnan(self.stat)
         self.cube.mask = self.mask_init
         self.stat.mask = self.mask_init
 
-        #for ivar weighting ; consider creating it in init ; takes long
+        # for ivar weighting ; consider creating it in init ; takes long
         # self.flux_over_ivar = self.cube / self.stat
 
-        #wavelength array
+        # wavelength array
         self.wavelength = self.create_wavelength_array()
-
 
     def smooth_white(self, npix=2, write_to_disk=True):
 
-        hdulist=fits.open(self.filename_white)
-        im=hdulist[1].data
-        smooth_im=ndimage.gaussian_filter(im,sigma=npix)
+        hdulist = fits.open(self.filename_white)
+        im = hdulist[1].data
+        smooth_im = ndimage.gaussian_filter(im, sigma=npix)
         if write_to_disk:
-            hdulist[1].data=smooth_im
-            hdulist.writeto('smoothed_white.fits',clobber=True)
+            hdulist[1].data = smooth_im
+            hdulist.writeto('smoothed_white.fits', clobber=True)
         return smooth_im
 
     def spatial_smooth(self, npix, output="smoothed.fits", test=False, **kwargs):
@@ -122,8 +122,8 @@ class MuseCube:
         cube_new = copy.deepcopy(self.cube)
         ntot = len(self.cube)
         for wv_ii in range(ntot):
-            print('{}/{}'.format(wv_ii+1, ntot))
-            image_aux = self.cube[wv_ii,:,:]
+            print('{}/{}'.format(wv_ii + 1, ntot))
+            image_aux = self.cube[wv_ii, :, :]
             smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
@@ -133,11 +133,12 @@ class MuseCube:
                 try:
                     med_1 = np.nansum(smooth_ii[gd_pix])
                     med_2 = np.nansum(image_aux[gd_pix])
-                    print(med_1, med_2, (med_1 - med_2)/med_1)
+                    print(med_1, med_2, (med_1 - med_2) / med_1)
                     np.testing.assert_allclose(med_1, med_2, decimal=4)
                 except AssertionError:
-                    import pdb; pdb.set_trace()
-            cube_new[wv_ii,:,:] = smooth_ii
+                    import pdb;
+                    pdb.set_trace()
+            cube_new[wv_ii, :, :] = smooth_ii
             # import pdb; pdb.set_trace()
 
         hdulist = fits.open(self.filename)
@@ -169,21 +170,89 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_spec(self, x_c, y_c, params, coord_system='pix', mode='ivar'):
+    def get_spec_point(self, x, y,coord_system = 'pix'):
+        """
+        Obtain a spectrum of a single  point of the cube, defined by spaxels (xy)
+        :param x: x coordiante in spaxel
+        :param y: y coordinate in spaxel
+        :return: XSpectrum1D object
+        """
+        if coord_system=='wcs':
+            x_c,y_c=self.w2p(x,y)
+        else:
+            x_c,y_c=x,y
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 1, 1, 0, coord_system='pix')
+        self.draw_pyregion(region_string)
+        w = self.wavelength
+        n = len(w)
+        spec = np.zeros(n)
+        sigma = np.zeros(n)
+        for wv_ii in range(n):
+            spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
+            sigma[wv_ii] = self.stat.data[wv_ii][int(y_c)][int(x_c)]
+        return XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
+
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='ivar', n_figure=2, save=True):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
 
-        new_mask=self.get_mini_cube_mask(x_c, y_c, params, coord_system=coord_system)
+        new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
         spec = self.spec_from_minicube_mask(new_mask, mode=mode)
+        plt.figure(n_figure)
+        plt.plot(spec.wavelength, spec.flux)
+        if coord_system == 'wcs':
+            x_world, y_world = x_c, y_c
+        else:
+            x_world, y_world = self.p2w(x_c, y_c)
+        coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+        name = name_from_coord(coords)
+        plt.title(name)
+        plt.xlabel('Angstroms')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        if save:
+            spec.write_to_fits(name + '.fits')
         return spec
 
-    def draw_pyregion(self,region_string):
+    def center_from_ellipse_region_string(self, region_string):
+        r = pyregion.parse(region_string)
+        if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
+            x_c = r[0].coord_list[0]
+            y_c = r[0].coord_list[1]
+            x_world, y_world = self.p2w(x_c, y_c)
+            return x_world, y_world
+        else:
+            x_world, y_world = r[0].coord_list[0], r[0].coord_list[1]
+            return x_world, y_world
+
+    def get_spec_from_region_string(self, region_string, mode='ivar', n_figure=2, save=True):
+        """
+        Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
+        :param region_string: str
+                              String defining a ds9 region
+        :param mode: string. default = ivar
+        :return: spec: XSpectrum1D object.
+        """
+        new_mask = self.get_mini_cube_mask_from_region_string(region_string)
+        spec = self.spec_from_minicube_mask(new_mask, mode=mode)
+        plt.figure(n_figure)
+        plt.plot(spec.wavelength, spec.flux)
+        x_world, y_world = self.center_from_ellipse_region_string(region_string)
+        coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+        name = name_from_coord(coords)
+        plt.title(name)
+        plt.xlabel('Angstroms')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        if save:
+            spec.write_to_fits(name + '.fits')
+        return spec
+
+    def draw_pyregion(self, region_string):
         hdulist = fits.open(self.filename_white)
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
         patch_list, artist_list = r.get_mpl_patches_texts()
-        patch=patch_list[0]
+        patch = patch_list[0]
         ax.add_patch(patch)
 
     def spec_from_minicube_mask(self, new_3dmask, mode='ivar'):
@@ -224,11 +293,11 @@ class MuseCube:
             if mode == 'ivar':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
-                er[wv_ii] = np.sqrt( 1. / np.sum(1. / im_var) )
+                er[wv_ii] = np.sqrt(1. / np.sum(1. / im_var))
             if mode == 'ivar2':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
-                er[wv_ii] = np.sqrt( 1. / np.sum(1. / im_var) )
+                er[wv_ii] = np.sqrt(1. / np.sum(1. / im_var))
             elif mode == 'mean':
                 fl[wv_ii] = np.mean(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
@@ -239,7 +308,7 @@ class MuseCube:
         # import pdb;pdb.set_trace()
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_fig=3):
+    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='ivar', coord_system='pix'):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -253,20 +322,20 @@ class MuseCube:
         x_center = center[0]
         y_center = center[1]
         radius = halfsize
-        sky_radius_1 = 5
-        sky_radius_2 = 7
-        coord_system = 'pix'
-        spectrum, spec_name = self.plot_region_spectrum_sky_substraction(x_center, y_center, radius, sky_radius_1,
-                                                                         sky_radius_2,
-                                                                         coord_system, sky_method='none', errors=False,
-                                                                         redmonster_format=False)
-
-        if type(halfsize) == list:
+        spectrum = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
+                                                     coord_system=coord_system, mode=mode)
+        if isinstance(halfsize, (list, tuple)):
             aux = [halfsize[0], halfsize[1]]
             halfsize = max(aux)
         mini_image = self.get_mini_image(center=center, halfsize=halfsize)
         plt.figure(n_fig, figsize=(17, 5))
         ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
+        if coord_system == 'wcs':
+            x_world, y_world = self.p2w(center[0], center[1])
+        else:
+            x_world, y_world = center[0], center[1]
+        coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+        spec_name = name_from_coord(coord)
         plt.title(spec_name)
         w = spectrum.wavelength.value
         f = spectrum.flux.value
@@ -284,7 +353,7 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
-        return w,f
+        return w, f
 
     def create_wavelength_array(self):
         """
@@ -467,29 +536,18 @@ class MuseCube:
                     reg.append([i, j])
         return reg
 
-    def __vignetting_matrix(self, matrix, npixel_x, npixel_y):
+    def get_mini_cube_mask_from_region_string(self, region_string):
         """
-        Function used to mask the edges of the images
-        :param matrix: ndarray
-                       image to mask
-        :param npixel_x: int
-                         number of pixel to mask in both edges of the x-axis
-        :param npixel_y: int
-                         number of pixels to mask in both edges of the y-axis
-        :return:
+        Creates a 3D mask where all original masked voxels are masked out,
+        plus all voxels associated to spaxels outside the elliptical region
+        defined by the given parameters.
+        :param region_string: Region defined by ds9 format
+        :return: complete_mask_new: a new mask for the cube
         """
-        matrix_out = np.zeros_like(matrix)
-        n1 = len(matrix_out)
-        n2 = len(matrix_out[0])
-        for i in xrange(n1):
-            for j in xrange(n2):
-                if i <= npixel_y or i >= n1 - npixel_y or j <= npixel_x or j >= n2 - npixel_x:
-                    matrix_out[i][j] = -1
-                else:
-                    matrix_out[i][j] = matrix[i][j]
-        return matrix_out
+        complete_mask_new = self.create_new_3dmask(region_string)
+        return complete_mask_new
 
-    def get_mini_cube_mask(self, x_c, y_c, params, coord_system='pix'):
+    def get_mini_cube_mask_from_ellipse_params(self, x_c, y_c, params, coord_system='pix'):
         """
         Creates a 3D mask where all original masked voxels are masked out,
         plus all voxels associated to spaxels outside the elliptical region
@@ -509,7 +567,7 @@ class MuseCube:
             a = params
             b = params
             theta = 0
-        elif isiterable(params) and (len(params)==3):
+        elif isiterable(params) and (len(params) == 3):
             a = max(params[:2])
             b = min(params[:2])
             theta = params[2]
@@ -520,15 +578,16 @@ class MuseCube:
         complete_mask_new = self.create_new_3dmask(region_string)
         return complete_mask_new
 
-    def ellipse_param_to_ds9reg_string(self, xc, yc, a, b, theta, color ='green', coord_system ='pix'):
+    def ellipse_param_to_ds9reg_string(self, xc, yc, a, b, theta, color='green', coord_system='pix'):
         """Creates a string that defines an elliptical region given by the
         parameters using the DS9 convention.
         """
-        if coord_system=='wcs':
-            x_center,y_center,radius=self.ellipse_params_to_pixel(xc, yc, radius=[a, b, theta])
-        else: # already in pixels
-            x_center,y_center,radius=xc,yc,[a,b,theta]
-        region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center,y_center,radius[0],radius[1],radius[2],color)
+        if coord_system == 'wcs':
+            x_center, y_center, radius = self.ellipse_params_to_pixel(xc, yc, radius=[a, b, theta])
+        else:  # already in pixels
+            x_center, y_center, radius = xc, yc, [a, b, theta]
+        region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center, y_center, radius[0], radius[1],
+                                                                               radius[2], color)
         return region_string
 
     def _test_3dmask(self, region_string, alpha=0.8, slice=0):
@@ -558,95 +617,62 @@ class MuseCube:
 
         """
         im_aux = np.ones_like(self.white_data)
-        hdu_aux=fits.open(self.filename_white)[1]
+        hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
         r = pyregion.parse(region_string)
-        mask_new = r.get_mask(hdu = hdu_aux)
+        mask_new = r.get_mask(hdu=hdu_aux)
         mask_new_inverse = ~mask_new
         complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
         return complete_mask_new
 
-
-
-
-
-
-
-
-
-
-
-    def plot_sextractor_regions(self, sextractor_filename, flag_threshold=16):
+    def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32):
         self.clean_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
-        theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))*-0.0174533
+        theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))
         flags = self.get_from_table(sextractor_filename, 'FLAGS')
         id = self.get_from_table(sextractor_filename, 'NUMBER')
+        mag = self.get_from_table(sextractor_filename, 'MAG_AUTO')
         n = len(x_pix)
-        for i in xrange(0, n):
+        for i in xrange(n):
             color = 'Green'
-            region = self.define_elipse_region(x_center=int(x_pix[i]), y_center=int(y_pix[i]), a=int(a[i] + 0.6),
-                                               b=int(b[i] + 0.6), theta=theta[i], coord_system='pix')
             if flags[i] > flag_threshold:
                 color = 'Red'
-            elif len(region) < 1:
-                flags[i] = flag_threshold + 1
-                color = 'Blue'
-
-            self.draw_elipse(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color, coord_system='pix')
+            region_string = self.ellipse_param_to_ds9reg_string(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color)
+            self.draw_pyregion(region_string)
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
-        return x_pix, y_pix, a, b, theta, flags, id
+        return x_pix, y_pix, a, b, theta, flags, id, mag
 
-    def save_sextractor_specs(self, sextractor_filename, flag_threshold=16, redmonster_format=True, sky_method='none',
-                              n_figure=2):
-        x_pix, y_pix, a, b, theta, flags, id = self.plot_sextractor_regions(sextractor_filename=sextractor_filename,
-                                                                            flag_threshold=flag_threshold)
+    def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
+                              mode='ivar'):
+        x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
+            sextractor_filename=sextractor_filename,
+            flag_threshold=flag_threshold)
         self.clean_canvas()
         n = len(x_pix)
-        if redmonster_format:
-            for i in xrange(n):
-                if flags[i] < flag_threshold:
-                    spectrum, name = self.plot_region_spectrum_sky_substraction(x_center=int(x_pix[i]),
-                                                                                y_center=int(y_pix[i]),
-                                                                                radius=[int(a[i] + 0.6),
-                                                                                        int(b[i] + 0.6),
-                                                                                        theta[i]],
-                                                                                sky_radius_1=int(
-                                                                                    2 * max(int(a[i]), int(b[i]))),
-                                                                                sky_radius_2=int(
-                                                                                    3 * max(int(a[i]), int(b[i]))),
-                                                                                coord_system='pix', n_figure=n_figure,
-                                                                                errors=True, sky_method=sky_method,
-                                                                                redmonster_format=True, n_id=id[i])
-        else:
-            for i in xrange(n):
-                if flags[i] < flag_threshold:
-                    spectrum, name = self.plot_region_spectrum_sky_substraction(x_center=int(x_pix[i]),
-                                                                                y_center=int(y_pix[i]),
-                                                                                radius=[int(a[i] + 0.6),
-                                                                                        int(b[i] + 0.6),
-                                                                                        theta[i]],
-                                                                                sky_radius_1=int(
-                                                                                    2 * max(int(a[i]), int(b[i]))),
-                                                                                sky_radius_2=int(
-                                                                                    3 * max(int(a[i]), int(b[i]))),
-                                                                                coord_system='pix', n_figure=n_figure,
-                                                                                errors=True, sky_method=sky_method,
-                                                                                redmonster_format=False, n_id=id[i])
-                    spectrum.write_to_fits(name)
-
+        for i in xrange(n):
+            if flags[i] <= flag_threshold:
+                x_world, y_world = self.p2w(x_pix[i], y_pix[i])
+                coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+                spec_fits_name = name_from_coord(coord)
+                spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
+                                                         mode=mode, save=False, n_figure=n_figure)
+                str_id = str(id[i]).zfill(3)
+                spec_fits_name = str_id + '_' + spec_fits_name
+                if redmonster_format:
+                    self.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id[i],
+                                                   mag=['mag_r', mag[i]])
+                else:
+                    spec.write_to_fits(spec_fits_name + '.fits')
 
     def __read_files(self, input):
         path = input
         files = glob.glob(path)
         return files
-
-
 
     def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='image_video.avi',
                                       erase=True):
@@ -677,10 +703,10 @@ class MuseCube:
         for i in xrange(initial_wavelength, final_wavelength):
             wavelength_range = (i, i + width)
             filename = 'colapsed_image_' + str(i) + '_'
-            im=self.get_image(wv_inpu=wavelength_range,fitsname=filename+'.fits',type='sum',save='True')
+            im = self.get_image(wv_inpu=wavelength_range, fitsname=filename + '.fits', type='sum', save='True')
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+            image.show_grayscale(vmin=self.vmin, vmax=self.vmax)
             image.save(filename=filename + '.png')
             fitsnames.append(filename + '.fits')
             images_names.append(filename + '.png')
@@ -697,8 +723,6 @@ class MuseCube:
                 os.system(command_png)
         return video
 
-
-
     def find_wv_inds(self, wv_array):
         """
 
@@ -709,7 +733,6 @@ class MuseCube:
         inds = np.unique(inds)
         return inds
 
-
     def sub_cube(self, wv_input):
         """
         Returns a cube-like object with fewer wavelength elements
@@ -719,17 +742,18 @@ class MuseCube:
         """
         if isinstance(wv_input, tuple):
             if len(wv_input) != 2:
-                raise ValueError("If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
+                raise ValueError(
+                    "If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
             wv_inds = self.find_wv_inds(wv_input)
             ind_min = np.min(wv_inds)
             ind_max = np.max(wv_inds)
-            sub_cube = self.cube[ind_min:ind_max,:,:]
-        else: #assuming array-like for wv_input
+            sub_cube = self.cube[ind_min:ind_max, :, :]
+        else:  # assuming array-like for wv_input
             wv_inds = self.find_wv_inds(wv_input)
-            sub_cube = self.cube[wv_inds,:,:]
+            sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self,_filter='r',save=True,n_figure = 5):
+    def get_filtered_image(self, _filter='r', save=True, n_figure=5):
         """
         Function used to produce a filtered image from the cube
         :param _filter: string, default = r
@@ -739,27 +763,22 @@ class MuseCube:
         :return:
         """
 
-        w=self.create_wavelength_array()
-        filter_curve=self.get_filter(wavelength_spec=w,_filter=_filter)
-        condition = np.where(filter_curve>0)[0]
-        fitsname = 'new_image_'+_filter+'_filter.fits'
-        sub_cube=self.cube[condition]
-        filter_curve_final=filter_curve[condition]
-        extra_dims=sub_cube.ndim-filter_curve_final.ndim
-        new_shape = filter_curve_final.shape + (1,)*extra_dims
-        new_filter_curve=filter_curve_final.reshape(new_shape)
-        new_filtered_cube=sub_cube*new_filter_curve
-        new_filtered_image=np.sum(new_filtered_cube,axis=0)
+        w = self.create_wavelength_array()
+        filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
+        condition = np.where(filter_curve > 0)[0]
+        fitsname = 'new_image_' + _filter + '_filter.fits'
+        sub_cube = self.cube[condition]
+        filter_curve_final = filter_curve[condition]
+        extra_dims = sub_cube.ndim - filter_curve_final.ndim
+        new_shape = filter_curve_final.shape + (1,) * extra_dims
+        new_filter_curve = filter_curve_final.reshape(new_shape)
+        new_filtered_cube = sub_cube * new_filter_curve
+        new_filtered_image = np.sum(new_filtered_cube, axis=0)
         if save:
             self.__save2fits(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
         return new_filtered_image
 
-
-
-
-
-
-    def get_image(self,wv_input,fitsname='new_collapsed_cube.fits',type='sum',n_figure=2,save=False):
+    def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False):
         """
         Function used to colapse a determined wavelength range in a sum or a median type
         :param wv_input: tuple or list
@@ -773,9 +792,9 @@ class MuseCube:
         :return:
         """
         sub_cube = self.sub_cube(wv_input)
-        if type=='sum':
+        if type == 'sum':
             matrix_flat = np.sum(sub_cube, axis=0)
-        elif type=='median':
+        elif type == 'median':
             matrix_flat = np.median(sub_cube, axis=0)
         else:
             raise ValueError('Unknown type, please chose sum or median')
@@ -783,7 +802,8 @@ class MuseCube:
         if save:
             self.__save2fits(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
         return matrix_flat
-    def get_continuum_range(self,range):
+
+    def get_continuum_range(self, range):
         """
 
         :param range: tuple
@@ -792,27 +812,28 @@ class MuseCube:
                  cont_range_sup: The continuum range at the right of the Emission line, same length than input range
                  n             : The number of element in the wavelength space inside the ranges
         """
-        w_inf=range[0]
-        w_sup=range[1]
+        w_inf = range[0]
+        w_sup = range[1]
         wv_inds = self.find_wv_inds(range)
-        n=len(wv_inds)
-        wv_inds_sup=wv_inds+n
-        wv_inds_inf = wv_inds-n
-        cont_range_inf=(wv_inds_inf[0],wv_inds_inf[n-1])
-        cont_range_sup=(wv_inds_sup[0],wv_inds_sup[n-1])
-        return cont_range_inf,cont_range_sup,n
+        n = len(wv_inds)
+        wv_inds_sup = wv_inds + n
+        wv_inds_inf = wv_inds - n
+        cont_range_inf = (wv_inds_inf[0], wv_inds_inf[n - 1])
+        cont_range_sup = (wv_inds_sup[0], wv_inds_sup[n - 1])
+        return cont_range_inf, cont_range_sup, n
 
-    def get_image_wv_ranges(self,wv_ranges,substract_cont=True,fitsname='new_collapsed_cube.fits',save=False,n_figure=3):
-        image_stacker=np.zeros_like(self.white_data)
+    def get_image_wv_ranges(self, wv_ranges, substract_cont=True, fitsname='new_collapsed_cube.fits', save=False,
+                            n_figure=3):
+        image_stacker = np.zeros_like(self.white_data)
         for r in wv_ranges:
-            image=self.get_image(r)
-            cont_range_inf,cont_range_sup,n=self.get_continuum_range(r)
-            cont_inf_image=self.get_image(cont_range_inf,type='median')
-            cont_sup_image=self.get_image(cont_range_sup,type='median')
-            cont_image=n*(cont_inf_image+cont_sup_image)/2.
+            image = self.get_image(r)
+            cont_range_inf, cont_range_sup, n = self.get_continuum_range(r)
+            cont_inf_image = self.get_image(cont_range_inf, type='median')
+            cont_sup_image = self.get_image(cont_range_sup, type='median')
+            cont_image = n * (cont_inf_image + cont_sup_image) / 2.
             if substract_cont:
-                image=image-cont_image
-            image_stacker=image_stacker+image.data
+                image = image - cont_image
+            image_stacker = image_stacker + image.data
 
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
@@ -859,10 +880,10 @@ class MuseCube:
         :return:
         """
         wave = self.create_wavelength_array()
-        n=len(wave)
-        self.get_image((wave[0],wave[n-1]),fitsname=new_white_fitsname,save=True)
+        n = len(wave)
+        self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, save=True)
 
-    def spec_to_redmonster_format(self, spec, fitsname, n_id=-1, mag=[0, 0]):
+    def spec_to_redmonster_format(self, spec, fitsname, n_id=None, mag=None):
         """
         Function used to create a spectrum in the REDMONSTER software format
         :param spec: XSpectrum1D object
@@ -871,7 +892,6 @@ class MuseCube:
         :return:
         """
         from scipy import interpolate
-        # pdb.set_trace()
         wave = spec.wavelength.value
         wave_log = np.log10(wave)
         n = len(wave)
@@ -881,7 +901,6 @@ class MuseCube:
         flux = spec_rebined.flux.value
         f = interpolate.interp1d(wave_log, spec.sig.value)
         sig = f(new_wave_log)
-        # sig=flux/1.1
         inv_sig = 1. / np.array(sig) ** 2
         inv_sig = np.where(np.isinf(inv_sig), 0, inv_sig)
         inv_sig = np.where(np.isnan(inv_sig), 0, inv_sig)
@@ -889,12 +908,9 @@ class MuseCube:
         hdu2 = fits.ImageHDU([inv_sig])
         hdu1.header['COEFF0'] = new_wave_log[0]
         hdu1.header['COEFF1'] = new_wave_log[1] - new_wave_log[0]
-        if n_id > 0:
+        if n_id != None:
             hdu1.header['ID'] = n_id
-        if mag[0] != 0:
-            print mag[0], mag[1]
-            if np.isnan(mag[1]) or np.isinf(mag[1]):
-                mag[1] = 999.
+        if mag != None:
             hdu1.header[mag[0]] = mag[1]
         hdulist_new = fits.HDUList([hdu1, hdu2])
         hdulist_new.writeto(fitsname, clobber=True)
@@ -908,18 +924,18 @@ class MuseCube:
         return mag
 
     def get_filter(self, wavelength_spec, _filter='r'):
-       
-       wave_u = np.arange(2980,4155,25)
-        
-       wave_g = np.arange(3630,5855,25)
-       
-       wave_r = np.arange(5380,7255,25)
-       
-       wave_i = np.arange(6430,8655,25)
-    
-       wave_z = np.arange(7730,11255,25)
-        
-       flux_u = np.array(
+
+        wave_u = np.arange(2980, 4155, 25)
+
+        wave_g = np.arange(3630, 5855, 25)
+
+        wave_r = np.arange(5380, 7255, 25)
+
+        wave_i = np.arange(6430, 8655, 25)
+
+        wave_z = np.arange(7730, 11255, 25)
+
+        flux_u = np.array(
             [0.00000000e+00, 1.00000000e-04, 5.00000000e-04, 1.30000000e-03, 2.60000000e-03, 5.20000000e-03,
              9.30000000e-03, 1.61000000e-02, 2.40000000e-02, 3.23000000e-02, 4.05000000e-02, 4.85000000e-02,
              5.61000000e-02, 6.34000000e-02, 7.00000000e-02, 7.56000000e-02, 8.03000000e-02, 8.48000000e-02,
@@ -929,7 +945,7 @@ class MuseCube:
              4.13000000e-02, 2.68000000e-02, 1.45000000e-02, 7.50000000e-03, 4.20000000e-03, 2.20000000e-03,
              1.00000000e-03, 6.00000000e-04, 4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
 
-       flux_g = np.array(
+        flux_g = np.array(
             [0.00000000e+00, 3.00000000e-04, 8.00000000e-04,
              1.30000000e-03, 1.90000000e-03, 2.40000000e-03,
              3.40000000e-03, 5.50000000e-03, 1.03000000e-02,
@@ -960,8 +976,8 @@ class MuseCube:
              1.00000000e-03, 9.00000000e-04, 8.00000000e-04,
              6.00000000e-04, 5.00000000e-04, 3.00000000e-04,
              1.00000000e-04, 0.00000000e+00])
-            
-       flux_r = np.array(
+
+        flux_r = np.array(
             [0.00000000e+00, 1.40000000e-03, 9.90000000e-03,
              2.60000000e-02, 4.98000000e-02, 8.09000000e-02,
              1.19000000e-01, 1.63000000e-01, 2.10000000e-01,
@@ -987,8 +1003,8 @@ class MuseCube:
              2.80000000e-03, 2.00000000e-03, 1.60000000e-03,
              1.30000000e-03, 1.00000000e-03, 7.00000000e-04,
              4.00000000e-04, 2.00000000e-04, 0.00000000e+00])
-       
-       flux_i = np.array(
+
+        flux_i = np.array(
             [0.00000000e+00, 1.00000000e-04, 3.00000000e-04,
              4.00000000e-04, 4.00000000e-04, 4.00000000e-04,
              3.00000000e-04, 4.00000000e-04, 9.00000000e-04,
@@ -1019,8 +1035,8 @@ class MuseCube:
              1.40000000e-03, 1.10000000e-03, 1.00000000e-03,
              1.00000000e-03, 9.00000000e-04, 6.00000000e-04,
              3.00000000e-04, 0.00000000e+00])
-            
-       flux_z = np.array(
+
+        flux_z = np.array(
             [0., 0., 0.0001, 0.0001, 0.0001, 0.0002, 0.0002,
              0.0003, 0.0005, 0.0007, 0.0011, 0.0017, 0.0027, 0.004,
              0.0057, 0.0079, 0.0106, 0.0139, 0.0178, 0.0222, 0.0271,
@@ -1041,36 +1057,36 @@ class MuseCube:
              0.0012, 0.0011, 0.001, 0.0009, 0.0008, 0.0008, 0.0007,
              0.0006, 0.0006, 0.0006, 0.0005, 0.0005, 0.0004, 0.0004,
              0.0003, 0.0003, 0.0002, 0.0002, 0.0001, 0.0001, 0., 0.])
-       if _filter == 'u':
+        if _filter == 'u':
             wave_filter = wave_u
             flux_filter = flux_u
-       if _filter == 'g':
+        if _filter == 'g':
             wave_filter = wave_g
             flux_filter = flux_g
-       if _filter == 'r':
+        if _filter == 'r':
             wave_filter = wave_r
             flux_filter = flux_r
-       if _filter == 'i':
+        if _filter == 'i':
             wave_filter = wave_i
             flux_filter = flux_i
-       if _filter == 'z':
+        if _filter == 'z':
             wave_filter = wave_z
             flux_filter = flux_z
-        #filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confusiones.
-       
-       new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
-       interpolator = interpolate.interp1d(wave_filter, flux_filter)
-       new_filter_flux = interpolator(new_filter_wavelength)
+            # filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confusiones.
 
-       final_flux_filter = []
+        new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
+        interpolator = interpolate.interp1d(wave_filter, flux_filter)
+        new_filter_flux = interpolator(new_filter_wavelength)
 
-       for j, w in enumerate(wavelength_spec):
+        final_flux_filter = []
+
+        for j, w in enumerate(wavelength_spec):
             k = self.indexOf(new_filter_wavelength, w)
             if k >= 0:
                 final_flux_filter.append(new_filter_flux[k])
             else:
                 final_flux_filter.append(0.)
-       return np.array(final_flux_filter)
+        return np.array(final_flux_filter)
 
     def overlap_filter(self, wave_filter, wavelength_spec):
         n = len(wave_filter)
@@ -1144,8 +1160,8 @@ class MuseCube:
         spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
         substracted_sky_spec = np.array(self.substract_spec(spec, spec_sky_normalized))
         plt.figure(n_figure)
-        plt.plot(w, substracted_sky_spec,label='Spectrum')
-        plt.plot(w, spec_sky_normalized,label='Substracted Sky')
+        plt.plot(w, substracted_sky_spec, label='Spectrum')
+        plt.plot(w, spec_sky_normalized, label='Substracted Sky')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.legend()
@@ -1167,7 +1183,6 @@ class MuseCube:
             spec_tuple = (w, substracted_sky_spec)
 
         spectrum = XSpectrum1D.from_tuple(spec_tuple)
-        from linetools.utils import name_from_coord
         spec_fits_name = name_from_coord(coords)
         if redmonster_format:
             photo_filter = self.get_filter(w, filter=filter)
@@ -1202,7 +1217,7 @@ class MuseCube:
         plt.figure(self.n)
         plt.clf()
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
 
     def create_table(self, input_file):
         """
@@ -1710,14 +1725,12 @@ class MuseCube:
 
         """
 
-
         input = self.cube
         if coord_system == 'wcs':
             if type(radius) == int or type(radius) == float:
                 x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
             elif len(radius) == 3:
                 x_center, y_center, radius = self.ellipse_params_to_pixel(x_center, y_center, radius)
-
 
         if mask == False:
 
@@ -1830,52 +1843,6 @@ class MuseCube:
         e = d.split(',')
         return float(e[0]), float(e[1]), float(e[2])
 
-    def read_region_file(self, regionfile):
-        """
-        Read a ds9 region file. The region file must be in physical coordinates. The output is an array with the
-        center (x,y) and radius that defines all circular regions
-        :param self:
-        :param regionfile: string
-                           name of the region file
-        :return: reg: array[]
-                      array that in each space contains the (x,y,r) parameters that define a region
-        """
-        f = open(regionfile, 'r')
-        lines = f.readlines()
-        circles = []
-        for line in lines:
-            if len(line) > 5:
-                if self.substring(line, 0, 5) == 'circle':
-                    circles.append(line)
-
-        reg = []
-        for line in circles:
-            x, y, r = self.read_circle_line(line)
-            x = int(round(x))
-            y = int(round(y))
-            r = int(round(r))
-            reg.append([x, y, r])
-        return reg
-
-    def plot_region_file(self, regionfile):
-        """
-        Plot and shows the spectrum of al regions in a ds9 region file. The region must be defined in phisical
-        coordinates.
-        :param self:
-        :param regionfile: string
-                           name of the region file
-        :return:
-        """
-        regiones = self.read_region_file(regionfile)
-        for i in xrange(0, len(regiones)):
-            spec = self.plot_region_spectrum(regiones[i][0], regiones[i][1], regiones[i][2], 'pix',
-                                             color='Green', n_figure=i + 2)
-            plt.figure(self.n)
-            plt.annotate('fig_' + str(i + 2), xy=(150, 150), xytext=(regiones[i][0], regiones[i][1]), color='red',
-                         size=12)
-            print 'Region: X=' + str(regiones[i][0]) + ' Y=' + str(regiones[i][1]) + ' R= ' + str(
-                regiones[i][2]) + ' en Figure ' + str(i + 2)
-
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
@@ -1899,13 +1866,13 @@ class MuseCube:
         images_names = []
         fitsnames = []
         for z in z_array:
-            print 'z = '+str(z)
+            print 'z = ' + str(z)
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
-            image=self.get_image_wv_ranges(wv_ranges=ranges,fitsname=filename+'.fits',save=True)
+            image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+            image.show_grayscale(vmin=self.vmin, vmax=self.vmax)
             plt.title('Emission lines image at z = ' + str(z))
             image.save(filename=filename + '.png')
             images_names.append(filename + '.png')
