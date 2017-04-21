@@ -78,8 +78,8 @@ class MuseCube:
         self.cube.mask = self.mask_init
         self.stat.mask = self.mask_init
 
-        #for ivar weighting ; consider creating it in init
-        #self.flux_over_ivar = self.cube / self.stat
+        #for ivar weighting ; consider creating it in init ; takes long
+        # self.flux_over_ivar = self.cube / self.stat
 
         #wavelength array
         self.wavelength = self.create_wavelength_array()
@@ -169,16 +169,12 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_spec(self,x_c, y_c, params, coord_system='pix', mode='ivar'):
+    def get_spec(self, x_c, y_c, params, coord_system='pix', mode='ivar'):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
 
         new_mask=self.get_mini_cube_mask(x_c, y_c, params, coord_system=coord_system)
-        # the cube masks have changed internally because new_cube = False in get_mini_cube
         spec = self.spec_from_minicube_mask(new_mask, mode=mode)
-        # get original mask back
-        self.cube.mask = self.mask_init
-        self.cube.stat = self.mask_init
         return spec
 
     def draw_pyregion(self,region_string):
@@ -208,7 +204,7 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'sum']:
+        if mode not in ['ivar', 'mean', 'median', 'ivar2']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -223,15 +219,22 @@ class MuseCube:
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
             mask = np.where(mask != 0, True, False)  # not sure if this is needed
-            im_fl = self.cube[wv_ii][~mask]
-            im_var = self.stat[wv_ii][~mask]
+            im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
+            im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
             if mode == 'ivar':
                 flux_ivar = im_fl / im_var
-                fl[wv_ii] = np.sum(~mask) * np.sum(flux_ivar) / np.sum(1. / im_var)
-                er[wv_ii] = np.sum(~mask) * np.sqrt( 1. / np.sum(1. / im_var) )
-            elif mode == 'sum':
-                fl[wv_ii] = np.sum(im_fl)
-                er[wv_ii] = np.sqrt(np.sum(im_var))
+                fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
+                er[wv_ii] = np.sqrt( 1. / np.sum(1. / im_var) )
+            if mode == 'ivar2':
+                flux_ivar = im_fl / im_var
+                fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
+                er[wv_ii] = np.sqrt( 1. / np.sum(1. / im_var) )
+            elif mode == 'mean':
+                fl[wv_ii] = np.mean(im_fl)
+                er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
+            elif mode == 'median':
+                fl[wv_ii] = np.median(im_fl)
+                er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
 
         # import pdb;pdb.set_trace()
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
@@ -354,7 +357,7 @@ class MuseCube:
         hdulist_edited[hdu] = hdu_element
         return hdulist_edited
 
-    def __save2fitsimage(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2, edit_header=[]):
+    def __save2fits(self, fitsname, data_to_save, stat=False, type='cube', n_figure=2, edit_header=[]):
         if type == 'white':
             hdulist = fits.HDUList.fromfile(self.filename_white)
             hdulist[1].data = data_to_save
@@ -513,7 +516,7 @@ class MuseCube:
         else:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
 
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta)
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta, coord_system=coord_system)
         complete_mask_new = self.create_new_3dmask(region_string)
         return complete_mask_new
 
@@ -528,11 +531,11 @@ class MuseCube:
         region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center,y_center,radius[0],radius[1],radius[2],color)
         return region_string
 
-    def test_3dmask(self,region_string,alpha = 0.8):
+    def _test_3dmask(self, region_string, alpha=0.8, slice=0):
         complete_mask = self.create_new_3dmask(region_string)
-        mask_slice = complete_mask[0]
+        mask_slice = complete_mask[int(slice)]
         plt.figure(self.n)
-        plt.imshow(mask_slice,alpha=alpha)
+        plt.imshow(mask_slice, alpha=alpha)
         self.draw_pyregion(region_string)
 
     def create_new_3dmask(self, region_string):
@@ -748,7 +751,7 @@ class MuseCube:
         new_filtered_cube=sub_cube*new_filter_curve
         new_filtered_image=np.sum(new_filtered_cube,axis=0)
         if save:
-            self.__save2fitsimage(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
+            self.__save2fits(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
         return new_filtered_image
 
 
@@ -778,7 +781,7 @@ class MuseCube:
             raise ValueError('Unknown type, please chose sum or median')
 
         if save:
-            self.__save2fitsimage(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+            self.__save2fits(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
         return matrix_flat
     def get_continuum_range(self,range):
         """
@@ -812,7 +815,7 @@ class MuseCube:
             image_stacker=image_stacker+image.data
 
         if save:
-            self.__save2fitsimage(fitsname, image_stacker, type='white', n_figure=n_figure)
+            self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
 
     def normalize_sky(self, flux_sky, normalization_factor):
@@ -1196,7 +1199,8 @@ class MuseCube:
         :param self:
         :return:
         """
-        plt.close(self.n)
+        plt.figure(self.n)
+        plt.clf()
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin,vmax=self.vmax)
 
@@ -1946,7 +1950,7 @@ class MuseCube:
                 colapsed_emission = np.nansum(flux_data[condition])
                 colapsed_image[i][j] = colapsed_emission
         colapsed_image = np.array(colapsed_image)
-        self.__save2fitsimage(fitsname=fitsname, data_to_save=colapsed_image, type='white')
+        self.__save2fits(fitsname=fitsname, data_to_save=colapsed_image, type='white')
         return colapsed_image
 
     def create_ranges(self, z, width=5.):
