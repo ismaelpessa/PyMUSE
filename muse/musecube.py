@@ -95,7 +95,7 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits',clobber=True)
         return smooth_im
 
-    def spatial_smooth(self, npix, output="smoothed.fits", test=False, **krargs):
+    def spatial_smooth(self, npix, output="smoothed.fits", test=False, **kwargs):
         """Applies Gaussian filter of std=npix in both spatial directions
         and writes it to disk as a new MUSE Cube.
         Notes: the STAT cube is not touched.
