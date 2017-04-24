@@ -810,8 +810,6 @@ class MuseCube:
                  cont_range_sup: The continuum range at the right of the Emission line, same length than input range
                  n             : The number of element in the wavelength space inside the ranges
         """
-        w_inf = range[0]
-        w_sup = range[1]
         wv_inds = self.find_wv_inds(range)
         n = len(wv_inds)
         wv_inds_sup = wv_inds + n
@@ -838,21 +836,6 @@ class MuseCube:
         return image_stacker
 
 
-    def substract_spec(self, spec, sky_spec):
-        """
-
-        :param spec: array[]
-                     flux array of the region
-        :param sky_spec: array[]
-                         flux array of the sky
-        :return: substracted_spec: array[]
-                                   flux array of the region with the substraction of the sky
-        """
-        substracted_spec = []
-        n = len(spec)
-        for i in xrange(0, n):
-            substracted_spec.append(spec[i] - sky_spec[i])
-        return substracted_spec
 
     def create_white(self, new_white_fitsname='white_from_colapse.fits'):
         """
@@ -1161,53 +1144,6 @@ class MuseCube:
         print 'FWHM={:.2f}'.format(seeing)
         return seeing
 
-    def is_in_ring(self, x_center, y_center, radius_1, radius_2, x, y):
-        """
-        Function to sheck if (x,y) is inside the ring region with inner radius = radius_1 and outer
-        radius = radius_2.
-        :param x_center: float
-                         x-coordinate of the center of the region
-        :param y_center: float
-                         y-coordinate of the center of the region
-        :param radius_1:  float
-                          inner radius of the region
-        :param radius_2: float
-                         outer radius of the region
-        :param x: float
-                  x-coordinate of the point that will be checked
-        :param y: float
-                  y-coordinate of the point that will be checked
-        :return: boolean:
-                 True if (x,y) is inside the ring, False if not
-        """
-        if (x - x_center) ** 2 + (y - y_center) ** 2 <= radius_2 ** 2 and (x - x_center) ** 2 + (
-                    y - y_center) ** 2 >= radius_1 ** 2:
-            return True
-        return False
-
-    def is_in_reg(self, x_center, y_center, radius, x, y):
-        """
-        Determines if the pair (x,y) is inside the circular region centered in (x_center,y_center) and r=radius
-        returns True or False
-        :param self:
-        :param x_center: float
-                         x coordinate of the center of the circular region
-        :param y_center: float
-                         y coordinate of the center of the circular region
-        :param radius: float
-                       radius of the circular region
-        :param x: float
-                  x coordinate of the pair
-        :param y: float
-                  y coordinate of the pair
-        :return: boolean
-                 True if (x,y) is inside the region, False if not
-        """
-
-        if (x - x_center) ** 2 + (y - y_center) ** 2 < radius ** 2:
-            return True
-        return False
-
     def w2p(self, xw, yw):
         """
         Transform from wcs coordinates system to pixel coordinates
@@ -1276,182 +1212,6 @@ class MuseCube:
         radius_pix = radius
         return x_center_pix, y_center_pix, radius_pix
 
-    def define_ring_region(self, x_center, y_center, radius_1, radius_2, coord_system):
-        """
-        Function to define a ring region, with an inner and an outer radius
-        :param x_center: x coordinate of the center of the ring
-        :param y_center: y coordinate of the center of the ring
-        :param radius_1: inner radius
-        :param radius_2: outer radius
-        :param coord_system: possible values: 'wcs' or 'pix', indicates the coordinate system of the input valyes
-        :return: reg: list
-                      list conatining all the pixel on the region defined by x,y and radius
-        """
-        if coord_system == 'wcs':
-            x_center_temp, y_center_temp, radius_1 = self.xyr_to_pixel(x_center, y_center, radius_1)
-            x_center, y_center, radius_2 = self.xyr_to_pixel(x_center, y_center, radius_2)
-
-        reg = []
-        # print y_center
-        if x_center - radius_2 - 3 > 0 and y_center - radius_2 - 3 > 0:
-            for i in xrange(x_center - radius_2 - 3, x_center + radius_2 + 4):
-                for j in xrange(y_center - radius_2 - 3, y_center + radius_2 + 4):
-                    if self.is_in_ring(x_center, y_center, radius_1, radius_2, i, j):
-                        reg.append([i, j])
-        if x_center - radius_2 - 3 < 0 and y_center - radius_2 - 3 > 0:
-            for i in xrange(0, x_center + radius_2 + 4):
-                for j in xrange(y_center - radius_2 - 3, y_center + radius_2 + 4):
-                    if self.is_in_ring(x_center, y_center, radius_1, radius_2, i, j):
-                        reg.append([i, j])
-        if x_center - radius_2 - 3 > 0 and y_center - radius_2 - 3 < 0:
-            for i in xrange(x_center - radius_2 - 3, x_center + radius_2 + 4):
-                for j in xrange(0, y_center + radius_2 + 4):
-                    if self.is_in_ring(x_center, y_center, radius_1, radius_2, i, j):
-                        reg.append([i, j])
-        if x_center - radius_2 - 3 < 0 and y_center - radius_2 - 3 < 0:
-            for i in xrange(0, x_center + radius_2 + 4):
-                for j in xrange(0, y_center + radius_2 + 4):
-                    if self.is_in_ring(x_center, y_center, radius_1, radius_2, i, j):
-                        reg.append([i, j])
-        return reg
-
-    def define_region(self, x_center, y_center, radius, coord_system):
-        """
-        Define a circular region by returning al the pixels which are inside the region
-
-        :param self:
-        :param x_center: float
-                         x coordinate of the center of the region
-        :param y_center: float
-                         y coordinate of the center of the region
-        :param radius: float
-                       radius of the circular region
-        :param coord_system: string
-                             possible values: 'wcs', 'pix', indicates the coordinante system used.
-        :return: reg: array[]
-                      reg contains all the (x,y) pairs which are inside the region. The (x,y) are in pixels
-                      coordinates
-        """
-        if coord_system == 'wcs':
-            x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
-
-        reg = []
-        # print x_center,y_center,radius
-        if x_center - radius - 3 > 0 and y_center - radius - 3 > 0:
-            for i in xrange(x_center - radius - 3, x_center + radius + 4):
-                for j in xrange(y_center - radius - 3, y_center + radius + 4):
-                    if self.is_in_reg(x_center, y_center, radius, i, j):
-                        reg.append([i, j])
-        if x_center - radius - 3 < 0 and y_center - radius - 3 > 0:
-            for i in xrange(0, x_center + radius + 4):
-                for j in xrange(y_center - radius - 3, y_center + radius + 4):
-                    if self.is_in_reg(x_center, y_center, radius, i, j):
-                        reg.append([i, j])
-        if x_center - radius - 3 > 0 and y_center - radius - 3 < 0:
-            for i in xrange(x_center - radius - 3, x_center + radius + 4):
-                for j in xrange(0, y_center + radius + 4):
-                    if self.is_in_reg(x_center, y_center, radius, i, j):
-                        reg.append([i, j])
-        if x_center - radius - 3 < 0 and y_center - radius - 3 < 0:
-            for i in xrange(0, x_center + radius + 4):
-                for j in xrange(0, y_center + radius + 4):
-                    if self.is_in_reg(x_center, y_center, radius, i, j):
-                        reg.append([i, j])
-        return reg
-
-    def test_plot_reg(self, reg):
-        """
-        Plot all the pixels that are contained in a region. The input reg is an array, output from the function
-        self.define_region, which has all the pixel contained in a region
-        :param self:
-        :param reg: array[]
-                    array that in every space contains an (x,y) pair.
-        :return:
-        """
-        for i in xrange(0, len(reg)):
-            plt.figure(1)
-            plt.plot(reg[i][0], reg[i][1], 'o')
-
-    def draw_elipse(self, Xc, Yc, a, b, theta, color, coord_system):
-        """
-        Draw an elipse centered in (Xc,Yc) with semiaxis a and b, and a rotation angle theta
-        :param Xc: float
-                   x coordinate of the center of the elipse
-        :param Yc: float
-                   y coordinate of the center of the elipse
-        :param a: float
-                  semiaxis in the x axis of the elipse
-        :param b: float
-                  semiaxis in the y axis of the elipse
-        :param theta: float
-                      rotation angle between elipse and x axis
-        :param color: string
-                      Color of the elipse
-        :param coord_system: string
-                             possible values: 'wcs','pix', indicates the coordinate system used.
-        :return:
-        """
-        if coord_system == 'wcs':
-            X_aux, Y_aux, a = self.xyr_to_pixel(Xc, Yc, a)
-            Xc, Yc, b = self.xyr_to_pixel(Xc, Yc, b)
-        if b > a:
-            aux = a
-            a = b
-            b = aux
-            theta = theta + np.pi / 2.
-        x = np.linspace(-a, a, 5000)
-
-        B = x * np.sin(2. * theta) * (a ** 2 - b ** 2)
-        A = (b * np.sin(theta)) ** 2 + (a * np.cos(theta)) ** 2
-        C = (x ** 2) * ((b * np.cos(theta)) ** 2 + (a * np.sin(theta)) ** 2) - (a ** 2) * (b ** 2)
-
-        y_positive = (-B + np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
-        y_negative = (-B - np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
-
-        y_positive_2 = y_positive + Yc
-        y_negative_2 = y_negative + Yc
-        x_2 = x + Xc
-        plt.figure(self.n)
-        plt.plot(x_2, y_positive_2, color)
-        plt.plot(x_2, y_negative_2, color)
-
-    def draw_circle(self, Xc, Yc, R, color, coord_system):
-        """
-        Draw a circle, centered in (Xc,Yc) with radius R.
-        :param self:
-        :param Xc: float
-                   x coordinate of the center of the circle
-        :param Yc: float
-                   y coorcinate of the center of the circle
-        :param R: float
-                  radius of the circle
-        :param color: string
-                      color of the circles that will be drawn
-        :param coord_system: string
-                             possible values: 'wcs', 'pix', indicates the coordinate system used.
-        :return:
-        """
-
-        if coord_system == 'wcs':
-            Xc, Yc, R = self.xyr_to_pixel(Xc, Yc, R)
-        N = 10000
-        X1 = np.linspace(Xc - R, Xc + R, N / 2)
-        X2 = np.linspace(Xc - R, Xc + R, N / 2)
-        Y1 = range(len(X1))
-        Y2 = range(len(X2))
-        for i in xrange(0, len(X1)):
-            if ((X1[i] - Xc) ** 2) - R ** 2 >= 0:
-                Y1[i] = m.sqrt(((X1[i] - Xc) ** 2) - R ** 2) + Yc
-            if ((X1[i] - Xc) ** 2) - R ** 2 < 0:
-                Y1[i] = m.sqrt(-(((X1[i] - Xc) ** 2) - R ** 2)) + Yc
-        for i in xrange(0, len(X2)):
-            if ((X2[i] - Xc) ** 2) - R ** 2 >= 0:
-                Y2[i] = -m.sqrt(((X2[i] - Xc) ** 2) - R ** 2) + Yc
-            if ((X2[i] - Xc) ** 2) - R ** 2 < 0:
-                Y2[i] = -m.sqrt(-(((X2[i] - Xc) ** 2) - R ** 2)) + Yc
-        plt.figure(self.n)
-        plt.plot(X1, Y1, color)
-        plt.plot(X2, Y2, color)
 
     def size(self):
         """
@@ -1463,7 +1223,6 @@ class MuseCube:
         hdulist = fits.open(input)
         hdulist.info()
         self.cube.data.shape
-        print 'X,Y,Lambda'
 
     def substring(self, string, i, j):
         """
