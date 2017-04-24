@@ -58,11 +58,11 @@ To do this, you should have at least the next parameters in the SExtractor outpu
 1. X_IMAGE.
 2. Y_IMAGE.
 3. A_IMAGE.
-#. B_IMAGE.
-#. THETA_IMAGE.
-#. FLAGS.
-#. NUMBER.
-#. MAG_AUTO.
+4. B_IMAGE.
+5. THETA_IMAGE.
+6. FLAGS.
+7. NUMBER.
+8. MAG_AUTO.
 
 First, to plot your regions, you can use::
 
