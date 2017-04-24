@@ -353,7 +353,7 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
-        return w, f
+        return spectrum
 
     def create_wavelength_array(self):
         """
@@ -648,7 +648,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
-                              mode='ivar'):
+                              mode='ivar',mag_kwrd='mag_r'):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename,
             flag_threshold=flag_threshold)
@@ -665,9 +665,13 @@ class MuseCube:
                 spec_fits_name = str_id + '_' + spec_fits_name
                 if redmonster_format:
                     self.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id[i],
-                                                   mag=['mag_r', mag[i]])
+                                                   mag=[mag_kwrd, mag[i]])
                 else:
                     spec.write_to_fits(spec_fits_name + '.fits')
+                    hdulist = fits.open(spec_fits_name+'.fits')
+                    hdulist[0].header[mag_kwrd]=mag[i]
+                    hdulist.writeto(spec_fits_name+'.fits',clobber=True)
+
 
     def __read_files(self, input):
         path = input
@@ -1098,115 +1102,7 @@ class MuseCube:
                 w_spec_overlap.append(w)
         return np.array(w_spec_overlap)
 
-    def plot_region_spectrum_sky_substraction(self, x_center, y_center, radius, sky_radius_1, sky_radius_2,
-                                              coord_system, n_figure=2, errors=True, sky_method='med',
-                                              redmonster_format=True, n_id=-1, filter='r', range=[]):
-        """
-        Function to obtain and display the spectrum of a source in circular region of R = radius,
-        substracting the spectrum of the sky, obtained in a ring region around x_center and y_center,
-        with internal radius = sky_radius_1 and external radius = sky_radius_2
 
-
-        :param x_center: float
-                         x coordinate of the center of the circular region
-        :param y_center: float
-                         y coordinate of the center of the circular region
-        :param radius: float
-                       radius of the circular region. In the case of an eliptical region, radius must be an 1-D array
-                       of length = 3, containing [a,b,theta] parameters of the elipse
-        :param sky_radius_1: float
-                             internal radius of the ring where the sky will be calculated
-        :param sky_radius_2: float
-                             external radius of the ring where the sky will be calculated
-        :param coord_system: string
-                             possible values: 'wcs', 'pix', indicates the coordinante system used.
-        :param sky_method: string, default = 'med'
-                       method to estimate the sky. Possible values are med,ave, or none
-        :param n_figure: int, default = 2
-                         figure number to display the spectrum
-        :param redmonster_format: boolean, default = True
-                                  if true, creates a fitsfile which is compatible with redmonster software
-        :return: w: array[]
-                    array with the wavelength of the spectrum
-                 substracted_sky_spec: array[]
-                                       array with the flux of the sky-substracted spectrum
-        """
-        if coord_system == 'wcs':
-            coords = SkyCoord(ra=x_center, dec=y_center, frame='icrs', unit='deg')
-        else:
-            x_world, y_world = self.p2w(x_center, y_center)
-            coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
-
-        w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False)
-        if errors:
-            w, err = self.spectrum_region(x_center, y_center, radius, coord_system, debug=False, stat=True)
-        w_sky, spec_sky = self.spectrum_ring_region(x_center, y_center, sky_radius_1, sky_radius_2, coord_system,
-                                                    sky_method=sky_method)
-        if sky_method != 'none':
-            self.draw_circle(x_center, y_center, sky_radius_1, 'Blue', coord_system)
-            self.draw_circle(x_center, y_center, sky_radius_2, 'Blue', coord_system)
-        if type(radius) == int or type(radius) == float:
-            self.draw_circle(x_center, y_center, radius, 'Green', coord_system)
-            reg = self.define_region(x_center, y_center, radius, coord_system)
-        else:
-            a = radius[0]
-            b = radius[1]
-            theta = radius[2]
-            self.draw_elipse(x_center, y_center, a, b, theta, 'Green', coord_system)
-            reg = self.define_elipse_region(x_center, y_center, a, b, theta, coord_system)
-
-        normalization_factor = float(len(reg))
-        print normalization_factor
-        spec_sky_normalized = self.normalize_sky(spec_sky, normalization_factor)
-        substracted_sky_spec = np.array(self.substract_spec(spec, spec_sky_normalized))
-        plt.figure(n_figure)
-        plt.plot(w, substracted_sky_spec, label='Spectrum')
-        plt.plot(w, spec_sky_normalized, label='Substracted Sky')
-        plt.ylabel('Flux (' + str(self.flux_units) + ')')
-        plt.xlabel('Wavelength (Angstroms)')
-        plt.legend()
-
-        if len(range) == 2:
-            w_inf = range[0]
-            w_sup = range[1]
-            k_inf = self.closest_element(w, w_inf)
-            k_sup = self.closest_element(w, w_sup)
-            w = w[k_inf:k_sup]
-            substracted_sky_spec = substracted_sky_spec[k_inf:k_sup]
-            if errors:
-                err = err[k_inf:k_sup]
-
-        if errors:
-            err = np.array(err)
-            spec_tuple = (w, substracted_sky_spec, err)
-        else:
-            spec_tuple = (w, substracted_sky_spec)
-
-        spectrum = XSpectrum1D.from_tuple(spec_tuple)
-        spec_fits_name = name_from_coord(coords)
-        if redmonster_format:
-            photo_filter = self.get_filter(w, filter=filter)
-            mag = self.calculate_mag(w, substracted_sky_spec, photo_filter)
-            keyword_mag = 'MAG_' + filter.upper()
-            mag_tuple = [keyword_mag, mag]
-            spec_tuple_aux = (w, substracted_sky_spec, err)
-            spectrum_aux = XSpectrum1D.from_tuple(spec_tuple_aux)
-            str_id = str(n_id).zfill(3)
-            self.spec_to_redmonster_format(spectrum, str_id + '_' + spec_fits_name + '_RMF.fits', n_id=n_id,
-                                           mag=mag_tuple)
-            return spectrum_aux, spec_fits_name
-        else:
-            if n_id > 0:
-                spectrum.write_to_fits(spec_fits_name)
-                hdulist_spec = fits.open(spec_fits_name)
-                hdulist_spec[0].header['ID'] = n_id
-                hdulist_spec.writeto(spec_fits_name + '.fits', clobber=True)
-
-            return spectrum, spec_fits_name
-
-
-
-            # plt.plot(w,w_sky)#print spec_sky
 
     def clean_canvas(self):
         """
@@ -1592,225 +1488,6 @@ class MuseCube:
         self.cube.data.shape
         print 'X,Y,Lambda'
 
-    def get_spectrum_point_aplpy(self, x, y, coord_system, stat=False):
-        """
-        Obtain the spectrum of a given point defined by (x,y) in the datacube
-        :param self:
-        :param x: float
-                  x coordinate of the point
-        :param y: float
-                  y coordinate of the point
-        :param coord_system: string
-                             possible values: 'wcs', 'pix', indicates the coordinate system used.
-        :param stat: boolean, default = False
-                     if true, the spectra will be obtained from the stat image instead
-        :return: wave: array[]
-                       array with the wavelegth of the spectrum.
-                 spec: array[]
-                       array with the flux of the spectrum.
-        """
-        # gc = aplpy.FITSFigure(input,slices=[1])
-        # gc.show_grayscale()
-        if coord_system == 'wcs':
-            x_pix, y_pix = self.w2p(x, y)
-        if coord_system == 'pix':
-            x_pix = x
-            y_pix = y
-
-        # DATA.shape ##Z,X,Y
-        nw = len(self.cube.data)
-        ny = len(self.cube.data[0])
-        nx = len(self.cube.data[0][0])
-        wave = self.create_wavelength_array()
-        spec = []
-        data = self.cube.data
-        if stat:
-            data = self.stat.data
-        for i in xrange(0, len(wave)):
-            # print x_pix,y_pix
-            # print len(self.data[0])
-            if y_pix >= ny:
-                y_pix = ny - 1
-            if x_pix >= nx:
-                x_pix = nx - 1
-
-            spec.append(data[i][y_pix][x_pix])
-        # figure(2)
-        # plt.plot(wave,spec)
-        # plt.show()
-        return wave, spec
-
-    def spectrum_ring_region(self, x_center, y_center, radius_1, radius_2, coord_system, debug=False, sky_method='med'):
-        """
-        Function used to estimate the spectrum of the sky in a ring region
-        :param x_center: x center coordinate of the region
-        :param y_center: y center coordinate  of t he region
-        :param radius_1: inner radius of the region
-        :param radius_2: outer radius of the region
-        :param coord_system: possible values: 'wcs' and 'pix'. Indicates the coordinate system of the input values
-        :param sky_method: possible values 'med','ave,'none'. indicate t he method used to estimate the sky
-        :return: wave,combined_spec: ndarray
-                 wavelength and flux array
-        """
-        input = self.filename
-        # print x_center
-        Region = self.define_ring_region(x_center, y_center, radius_1, radius_2, coord_system)
-        N = len(Region)
-
-        S = []
-        if N == 0:
-            wave = self.create_wavelength_array()
-            flux = np.zeros(len(wave))
-            return wave, flux
-
-        for i in xrange(0, N):
-            S.append(self.get_spectrum_point_aplpy(Region[i][0], Region[i][1], 'pix'))
-        wave = S[0][0]
-        specs = []
-        for i in xrange(0, N):
-            specs.append(S[i][1])
-        combined_spec = range(len(specs[0]))
-
-        lambda_aux = []
-        for j in xrange(0, len(specs[0])):
-            for i in xrange(0, len(specs)):
-                lambda_aux.append(specs[i][j])
-            if debug:
-                bins = np.linspace(np.min(lambda_aux), np.max(lambda_aux), 20)
-                plt.hist(lambda_aux, bins)
-                plt.show()
-            if sky_method == 'med':
-                combined_spec[j] = np.nanmedian(lambda_aux)
-            elif sky_method == 'ave':
-                combined_spec[j] = np.nanmean(lambda_aux)
-            elif sky_method == 'none':
-                combined_spec[j] = 0.
-
-            lambda_aux = []
-        return np.array(wave), np.array(combined_spec)
-
-    def get_weights(self, x_center, y_center, radius, region):
-        from astropy.modeling import models
-        g = models.Gaussian1D(amplitude=1.0, mean=0.0, stddev=radius)
-        weights = []
-        for element in region:
-            distance = np.sqrt((x_center - element[0]) ** 2 + (y_center - element[1]) ** 2)
-            weights.append(g(distance))
-        weights = np.array(weights)
-        return weights / np.sum(weights)
-
-    def spectrum_region(self, x_center, y_center, radius, coord_system, debug=False, stat=False, mask=False, seeing=2.):
-        """
-        Obtain the spectrum of a given region in the datacube, defined by a center (x_center,y_center), and
-        radius. In the case of circular region, radius is a number, in the case of eliptical region, radius in an array that
-        must contain a,b and angle.
-        :param self:
-        :param x_center: float
-                         x coordinate of the center of the region
-        :param y_center: float
-                         y coordinate of the center of the region
-        :param radius: float or 1-D array
-                       radius of the circular region or the [a,b,theta] that defines an eliptical region
-        :param coord_system: string
-                             possible values: 'wcs, 'pix', indicates the coordinate system used.
-        :param mask: boolean, default = False
-                     if true, that means that the spectrum comes from a region defined by a mask, and x_center,y_center and radius are the coordinates of the pixels inside the region and the weights, respectively
-        :param seeing: int.
-                       is the number of pixel that will have the gaussian curve that will convolute with the spectrum inside the aperture, if 0, no convolution is done
-        :return: wave: array[]
-                       array with the wavelength of the spectrum
-                 combined_spec: array[]
-                                array with the flux of the spectrum. This flux is the sum of the fluxes of all
-                                pixels in the region.
-
-        """
-
-        input = self.cube
-        if coord_system == 'wcs':
-            if type(radius) == int or type(radius) == float:
-                x_center, y_center, radius = self.xyr_to_pixel(x_center, y_center, radius)
-            elif len(radius) == 3:
-                x_center, y_center, radius = self.ellipse_params_to_pixel(x_center, y_center, radius)
-
-        if mask == False:
-
-            if type(radius) == int or type(radius) == float:
-
-                Region = self.define_region(x_center, y_center, radius, coord_system)
-            else:
-                a = radius[0]
-                b = radius[1]
-                theta = radius[2]
-                Region = self.define_elipse_region(x_center, y_center, a, b, theta, coord_system)
-            N = len(Region)
-            if seeing == 0.:
-                weights = np.ones(N)
-            else:
-                weights = self.get_weights(x_center, y_center, radius=seeing, region=Region) * N
-        else:
-            weights = radius
-            n = len(x_center)
-            Region = []
-            for i in xrange(n):
-                Region.append([x_center[i], y_center[i]])
-
-        N = len(Region)
-        S = []
-        for i in xrange(0, N):
-            S.append(self.get_spectrum_point_aplpy(Region[i][0], Region[i][1], 'pix', stat=stat))
-        wave = S[0][0]
-        specs = []
-        for i in xrange(0, N):
-            specs.append(weights[i] * np.array(S[i][1]))
-        combined_spec = range(len(specs[0]))
-
-        lambda_aux = []
-        for j in xrange(0, len(specs[0])):
-            for i in xrange(0, len(specs)):
-                lambda_aux.append(specs[i][j])
-            if debug:
-                bins = np.linspace(np.min(lambda_aux), np.max(lambda_aux), 20)
-                plt.hist(lambda_aux, bins)
-                plt.show()
-
-            if stat == False:
-                combined_spec[j] = np.nansum(lambda_aux)
-            else:
-                combined_spec[j] = np.sqrt(np.nansum(np.array(lambda_aux) ** 2))
-
-            lambda_aux = []
-        return wave, combined_spec
-
-    def plot_region_spectrum(self, x_center, y_center, radius, coord_system, color='Green', n_figure=2, debug=False):
-        """
-        Plot over the canvas a circle region, and aditionally, plots it's spectrum in other figure
-        :param x_center: float
-                         x coordinate of the circular region
-        :param y_center: float
-                         y coordinate of the circular region
-        :param radius: float
-                       radius of the circular region
-        :param coord_system: string
-                             possible vales: 'wcs', 'pix', indicates de coordinate system used
-        :param color: string
-                      default: 'Green'. Color of the circle to be drawn
-        :param n_figure: int, default = 2
-                         figure number to display the spectrum
-        :return: w: array[]
-                    array with the wavelength of the spectrum
-                 spec: array[]
-                       array with the flux of the spectrum
-
-
-         """
-        input = self.filename
-        plt.figure(1)
-        self.draw_circle(x_center, y_center, radius, color, coord_system)
-        w, spec = self.spectrum_region(x_center, y_center, radius, coord_system, debug=debug)
-        plt.figure(n_figure)
-        plt.plot(w, spec)
-        return w, spec
-
     def substring(self, string, i, j):
         """
         Obtain a the substring of string, from index i to index j, both included
@@ -1830,18 +1507,6 @@ class MuseCube:
             out = out + string[k]
         return out
 
-    def read_circle_line(self, circle_line):
-        """
-        Function used to read a line of a ds9 region f ile
-        :param circle_line: line of the ds9 region file
-        :return:
-        """
-        a = circle_line.split('(')
-        b = a[1]
-        c = b.split(')')
-        d = c[0]
-        e = d.split(',')
-        return float(e[0]), float(e[1]), float(e[2])
 
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         """
@@ -1899,27 +1564,7 @@ class MuseCube:
                          name of the new image
         :return:
         """
-        data = self.cube.data
-        image = data[0]
-        n1 = len(image)
-        n2 = len(image[0])
-        colapsed_image = np.zeros_like(image)
-        for i in xrange(n1):
-            for j in xrange(n2):
-                if j == n2 - 1:
-                    print 'iteracion ' + str(i) + ' de ' + str(n1 - 1)
-                spec_data = self.get_spectrum_point_aplpy(j, i, coord_system='pix')
-                flux_data = np.array(spec_data[1])
-                spec_stat = self.get_spectrum_point_aplpy(j, i, coord_system='pix', stat=True)
-                flux_stat = np.array(spec_stat[1])
-                s2n = flux_data / flux_stat
-                condition = s2n >= nsigma
-                colapsed_emission = np.nansum(flux_data[condition])
-                colapsed_image[i][j] = colapsed_emission
-        colapsed_image = np.array(colapsed_image)
-        self.__save2fits(fitsname=fitsname, data_to_save=colapsed_image, type='white')
-        return colapsed_image
-
+        raise NotImplementedError()
     def create_ranges(self, z, width=5.):
         """
         Function used to create the wavelength ranges around strong emission lines at a given redshift
