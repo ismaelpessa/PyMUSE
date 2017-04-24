@@ -490,12 +490,6 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
-    def __normalize2max(self, array):
-        m = max(array)
-        normalized_array = []
-        for element in array:
-            normalized_array.append(element / m)
-        return normalized_array
 
     def ellipse_params_to_pixel(self, xc, yc, radius):
         a = radius[0]
@@ -843,23 +837,6 @@ class MuseCube:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
 
-    def normalize_sky(self, flux_sky, normalization_factor):
-        """
-        Function used to normalize the flux of the sky, by the number of pixels used in it
-        :param flux_sky: array[]
-                         array containing the flux to normalize
-        :param normalization_factor: float
-                                     factor to normalize the flux. It should be the cuocient between
-                                     the number of pixel in the region of the soruce and the number
-                                     of pixels in the sky ring-region
-        :return: flux_normalized: array[]
-                                  array containing the normalized flux of the sky
-        """
-        n = len(flux_sky)
-        flux_normalized = []
-        for f in flux_sky:
-            flux_normalized.append(f * normalization_factor)
-        return flux_normalized
 
     def substract_spec(self, spec, sky_spec):
         """

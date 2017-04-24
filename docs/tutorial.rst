@@ -100,7 +100,7 @@ and compose a new filtered image. To do this, you can use the method::
 
     cube.get_filtered_image(_filter = 'r')
 
- _filter can be any of ugriz. This method will write a new filtered image that will be usefull to photometry analysis
+_filter can be any of ugriz. This method will write a new filtered image that will be usefull to photometry analysis
 
 
 Create Videos
