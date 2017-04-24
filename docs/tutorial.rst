@@ -91,6 +91,18 @@ Will allow  you to estimate the seeing using the white image. The user must inse
 of a nearly puntual source expanded by the seeing. The method will fit a 2D gaussian to the bright profile and will associate
 the FWHM of the profile with the seeing. The halfsize parameter  indicates the radius size in spaxels of the source that will be fited.
 
+
+Compose a filtered image
+++++++++++++++++++++++++
+
+If you want to do a photometric analysis from the Muse Cube, you would need to convolute your data with a sdss photometric filter
+and compose a new filtered image. To do this, you can use the method::
+
+    cube.get_filtered_image(_filter = 'r')
+
+ _filter can be any of ugriz. This method will write a new filtered image that will be usefull to photometry analysis
+
+
 Create Videos
 +++++++++++++
 
