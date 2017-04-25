@@ -95,6 +95,14 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits', clobber=True)
         return smooth_im
 
+    def create_new_stat(self):
+        """Creates a new variance using simple algorithms"""
+        median_var_cube = np.zeros_like(self.cube)
+        for wv_ii in np.arange(len(self.wavelength)):
+            median_ii = np.median(self.stat[wv_ii])
+            median_var_cube[wv_ii, :, :] = median_ii
+        self.new_var = self.cube + median_var_cube
+
     def spatial_smooth(self, npix, output="smoothed.fits", test=False, **kwargs):
         """Applies Gaussian filter of std=npix in both spatial directions
         and writes it to disk as a new MUSE Cube.
@@ -267,13 +275,14 @@ class MuseCube:
             Mode for combining spaxels:
               * `ivar` - inverse variance weighting
               * `sum` - Sum
+              * `optimal` - Weighted sum by spatial profile (only works for circular thus far)
 
         Returns
         -------
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median', 'ivar2']:
+        if mode not in ['ivar', 'mean', 'median', 'ivar2', 'optimal']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -304,6 +313,10 @@ class MuseCube:
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
+            elif mode == 'optimal':  # (extending K. Horne 1986 to 2D)
+                from astropy.modeling import models
+                gauss2d = models.Gaussian2D()
+
 
         # import pdb;pdb.set_trace()
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
