@@ -244,15 +244,23 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self,mode = 'ivar'):
+    def get_spec_from_interactive_polygon_region(self,mode = 'ivar',n_figure = 2):##Se necesita inicializar como ipython --pylab qt
         from roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r',fig=current_fig)
+        raw_input("Please select points with left click.\nRight click and Enter to continue...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask==1,0,1)
         complete_mask=self.mask_init + mask_inv
         new_3dmask=np.where(complete_mask==0,False,True)
         spec = self.spec_from_minicube_mask(new_3dmask,mode=mode)
+        self.clean_canvas()
+        plt.figure(n_figure)
+        plt.plot(spec.wavelength,spec.flux)
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        plt.xlabel('Wavelength (Angstroms)')
+        plt.title('Polygon region spectra')
+        MyROI.displayROI()
         return spec
 
     def center_from_ellipse_region_string(self, region_string):
@@ -1116,6 +1124,7 @@ class MuseCube:
         plt.clf()
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
+        plt.show()
 
     def create_table(self, input_file):
         """
