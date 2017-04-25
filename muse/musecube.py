@@ -188,14 +188,13 @@ class MuseCube:
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
-            center = np.zeros_like(mask)
+            center = np.zeros(mask.shape)
             center[y_c][x_c]=1
             weigths = ma.MaskedArray(fi.gaussian_filter(center, radius))
             weigths.mask = mask
             weigths = weigths/np.sum(weigths)
             fl[wv_ii]=np.sum(self.cube[wv_ii]*weigths)
-            sig[wv_ii] = np.sqrt(np.sum((self.stat[wv_ii]**2) * weigths))
-
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii]) * (weigths**2))
         self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w,fl,sig))
 
