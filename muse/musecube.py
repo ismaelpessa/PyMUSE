@@ -177,6 +177,7 @@ class MuseCube:
         return image
 
     def get_weighted_spec(self,x_c,y_c,radius):
+        import scipy.ndimage.filters as fi
         new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c,y_c,radius)
         w = self.wavelength
         n=len(w)
