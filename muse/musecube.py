@@ -244,8 +244,22 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self,n):
-        return
+    def get_spec_from_interactive_polygon_region(self,mode = 'ivar'):
+        from roipoly import roipoly
+        current_fig = plt.figure(self.n)
+        MyROI = roipoly(roicolor='r',fig=current_fig)
+        self.clean_canvas()
+        MyROI.displayROI()
+        mask = MyROI.getMask(self.white_data)
+        mask_inv = np.where(mask==1,0,1)
+        complete_mask=self.mask_init + mask_inv
+        new_3dmask=np.where(complete_mask==0,False,True)
+        spec = self.spec_from_minicube_mask(new_3dmask,mode=mode)
+        return spec
+
+
+
+
 
     def center_from_ellipse_region_string(self, region_string):
         r = pyregion.parse(region_string)
@@ -339,9 +353,6 @@ class MuseCube:
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
-
-
-
         # import pdb;pdb.set_trace()
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
