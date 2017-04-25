@@ -144,8 +144,6 @@ class MuseCube:
                     print(med_1, med_2, (med_1 - med_2) / med_1)
                     np.testing.assert_allclose(med_1, med_2, decimal=4)
                 except AssertionError:
-                    import pdb;
-                    pdb.set_trace()
             cube_new[wv_ii, :, :] = smooth_ii
             # import pdb; pdb.set_trace()
 
@@ -178,7 +176,30 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_spec_point(self, x, y,coord_system = 'pix'):
+    def get_weighted_spec(self,x_c,y_c,radius):
+        new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c,y_c,radius)
+        w = self.wavelength
+        n=len(w)
+        fl = np.zeros(n)
+        sig = np.zeros(n)
+        self.cube.mask = new_3dmask
+        for wv_ii in range(n):
+            mask = new_3dmask[wv_ii]
+            center = np.zeros(mask)
+            center[y_c][x_c]=1
+            weigths = ma.MaskedArray(fi.gaussian_filter(center, radius))
+            weigths.mask = mask
+            weigths = weigths/np.sum(weigths)
+            fl[wv_ii]=np.sum(self.cube[wv_ii]*weigths)
+            sig[wv_ii] = np.sqrt(np.sum((self.stat[wv_ii]**2) * weigths))
+
+        self.cube.mask = self.mask_init
+        return XSpectrum1D.from_tuple((w,fl,sig))
+
+
+
+
+    def get_spec_spaxel(self, x, y, coord_system ='pix'):
         """
         Obtain a spectrum of a single  point of the cube, defined by spaxels (xy)
         :param x: x coordiante in spaxel
@@ -282,7 +303,7 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median', 'ivar2', 'optimal']:
+        if mode not in ['ivar', 'mean', 'median', 'ivar2']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -313,9 +334,7 @@ class MuseCube:
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
-            elif mode == 'optimal':  # (extending K. Horne 1986 to 2D)
-                from astropy.modeling import models
-                gauss2d = models.Gaussian2D()
+
 
 
         # import pdb;pdb.set_trace()
