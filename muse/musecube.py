@@ -244,6 +244,9 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
+    def get_spec_from_interactive_polygon_region(self,n):
+        return
+
     def center_from_ellipse_region_string(self, region_string):
         r = pyregion.parse(region_string)
         if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
