@@ -269,7 +269,7 @@ class MuseCube:
         plt.plot(spec.wavelength,spec.flux)
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
-        plt.title('Polygon region spectra')
+        plt.title('Polygonal region spectrum ')
         plt.figure(self.n)
         MyROI.displayROI()
         return spec
