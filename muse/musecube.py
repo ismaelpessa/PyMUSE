@@ -188,13 +188,13 @@ class MuseCube:
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
-            center = np.zeros(mask.shape)
+            center = np.zeros(mask.shape)###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
             center[y_c][x_c]=1
             weigths = ma.MaskedArray(fi.gaussian_filter(center, radius))
             weigths.mask = mask
             weigths = weigths/np.sum(weigths)
             fl[wv_ii]=np.sum(self.cube[wv_ii]*weigths)
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii]) * (weigths**2))
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths**2)))
         self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w,fl,sig))
 
@@ -223,7 +223,7 @@ class MuseCube:
             sigma[wv_ii] = self.stat.data[wv_ii][int(y_c)][int(x_c)]
         return XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
 
-    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='ivar', n_figure=2, save=True):
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='ivar', n_figure=2, save=False):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
 
@@ -255,7 +255,7 @@ class MuseCube:
             x_world, y_world = r[0].coord_list[0], r[0].coord_list[1]
             return x_world, y_world
 
-    def get_spec_from_region_string(self, region_string, mode='ivar', n_figure=2, save=True):
+    def get_spec_from_region_string(self, region_string, mode='ivar', n_figure=2, save=False):
         """
         Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
