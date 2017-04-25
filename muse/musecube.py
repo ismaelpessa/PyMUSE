@@ -245,6 +245,12 @@ class MuseCube:
         return spec
 
     def get_spec_from_interactive_polygon_region(self,mode = 'ivar',n_figure = 2):##Se necesita inicializar como ipython --pylab qt
+        """
+
+        :param mode: type of combination for fluxes
+        :param n_figure: figure to display the spectrum
+        :return:
+        """
         from roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r',fig=current_fig)
@@ -260,6 +266,7 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.title('Polygon region spectra')
+        plt.figure(self.n)
         MyROI.displayROI()
         return spec
 
