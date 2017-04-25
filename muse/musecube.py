@@ -246,10 +246,14 @@ class MuseCube:
 
     def get_spec_from_interactive_polygon_region(self,mode = 'ivar',n_figure = 2):##Se necesita inicializar como ipython --pylab qt
         """
+        Function used to interactively define a region and extract the spectrum of that region
+
+        To use this function, the class must have been initialized in a "ipython --pylab qt" enviroment
+        It's also needed the package roipoly. Installation instructions in https://github.com/jdoepfert/roipoly.py/blob/master/README.org
 
         :param mode: type of combination for fluxes
         :param n_figure: figure to display the spectrum
-        :return:
+        :return: spec: XSpectrum1D ob
         """
         from roipoly import roipoly
         current_fig = plt.figure(self.n)
