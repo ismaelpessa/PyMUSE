@@ -144,6 +144,8 @@ class MuseCube:
                     print(med_1, med_2, (med_1 - med_2) / med_1)
                     np.testing.assert_allclose(med_1, med_2, decimal=4)
                 except AssertionError:
+                    import pdb
+                    pdb.set_trace()
             cube_new[wv_ii, :, :] = smooth_ii
             # import pdb; pdb.set_trace()
 
@@ -186,7 +188,7 @@ class MuseCube:
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
-            center = np.zeros(mask)
+            center = np.zeros_like(mask)
             center[y_c][x_c]=1
             weigths = ma.MaskedArray(fi.gaussian_filter(center, radius))
             weigths.mask = mask
