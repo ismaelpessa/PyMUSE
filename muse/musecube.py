@@ -198,14 +198,12 @@ class MuseCube:
         self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w,fl,sig))
 
-
-
-
     def get_spec_spaxel(self, x, y, coord_system ='pix'):
         """
-        Obtain a spectrum of a single  point of the cube, defined by spaxels (xy)
-        :param x: x coordiante in spaxel
-        :param y: y coordinate in spaxel
+        Gets the spectrum of a single spaxel (xy) of the MuseCube
+        :param x: x coordinate of the spaxel
+        :param y: y coordinate of the spaxel
+        :param coord_system: 'pix' or 'wcs'
         :return: XSpectrum1D object
         """
         if coord_system=='wcs':
@@ -259,7 +257,8 @@ class MuseCube:
         from roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r',fig=current_fig)
-        raw_input("Please select points with left click.\nRight click and Enter to continue...")
+        raw_input("MuseCube: Please select points with left click. Right click and Enter to continue...")
+        print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask==1,0,1)
         complete_mask=self.mask_init + mask_inv
@@ -267,7 +266,7 @@ class MuseCube:
         spec = self.spec_from_minicube_mask(new_3dmask,mode=mode)
         self.clean_canvas()
         plt.figure(n_figure)
-        plt.plot(spec.wavelength,spec.flux)
+        plt.plot(spec.wavelength, spec.flux)
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.title('Polygonal region spectrum ')
