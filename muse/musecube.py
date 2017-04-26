@@ -249,7 +249,8 @@ class MuseCube:
         Function used to interactively define a region and extract the spectrum of that region
 
         To use this function, the class must have been initialized in a "ipython --pylab qt" enviroment
-        It's also needed the package roipoly. Installation instructions in https://github.com/jdoepfert/roipoly.py/blob/master/README.org
+        It's also needed the package roipoly. Installation instructions and LICENSE in:
+        https://github.com/jdoepfert/roipoly.py/
 
         :param mode: type of combination for fluxes
         :param n_figure: figure to display the spectrum
