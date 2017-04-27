@@ -285,12 +285,12 @@ class MuseCube:
             x_world = r[0].coord_list[0]
             y_world = r[0].coord_list[1]
             par = r[0].coord_list[2:5]
-            x_c, y_c, params = self.ellipse_params_to_pixel(x_c, y_c, par)
+            x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
         if deg:
-            x_world,y_world=self.p2w(x_c,y_c)
+            x_world,y_world=self.p2w(x_c-1,y_c-1)
             return x_world,y_world
 
-        return x_c, y_c,params
+        return x_c-1, y_c-1,params
 
     def get_spec_from_region_string(self, region_string, mode='optimal', n_figure=2, save=False):
         """
