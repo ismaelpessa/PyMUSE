@@ -178,7 +178,7 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_weighted_spec(self, x_c, y_c, radius):
+    def get_weighted_spec_circular_aperture(self, x_c, y_c, radius,nsig=4):
         import scipy.ndimage.filters as fi
         new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, radius)
         w = self.wavelength
@@ -186,7 +186,6 @@ class MuseCube:
         fl = np.zeros(n)
         sig = np.zeros(n)
         self.cube.mask = new_3dmask
-        nsig = 4
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
@@ -1162,7 +1161,7 @@ class MuseCube:
         data = table[keyword]
         return data
 
-    def get_weighted_spec2(self, x_c, y_c, params, coord_system='pix'):
+    def get_weighted_spec(self, x_c, y_c, params, coord_system='pix'):
         if not isinstance(params, (int, float, tuple, list, np.array)):
             raise ValueError('Not ready for this `radius` type.')
 
