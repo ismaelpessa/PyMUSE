@@ -277,16 +277,20 @@ class MuseCube:
         MyROI.displayROI()
         return spec
 
-    def params_from_ellipse_region_string(self, region_string):
+    def params_from_ellipse_region_string(self, region_string,deg=False):
         r = pyregion.parse(region_string)
         if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
-            x_world, y_world, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
+            x_c, y_c, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
         else:
-            x_c = r[0].coord_list[0]
-            y_c = r[0].coord_list[1]
+            x_world = r[0].coord_list[0]
+            y_world = r[0].coord_list[1]
             par = r[0].coord_list[2:5]
-            x_world, y_world, params = self.ellipse_params_to_pixel(x_c, y_c, par)
-        return x_world, y_world,params
+            x_c, y_c, params = self.ellipse_params_to_pixel(x_c, y_c, par)
+        if deg:
+            x_world,y_world=self.p2w(x_c,y_c)
+            return x_world,y_world
+
+        return x_c, y_c,params
 
     def get_spec_from_region_string(self, region_string, mode='optimal', n_figure=2, save=False):
         """
@@ -303,7 +307,7 @@ class MuseCube:
             spec = self.spec_from_minicube_mask(new_mask, mode=mode)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
-        x_world, y_world,params = self.params_from_ellipse_region_string(region_string)
+        x_world, y_world = self.params_from_ellipse_region_string(region_string,deg=True)
         coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         name = name_from_coord(coords)
         plt.title(name)
