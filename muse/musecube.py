@@ -1206,21 +1206,17 @@ class MuseCube:
                                    y_stddev=stdev_init_y, amplitude=amp_init, theta=theta)
         fit_g = fitting.LevMarLSQFitter()
         g = fit_g(g_init, matrix_x, matrix_y, masked_white)
-        weigths = g(matrix_x,matrix_y)
+        weigths = ma.MaskedArray(g(matrix_x,matrix_y))
         if (g.y_stddev < 0) or (g.x_stddev < 0):
             raise ValueError('Cannot trust the model, please try other imput parameters.')
-        import scipy.ndimage.filters as fi
-        new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params)
         w = self.wavelength
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
+        new_3dmask = self.create_new_3dmask(region_string)
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
-            center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
-            center[y_c][x_c] = 1
-            weigths = ma.MaskedArray(fi.gaussian_filter(center, [g.x_stddev, g.y_stddev]))
             weigths.mask = mask
             weigths = weigths / np.sum(weigths)
             fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
