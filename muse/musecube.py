@@ -178,6 +178,7 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
+
     def get_weighted_spec(self,x_c,y_c,radius):
         import scipy.ndimage.filters as fi
         new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c,y_c,radius)
@@ -358,9 +359,9 @@ class MuseCube:
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
                 er[wv_ii] = np.sqrt(1. / np.sum(1. / im_var))
             if mode == 'ivar2':
-                flux_ivar = im_fl / im_var
-                fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
-                er[wv_ii] = np.sqrt(1. / np.sum(1. / im_var))
+                flux_ivar2 = im_fl**2 / np.sqrt(im_var)
+                fl[wv_ii] = np.sum(flux_ivar2) / np.sum(im_fl/ np.sqrt(im_var))
+                er[wv_ii] = np.sqrt(np.sum(im_fl**2))
             elif mode == 'mean':
                 fl[wv_ii] = np.mean(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
