@@ -280,12 +280,12 @@ class MuseCube:
     def params_from_ellipse_region_string(self, region_string):
         r = pyregion.parse(region_string)
         if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
+            x_world, y_world, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
+        else:
             x_c = r[0].coord_list[0]
             y_c = r[0].coord_list[1]
             par = r[0].coord_list[2:5]
-            x_world, y_world ,params= self.ellipse_params_to_pixel(x_c,y_c,par)
-        else:
-            x_world, y_world ,params= r[0].coord_list[0], r[0].coord_list[1],r[0].coord_list[2:5]
+            x_world, y_world, params = self.ellipse_params_to_pixel(x_c, y_c, par)
         return x_world, y_world,params
 
     def get_spec_from_region_string(self, region_string, mode='optimal', n_figure=2, save=False):
