@@ -653,7 +653,7 @@ class MuseCube:
         plt.imshow(mask_slice, alpha=alpha)
         self.draw_pyregion(region_string)
 
-    def create_new_3dmask(self, region_string):
+    def create_new_3dmask(self, region_string,_2d=False):
         """Creates a 3D mask for the cube that also mask out
         spaxels that are outside the gemoetrical redion defined by
         region_string.
@@ -681,6 +681,8 @@ class MuseCube:
         complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
+        if _2d:
+            return mask_new_inverse
         return complete_mask_new
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32):
@@ -1182,25 +1184,29 @@ class MuseCube:
         yc = y_center
         from astropy.modeling import models, fitting
         halfsize = [a, b]
-        data = self.white_data
-        w, h = 2 * halfsize[0] + 1, 2 * halfsize[1] + 1
-        matrix_data = [[0 for x in range(w)] for y in range(h)]
-        matrix_x = [[0 for x in range(w)] for y in range(h)]
-        matrix_y = [[0 for x in range(w)] for y in range(h)]
-        for i in xrange(xc - halfsize[0], xc + halfsize[0] + 1):
-            for j in xrange(yc - halfsize[1], yc + halfsize[1] + 1):
-                i2 = i - (xc - halfsize[0])
-                j2 = j - (yc - halfsize[1])
-                matrix_data[j2][i2] = data[j][i]
-                matrix_x[j2][i2] = i2
-                matrix_y[j2][i2] = j2
-        amp_init = np.matrix(matrix_data).max()
+        region_string = self.ellipse_param_to_ds9reg_string(xc,yc,a,b,theta)
+        new_2dmask=self.create_new_3dmask(region_string,_2d=True)
+        masked_white = ma.MaskedArray(self.white_data)
+        masked_white.mask=new_2dmask
+        ###### Define domain matrix:
+        matrix_x = np.zeros_like(self.white_data)
+        matrix_y= np.zeros_like(self.white_data)
+        n = self.white_data.shape[0]
+        m = self.white_data.shape[1]
+        for i in xrange(m):
+            matrix_x[:, i] = i
+        for j in xrange(n):
+            matrix_y[j, :] = j
+        ###########
+
+        amp_init = masked_white.max()
         stdev_init_x = 0.33 * halfsize[0]
         stdev_init_y = 0.33 * halfsize[1]
-        g_init = models.Gaussian2D(x_mean=halfsize[0] + 0.5, y_mean=halfsize[1] + 0.5, x_stddev=stdev_init_x,
+        g_init = models.Gaussian2D(x_mean=xc, y_mean=yc, x_stddev=stdev_init_x,
                                    y_stddev=stdev_init_y, amplitude=amp_init, theta=theta)
         fit_g = fitting.LevMarLSQFitter()
-        g = fit_g(g_init, matrix_x, matrix_y, matrix_data)
+        g = fit_g(g_init, matrix_x, matrix_y, masked_white)
+        weigths = g(matrix_x,matrix_y)
         if (g.y_stddev < 0) or (g.x_stddev < 0):
             raise ValueError('Cannot trust the model, please try other imput parameters.')
         import scipy.ndimage.filters as fi
