@@ -187,11 +187,12 @@ class MuseCube:
         fl = np.zeros(n)
         sig = np.zeros(n)
         self.cube.mask = new_3dmask
+        nsig=4
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
             center[y_c][x_c]=1
-            weigths = ma.MaskedArray(fi.gaussian_filter(center, radius))
+            weigths = ma.MaskedArray(fi.gaussian_filter(center,nsig))
             weigths.mask = mask
             weigths = weigths/np.sum(weigths)
             fl[wv_ii]=np.sum(self.cube[wv_ii]*weigths)
@@ -1164,6 +1165,69 @@ class MuseCube:
         table = self.create_table(input_file)
         data = table[keyword]
         return data
+
+    def get_weighted_spec2(self,x_c,y_c,params,coord_system = 'pix'):
+        if not isinstance(params, (int, float, tuple, list, np.array)):
+            raise ValueError('Not ready for this `radius` type.')
+
+        if isinstance(params, (int, float)):
+            a = params
+            b = params
+            theta = 0
+        elif isiterable(params) and (len(params) == 3):
+            a = max(params[:2])
+            b = min(params[:2])
+            theta = params[2]
+        else:
+            raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
+        if coord_system == 'wcs':
+            x_center, y_center, params = self.ellipse_params_to_pixel(x_c, y_c, radius=[a, b, theta])
+        else:  # already in pixels
+            x_center, y_center, params = x_c, y_c, [a, b, theta]
+        xc = x_center
+        yc = y_center
+        from astropy.modeling import models, fitting
+        halfsize = [a,b]
+        data = self.white_data
+        w, h = 2 * halfsize[0] + 1, 2 * halfsize[1] + 1
+        matrix_data = [[0 for x in range(w)] for y in range(h)]
+        matrix_x = [[0 for x in range(w)] for y in range(h)]
+        matrix_y = [[0 for x in range(w)] for y in range(h)]
+        for i in xrange(xc - halfsize[0], xc + halfsize[0]+ 1):
+            for j in xrange(yc - halfsize[1], yc + halfsize[1] + 1):
+                i2 = i - (xc - halfsize[0])
+                j2 = j - (yc - halfsize[1])
+                matrix_data[j2][i2] = data[j][i]
+                matrix_x[j2][i2] = i2
+                matrix_y[j2][i2] = j2
+        amp_init = np.matrix(matrix_data).max()
+        stdev_init_x = 0.33 * halfsize[0]
+        stdev_init_y = 0.33 * halfsize[1]
+        g_init = models.Gaussian2D(x_mean=halfsize[0] + 0.5, y_mean=halfsize[1] + 0.5, x_stddev=stdev_init_x,y_stddev=stdev_init_y, amplitude=amp_init,theta=theta)
+        fit_g = fitting.LevMarLSQFitter()
+        g = fit_g(g_init, matrix_x, matrix_y, matrix_data)
+        if (g.y_stddev < 0) or (g.x_stddev < 0):
+            raise ValueError('Cannot trust the model, please try other imput parameters.')
+        import scipy.ndimage.filters as fi
+        new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params)
+        w = self.wavelength
+        n = len(w)
+        fl = np.zeros(n)
+        sig = np.zeros(n)
+        self.cube.mask = new_3dmask
+        for wv_ii in range(n):
+            mask = new_3dmask[wv_ii]
+            center = np.zeros(mask.shape)###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
+            center[y_c][x_c]=1
+            weigths = ma.MaskedArray(fi.gaussian_filter(center, [g.x_stddev,g.y_stddev]))
+            weigths.mask = mask
+            weigths = weigths/np.sum(weigths)
+            fl[wv_ii]=np.sum(self.cube[wv_ii]*weigths)
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths**2)))
+        self.cube.mask = self.mask_init
+        return XSpectrum1D.from_tuple((w,fl,sig))
+
+
 
     def determinate_seeing_from_white(self, xc, yc, halfsize):
         """
