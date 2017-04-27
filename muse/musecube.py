@@ -297,7 +297,7 @@ class MuseCube:
         :return: spec: XSpectrum1D object.
         """
         if mode =='optimal':
-            spec = self.get_weighted_spec(region_string=region_string)
+            spec = self.get_weighted_spec(region_string_=region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode)
