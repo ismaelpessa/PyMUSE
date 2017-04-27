@@ -1239,8 +1239,8 @@ class MuseCube:
             weigths.mask = mask
             n_spaxels = np.sum(mask)
             weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)# * n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))# * n_spaxels
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths) * n_spaxels
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2))) * n_spaxels
         self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w, fl, sig))
 
