@@ -244,7 +244,7 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self, mode='ivar',
+    def get_spec_from_interactive_polygon_region(self, mode='mean',
                                                  n_figure=2):  ##Se necesita inicializar como ipython --pylab qt
         """
         Function used to interactively define a region and extract the spectrum of that region
@@ -253,7 +253,7 @@ class MuseCube:
         It's also needed the package roipoly. Installation instructions and LICENSE in:
         https://github.com/jdoepfert/roipoly.py/
 
-        :param mode: type of combination for fluxes
+        :param mode: type of combination for fluxes. Possible values: mean, median, ivar
         :param n_figure: figure to display the spectrum
         :return: spec: XSpectrum1D ob
         """
@@ -1160,7 +1160,7 @@ class MuseCube:
         data = table[keyword]
         return data
 
-    def get_weighted_spec(self, x_c=None, y_c=None, params=None,region_string = None, coord_system='pix'):
+    def get_weighted_spec(self, x_c=None, y_c=None, params=None,region_string_ = None, coord_system='pix'):
         """
         Function that extract the spectrum from an aperture defined either by elliptical parameters or  by an elliptical region defined by region_string in ds9 format
         :param x_c: x_coordinate of the center of the aperture
@@ -1170,10 +1170,10 @@ class MuseCube:
         :param coord_system: in the case of defining and aperture using x_c,y_c,params, must indicate the type of this coordiantes. Possible values: 'pix' and 'wcs'
         :return: XSpectrum1D object
         """
-        if max(x_c,y_c,params,region_string)==None:
+        if max(x_c,y_c,params,region_string_)==None:
             raise ValueError('Not valid input')
-        if region_string != None:
-            x_c,y_c,params = self.params_from_ellipse_region_string(region_string)
+        if region_string_ != None:
+            x_c,y_c,params = self.params_from_ellipse_region_string(region_string_)
 
 
         if not isinstance(params, (int, float, tuple, list, np.array)):
@@ -1196,7 +1196,10 @@ class MuseCube:
         yc = y_center
         from astropy.modeling import models, fitting
         halfsize = [a, b]
-        region_string = self.ellipse_param_to_ds9reg_string(xc, yc, a, b, theta)
+        if region_string_==None:
+            region_string = self.ellipse_param_to_ds9reg_string(xc, yc, a, b, theta)
+        else:
+            region_string=region_string_
         new_2dmask = self.create_new_3dmask(region_string, _2d=True)
         masked_white = ma.MaskedArray(self.white_data)
         masked_white.mask = new_2dmask
