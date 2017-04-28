@@ -178,41 +178,38 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-
-    def get_weighted_spec(self,x_c,y_c,radius):
+    def get_weighted_spec_circular_aperture(self, x_c, y_c, radius, nsig=4):
         import scipy.ndimage.filters as fi
-        new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c,y_c,radius)
+        new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, radius)
         w = self.wavelength
-        n=len(w)
+        n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
-            center = np.zeros(mask.shape)###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
-            center[y_c][x_c]=1
-            weigths = ma.MaskedArray(fi.gaussian_filter(center, radius))
+            center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
+            center[y_c][x_c] = 1
+            weigths = ma.MaskedArray(fi.gaussian_filter(center, nsig))
             weigths.mask = mask
-            weigths = weigths/np.sum(weigths)
-            fl[wv_ii]=np.sum(self.cube[wv_ii]*weigths)
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths**2)))
+            weigths = weigths / np.sum(weigths)
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))
         self.cube.mask = self.mask_init
-        return XSpectrum1D.from_tuple((w,fl,sig))
+        return XSpectrum1D.from_tuple((w, fl, sig))
 
-
-
-
-    def get_spec_spaxel(self, x, y, coord_system ='pix'):
+    def get_spec_spaxel(self, x, y, coord_system='pix'):
         """
-        Obtain a spectrum of a single  point of the cube, defined by spaxels (xy)
-        :param x: x coordiante in spaxel
-        :param y: y coordinate in spaxel
+        Gets the spectrum of a single spaxel (xy) of the MuseCube
+        :param x: x coordinate of the spaxel
+        :param y: y coordinate of the spaxel
+        :param coord_system: 'pix' or 'wcs'
         :return: XSpectrum1D object
         """
-        if coord_system=='wcs':
-            x_c,y_c=self.w2p(x,y)
+        if coord_system == 'wcs':
+            x_c, y_c = self.w2p(x, y)
         else:
-            x_c,y_c=x,y
+            x_c, y_c = x, y
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 1, 1, 0, coord_system='pix')
         self.draw_pyregion(region_string)
         w = self.wavelength
@@ -224,12 +221,14 @@ class MuseCube:
             sigma[wv_ii] = self.stat.data[wv_ii][int(y_c)][int(x_c)]
         return XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
 
-    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='ivar', n_figure=2, save=False):
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', n_figure=2, save=False):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
-
-        new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
-        spec = self.spec_from_minicube_mask(new_mask, mode=mode)
+        if mode == 'optimal':
+            spec = self.get_weighted_spec(x_c=x_c,y_c=y_c,params=params)
+        else:
+            new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         if coord_system == 'wcs':
@@ -245,7 +244,8 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self,mode = 'ivar',n_figure = 2):##Se necesita inicializar como ipython --pylab qt
+    def get_spec_from_interactive_polygon_region(self, mode='mean',
+                                                 n_figure=2):  ##Se necesita inicializar como ipython --pylab qt
         """
         Function used to interactively define a region and extract the spectrum of that region
 
@@ -253,22 +253,23 @@ class MuseCube:
         It's also needed the package roipoly. Installation instructions and LICENSE in:
         https://github.com/jdoepfert/roipoly.py/
 
-        :param mode: type of combination for fluxes
+        :param mode: type of combination for fluxes. Possible values: mean, median, ivar
         :param n_figure: figure to display the spectrum
         :return: spec: XSpectrum1D ob
         """
         from roipoly import roipoly
         current_fig = plt.figure(self.n)
-        MyROI = roipoly(roicolor='r',fig=current_fig)
-        raw_input("Please select points with left click.\nRight click and Enter to continue...")
+        MyROI = roipoly(roicolor='r', fig=current_fig)
+        raw_input("MuseCube: Please select points with left click. Right click and Enter to continue...")
+        print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
-        mask_inv = np.where(mask==1,0,1)
-        complete_mask=self.mask_init + mask_inv
-        new_3dmask=np.where(complete_mask==0,False,True)
-        spec = self.spec_from_minicube_mask(new_3dmask,mode=mode)
+        mask_inv = np.where(mask == 1, 0, 1)
+        complete_mask = self.mask_init + mask_inv
+        new_3dmask = np.where(complete_mask == 0, False, True)
+        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode)
         self.clean_canvas()
         plt.figure(n_figure)
-        plt.plot(spec.wavelength,spec.flux)
+        plt.plot(spec.wavelength, spec.flux)
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.title('Polygonal region spectrum ')
@@ -276,18 +277,22 @@ class MuseCube:
         MyROI.displayROI()
         return spec
 
-    def center_from_ellipse_region_string(self, region_string):
+    def params_from_ellipse_region_string(self, region_string,deg=False):
         r = pyregion.parse(region_string)
         if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
-            x_c = r[0].coord_list[0]
-            y_c = r[0].coord_list[1]
-            x_world, y_world = self.p2w(x_c, y_c)
-            return x_world, y_world
+            x_c, y_c, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
         else:
-            x_world, y_world = r[0].coord_list[0], r[0].coord_list[1]
-            return x_world, y_world
+            x_world = r[0].coord_list[0]
+            y_world = r[0].coord_list[1]
+            par = r[0].coord_list[2:5]
+            x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
+        if deg:
+            x_world,y_world=self.p2w(x_c-1,y_c-1)
+            return x_world,y_world
 
-    def get_spec_from_region_string(self, region_string, mode='ivar', n_figure=2, save=False):
+        return x_c-1, y_c-1,params
+
+    def get_spec_from_region_string(self, region_string, mode='optimal', n_figure=2, save=False):
         """
         Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
@@ -295,11 +300,14 @@ class MuseCube:
         :param mode: string. default = ivar
         :return: spec: XSpectrum1D object.
         """
-        new_mask = self.get_mini_cube_mask_from_region_string(region_string)
-        spec = self.spec_from_minicube_mask(new_mask, mode=mode)
+        if mode =='optimal':
+            spec = self.get_weighted_spec(region_string_=region_string)
+        else:
+            new_mask = self.get_mini_cube_mask_from_region_string(region_string)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
-        x_world, y_world = self.center_from_ellipse_region_string(region_string)
+        x_world, y_world = self.params_from_ellipse_region_string(region_string,deg=True)
         coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         name = name_from_coord(coords)
         plt.title(name)
@@ -318,7 +326,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='ivar'):
+    def spec_from_minicube_mask(self, new_3dmask, mode='mean'):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -337,7 +345,7 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median', 'ivar2']:
+        if mode not in ['ivar', 'mean', 'median']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -357,21 +365,17 @@ class MuseCube:
             if mode == 'ivar':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
-                er[wv_ii] = np.sqrt(1. / np.sum(1. / im_var))
-            if mode == 'ivar2':
-                flux_ivar2 = im_fl**2 / np.sqrt(im_var)
-                fl[wv_ii] = np.sum(flux_ivar2) / np.sum(im_fl/ np.sqrt(im_var))
-                er[wv_ii] = np.sqrt(np.sum(im_fl**2))
+                er[wv_ii] = np.sqrt(np.sum(1. / im_var))
             elif mode == 'mean':
                 fl[wv_ii] = np.mean(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
-                er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
+                er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)
         # import pdb;pdb.set_trace()
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='ivar', coord_system='pix'):
+    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix'):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -382,9 +386,6 @@ class MuseCube:
         :param n_fig: Figure number to deploy the image
         :return:
         """
-        x_center = center[0]
-        y_center = center[1]
-        radius = halfsize
         spectrum = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
                                                      coord_system=coord_system, mode=mode)
         if isinstance(halfsize, (list, tuple)):
@@ -393,7 +394,7 @@ class MuseCube:
         mini_image = self.get_mini_image(center=center, halfsize=halfsize)
         plt.figure(n_fig, figsize=(17, 5))
         ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
-        if coord_system == 'wcs':
+        if coord_system == 'pix':
             x_world, y_world = self.p2w(center[0], center[1])
         else:
             x_world, y_world = center[0], center[1]
@@ -553,7 +554,6 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
-
     def ellipse_params_to_pixel(self, xc, yc, radius):
         a = radius[0]
         b = radius[1]
@@ -643,7 +643,8 @@ class MuseCube:
             x_center, y_center, radius = self.ellipse_params_to_pixel(xc, yc, radius=[a, b, theta])
         else:  # already in pixels
             x_center, y_center, radius = xc, yc, [a, b, theta]
-        region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center, y_center, radius[0], radius[1],
+        region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center + 1, y_center + 1, radius[0],
+                                                                               radius[1],
                                                                                radius[2], color)
         return region_string
 
@@ -654,7 +655,7 @@ class MuseCube:
         plt.imshow(mask_slice, alpha=alpha)
         self.draw_pyregion(region_string)
 
-    def create_new_3dmask(self, region_string):
+    def create_new_3dmask(self, region_string, _2d=False):
         """Creates a 3D mask for the cube that also mask out
         spaxels that are outside the gemoetrical redion defined by
         region_string.
@@ -682,6 +683,8 @@ class MuseCube:
         complete_mask_new = mask_new_inverse + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
+        if _2d:
+            return mask_new_inverse
         return complete_mask_new
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32):
@@ -705,7 +708,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
-                              mode='ivar',mag_kwrd='mag_r'):
+                              mode='ivar', mag_kwrd='mag_r'):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename,
             flag_threshold=flag_threshold)
@@ -725,10 +728,9 @@ class MuseCube:
                                                    mag=[mag_kwrd, mag[i]])
                 else:
                     spec.write_to_fits(spec_fits_name + '.fits')
-                    hdulist = fits.open(spec_fits_name+'.fits')
-                    hdulist[0].header[mag_kwrd]=mag[i]
-                    hdulist.writeto(spec_fits_name+'.fits',clobber=True)
-
+                    hdulist = fits.open(spec_fits_name + '.fits')
+                    hdulist[0].header[mag_kwrd] = mag[i]
+                    hdulist.writeto(spec_fits_name + '.fits', clobber=True)
 
     def __read_files(self, input):
         path = input
@@ -897,8 +899,6 @@ class MuseCube:
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
-
-
 
     def create_white(self, new_white_fitsname='white_from_colapse.fits'):
         """
@@ -1125,8 +1125,6 @@ class MuseCube:
                 w_spec_overlap.append(w)
         return np.array(w_spec_overlap)
 
-
-
     def clean_canvas(self):
         """
         Clean everything from the canvas with the colapsed cube image
@@ -1165,6 +1163,86 @@ class MuseCube:
         table = self.create_table(input_file)
         data = table[keyword]
         return data
+
+    def get_weighted_spec(self, x_c=None, y_c=None, params=None,region_string_ = None, coord_system='pix'):
+        """
+        Function that extract the spectrum from an aperture defined either by elliptical parameters or  by an elliptical region defined by region_string in ds9 format
+        :param x_c: x_coordinate of the center of the aperture
+        :param y_c: y_coordinate of the center of the aperture
+        :param params: Either a single radius or a set of [a,b,theta] params
+        :param region_string: region defined by ds9 format
+        :param coord_system: in the case of defining and aperture using x_c,y_c,params, must indicate the type of this coordiantes. Possible values: 'pix' and 'wcs'
+        :return: XSpectrum1D object
+        """
+        if max(x_c,y_c,params,region_string_)==None:
+            raise ValueError('Not valid input')
+        if region_string_ != None:
+            x_c,y_c,params = self.params_from_ellipse_region_string(region_string_)
+
+
+        if not isinstance(params, (int, float, tuple, list, np.array)):
+            raise ValueError('Not ready for this `radius` type.')
+        if isinstance(params, (int, float)):
+            a = params
+            b = params
+            theta = 0
+        elif isiterable(params) and (len(params) == 3):
+            a = max(params[:2])
+            b = min(params[:2])
+            theta = params[2]
+        else:
+            raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
+        if coord_system == 'wcs':
+            x_center, y_center, params = self.ellipse_params_to_pixel(x_c, y_c, radius=[a, b, theta])
+        else:  # already in pixels
+            x_center, y_center, params = x_c, y_c, [a, b, theta]
+        xc = x_center
+        yc = y_center
+        from astropy.modeling import models, fitting
+        halfsize = [a, b]
+        if region_string_==None:
+            region_string = self.ellipse_param_to_ds9reg_string(xc, yc, a, b, theta)
+        else:
+            region_string=region_string_
+        new_2dmask = self.create_new_3dmask(region_string, _2d=True)
+        masked_white = ma.MaskedArray(self.white_data)
+        masked_white.mask = new_2dmask
+        ###### Define domain matrix:
+        matrix_x = np.zeros_like(self.white_data)
+        matrix_y = np.zeros_like(self.white_data)
+        n = self.white_data.shape[0]
+        m = self.white_data.shape[1]
+        for i in xrange(m):
+            matrix_x[:, i] = i
+        for j in xrange(n):
+            matrix_y[j, :] = j
+        ###########
+
+        amp_init = masked_white.max()
+        stdev_init_x = 0.33 * halfsize[0]
+        stdev_init_y = 0.33 * halfsize[1]
+        g_init = models.Gaussian2D(x_mean=xc, y_mean=yc, x_stddev=stdev_init_x,
+                                   y_stddev=stdev_init_y, amplitude=amp_init, theta=theta)
+        fit_g = fitting.LevMarLSQFitter()
+        g = fit_g(g_init, matrix_x, matrix_y, masked_white)
+        weigths = ma.MaskedArray(g(matrix_x, matrix_y))
+        if (g.y_stddev < 0) or (g.x_stddev < 0):
+            raise ValueError('Cannot trust the model, please try other imput parameters.')
+        w = self.wavelength
+        n = len(w)
+        fl = np.zeros(n)
+        sig = np.zeros(n)
+        new_3dmask = self.create_new_3dmask(region_string)
+        self.cube.mask = new_3dmask
+        for wv_ii in range(n):
+            mask = new_3dmask[wv_ii]
+            weigths.mask = mask
+            n_spaxels = np.sum(mask)
+            weigths = weigths / np.sum(weigths)
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths) * n_spaxels
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2))) * n_spaxels
+        self.cube.mask = self.mask_init
+        return XSpectrum1D.from_tuple((w, fl, sig))
 
     def determinate_seeing_from_white(self, xc, yc, halfsize):
         """
@@ -1276,7 +1354,6 @@ class MuseCube:
         radius_pix = radius
         return x_center_pix, y_center_pix, radius_pix
 
-
     def size(self):
         """
         Print the dimension size (x,y,lambda) of the datacube.
@@ -1306,7 +1383,6 @@ class MuseCube:
         for k in xrange(i, j + 1):
             out = out + string[k]
         return out
-
 
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         """
@@ -1365,6 +1441,7 @@ class MuseCube:
         :return:
         """
         raise NotImplementedError()
+
     def create_ranges(self, z, width=5.):
         """
         Function used to create the wavelength ranges around strong emission lines at a given redshift
