@@ -486,22 +486,7 @@ class MuseCube:
                 min_dif = dif
         return int(index)
 
-    def __cut_bright_pixel(self, flux, n):
-        '''
-        cuts the brightest n elements in a sorted flux array
 
-        :param flux: array[]
-                     array containing the sorted flux
-        :param n: int
-                  number of elements to cut
-        :return: cuted_flux: array[]
-                             array that contains the remaining elements of the flux
-        '''
-        N = len(flux)
-        cuted_flux = []
-        for i in xrange(0, N - n):
-            cuted_flux.append(flux[i])
-        return cuted_flux
 
     def __edit_header(self, hdulist, values_list,
                       keywords_list=['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'], hdu=1):
@@ -591,36 +576,7 @@ class MuseCube:
         radius2 = [a2, b2, radius[2]]
         return xc2, yc2, radius2
 
-    def define_elipse_region(self, x_center, y_center, a, b, theta, coord_system):
-        Xc = x_center
-        Yc = y_center
-        if coord_system == 'wcs':
-            X_aux, Y_aux, a = self.xyr_to_pixel(Xc, Yc, a)
-            Xc, Yc, b = self.xyr_to_pixel(Xc, Yc, b)
-        if b > a:
-            aux = a
-            a = b
-            b = aux
-            theta = theta + np.pi / 2.
-        x = np.linspace(-a, a, 5000)
 
-        B = x * np.sin(2. * theta) * (a ** 2 - b ** 2)
-        A = (b * np.sin(theta)) ** 2 + (a * np.cos(theta)) ** 2
-        C = (x ** 2) * ((b * np.cos(theta)) ** 2 + (a * np.sin(theta)) ** 2) - (a ** 2) * (b ** 2)
-
-        y_positive = (-B + np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
-        y_negative = (-B - np.sqrt(B ** 2 - 4. * A * C)) / (2. * A)
-
-        y_positive_2 = y_positive + Yc
-        y_negative_2 = y_negative + Yc
-        x_2 = x + Xc
-        reg = []
-        for i in xrange(Xc - a - 1, Xc + a + 1):
-            for j in xrange(Yc - a - 1, Yc + a + 1):
-                k = self.closest_element(x_2, i)
-                if j <= y_positive_2[k] and j >= y_negative_2[k]:
-                    reg.append([i, j])
-        return reg
 
     def get_mini_cube_mask_from_region_string(self, region_string):
         """
