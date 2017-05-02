@@ -229,7 +229,7 @@ class MuseCube:
             sigma[wv_ii] = self.stat.data[wv_ii][int(y_c)][int(x_c)]
         return XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
 
-    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', npix = None ,n_figure=2, save=False):
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', npix = 0 ,n_figure=2, save=False):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
         if mode == 'optimal':
@@ -354,7 +354,7 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median','white_weighted_mean']:
+        if mode not in ['ivar', 'mean', 'median','white_weighted_mean','sum']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -374,12 +374,14 @@ class MuseCube:
                 im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii]=np.sum(im_fl * im_weights)
-                import pdb; pdb.set_trace() # sacar el ratio sum(fl[wv_ii]) / sum(im_fl) y renormalizar?
                 er[wv_ii]=np.sqrt(np.sum(im_var*(im_weights**2)))
             if mode == 'ivar':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
                 er[wv_ii] = np.sqrt(np.sum(1. / im_var))
+            elif mode =='sum':
+                fl[wv_ii]=np.sum(im_fl)
+                er[wv_ii] = np.sqrt(np.sum(im_var))
             elif mode == 'mean':
                 fl[wv_ii] = np.mean(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
@@ -387,9 +389,15 @@ class MuseCube:
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
         # import pdb;pdb.set_trace()
+        if mode!='sum':
+            spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
+            fl_sum = spec_sum.flux.value
+            fl = fl * np.sum(fl_sum)/np.sum(fl)
+            er = er * np.sum(fl_sum)/np.sum(fl)
+
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix'):
+    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix',npix=0):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -401,7 +409,7 @@ class MuseCube:
         :return:
         """
         spectrum = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
-                                                     coord_system=coord_system, mode=mode)
+                                                     coord_system=coord_system, mode=mode,npix = npix)
         if isinstance(halfsize, (list, tuple)):
             aux = [halfsize[0], halfsize[1]]
             halfsize = max(aux)
@@ -1195,8 +1203,6 @@ class MuseCube:
             raise ValueError('Not valid input')
         if region_string_ != None:
             x_c,y_c,params = self.params_from_ellipse_region_string(region_string_)
-
-
         if not isinstance(params, (int, float, tuple, list, np.array)):
             raise ValueError('Not ready for this `radius` type.')
         if isinstance(params, (int, float)):
@@ -1215,6 +1221,7 @@ class MuseCube:
             x_center, y_center, params = x_c, y_c, [a, b, theta]
         xc = x_center
         yc = y_center
+        spec_sum = self.get_spec_from_ellipse_params(x_center,y_center,params, mode = 'sum')
         from astropy.modeling import models, fitting
         halfsize = [a, b]
         if region_string_==None:
@@ -1259,6 +1266,9 @@ class MuseCube:
             fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths) #* n_spaxels
             sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2))) #* n_spaxels
         self.cube.mask = self.mask_init
+        fl_sum = spec_sum.flux.value
+        fl = fl * np.sum(fl_sum)/np.sum(fl)
+        sig = sig * np.sum(fl_sum)/np.sum(fl)
         return XSpectrum1D.from_tuple((w, fl, sig))
 
     def determinate_seeing_from_white(self, xc, yc, halfsize):
