@@ -85,12 +85,12 @@ class MuseCube:
         # wavelength array
         self.wavelength = self.create_wavelength_array()
 
-    def smooth_white(self, npix=2, write_to_disk=True):
+    def smooth_white(self, npix=2, save=True):
 
         hdulist = fits.open(self.filename_white)
         im = hdulist[1].data
         smooth_im = ndimage.gaussian_filter(im, sigma=npix)
-        if write_to_disk:
+        if save:
             hdulist[1].data = smooth_im
             hdulist.writeto('smoothed_white.fits', clobber=True)
         return smooth_im
@@ -188,7 +188,7 @@ class MuseCube:
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
-            center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_lime(mask)
+            center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
             center[y_c][x_c] = 1
             weigths = ma.MaskedArray(fi.gaussian_filter(center, nsig))
             weigths.mask = mask
@@ -221,14 +221,14 @@ class MuseCube:
             sigma[wv_ii] = self.stat.data[wv_ii][int(y_c)][int(x_c)]
         return XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
 
-    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', n_figure=2, save=False):
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', npix = None ,n_figure=2, save=False):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
         if mode == 'optimal':
             spec = self.get_weighted_spec(x_c=x_c,y_c=y_c,params=params)
         else:
             new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
-            spec = self.spec_from_minicube_mask(new_mask, mode=mode)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode,npix=npix)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         if coord_system == 'wcs':
@@ -292,7 +292,7 @@ class MuseCube:
 
         return x_c-1, y_c-1,params
 
-    def get_spec_from_region_string(self, region_string, mode='optimal', n_figure=2, save=False):
+    def get_spec_from_region_string(self, region_string, mode='optimal', npix=None, n_figure=2, save=False):
         """
         Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
@@ -304,7 +304,7 @@ class MuseCube:
             spec = self.get_weighted_spec(region_string_=region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
-            spec = self.spec_from_minicube_mask(new_mask, mode=mode)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode,npix=npix)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         x_world, y_world = self.params_from_ellipse_region_string(region_string,deg=True)
@@ -326,7 +326,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='mean'):
+    def spec_from_minicube_mask(self, new_3dmask, mode='white_weighted_mean',npix = None):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -345,7 +345,7 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median']:
+        if mode not in ['ivar', 'mean', 'median','white_weighted_mean']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -356,12 +356,20 @@ class MuseCube:
         # I think we can avoid redefining the masks
         # self.cube.mask=new_3dmask
         # self.stat.mask=new_3dmask
+        if mode == 'white_weighted_mean':
+            smoothed_white = self.smooth_white(npix=npix,save = False)
 
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
             mask = np.where(mask != 0, True, False)  # not sure if this is needed
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
+            if mode == 'white_weighted_mean':
+                im_weights = smoothed_white[~mask]
+                im_weights = im_weights / np.sum(im_weights)
+                fl[wv_ii]=np.sum(im_fl * im_weights)
+                er[wv_ii]=np.sum(im_var*(im_weights**2))
+
             if mode == 'ivar':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
@@ -708,7 +716,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
-                              mode='ivar', mag_kwrd='mag_r'):
+                              mode='optimal', mag_kwrd='mag_r'):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename,
             flag_threshold=flag_threshold)
@@ -1239,8 +1247,8 @@ class MuseCube:
             weigths.mask = mask
             n_spaxels = np.sum(mask)
             weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths) * n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2))) * n_spaxels
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths) #* n_spaxels
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2))) #* n_spaxels
         self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w, fl, sig))
 
