@@ -187,6 +187,15 @@ class MuseCube:
         return image
 
     def get_weighted_spec_circular_aperture(self, x_c, y_c, radius, nsig=4):
+        """
+        Function to extract the spectrum of a circular aperture defined by x_c, y_c and radius in spaxel space.
+        The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = nsig
+        :param x_c:
+        :param y_c:
+        :param radius:
+        :param nsig:
+        :return:
+        """
         import scipy.ndimage.filters as fi
         new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, radius)
         w = self.wavelength
@@ -286,6 +295,14 @@ class MuseCube:
         return spec
 
     def params_from_ellipse_region_string(self, region_string,deg=False):
+        """
+        Function to get the elliptical parameters of a region_string.
+        If deg is True, only will be returned the center in degrees.
+        Otherwise, all parameters will be returned in pixels
+        :param region_string: Region defined as string using ds9 format
+        :param deg: If True, only the center of the ellipse will be returned, in degrees.
+        :return:
+        """
         r = pyregion.parse(region_string)
         if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
             x_c, y_c, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
@@ -326,6 +343,11 @@ class MuseCube:
         return spec
 
     def draw_pyregion(self, region_string):
+        """
+        Function used to draw in the interface the contour of the region defined by region_string
+        :param region_string:
+        :return:
+        """
         hdulist = fits.open(self.filename_white)
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
@@ -466,25 +488,6 @@ class MuseCube:
         # print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
         return w
 
-    def closest_element(self, array, element):
-        """
-        Find in array the closest value to the value of element
-        :param array: array[]
-                      array of numbers to search for the closest value possible to element
-        :param element: float
-                        element to match with array
-        :return: k: int
-                    index of the closest element
-        """
-        min_dif = 100
-        index = -1
-        n = len(array)
-        for i in xrange(0, n):
-            dif = abs(element - array[i])
-            if dif < min_dif:
-                index = i
-                min_dif = dif
-        return int(index)
 
 
 
@@ -569,6 +572,13 @@ class MuseCube:
                 im.show_grayscale()
 
     def ellipse_params_to_pixel(self, xc, yc, radius):
+        """
+        Function to transform the parameters of an ellipse from degrees to pixels
+        :param xc:
+        :param yc:
+        :param radius:
+        :return:
+        """
         a = radius[0]
         b = radius[1]
         Xaux, Yaux, a2 = self.xyr_to_pixel(xc, yc, a)
@@ -641,7 +651,7 @@ class MuseCube:
         self.draw_pyregion(region_string)
 
     def get_new_2dmask(self, region_string):
-        """Write something here please"""
+        """Creates a 2D mask for the white imake that mask out spaxel that are outside the region defined by region_string"""
         im_aux = np.ones_like(self.white_data)
         hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
@@ -696,7 +706,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
-                              mode='optimal', mag_kwrd='mag_r'):
+                              mode='white_wheighted_mean', mag_kwrd='mag_r',npix=4):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename,
             flag_threshold=flag_threshold)
@@ -708,7 +718,7 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
                 spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
-                                                         mode=mode, save=False, n_figure=n_figure)
+                                                         mode=mode, npix=npix,save=False, n_figure=n_figure)
                 str_id = str(id[i]).zfill(3)
                 spec_fits_name = str_id + '_' + spec_fits_name
                 if redmonster_format:
@@ -738,7 +748,6 @@ class MuseCube:
         """
         wave = self.create_wavelength_array()
         n = len(wave)
-        index_ini = int(self.closest_element(wave, initial_wavelength))
         if initial_wavelength < wave[0]:
             print str(
                 initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(
