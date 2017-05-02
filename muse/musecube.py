@@ -85,13 +85,21 @@ class MuseCube:
         # wavelength array
         self.wavelength = self.create_wavelength_array()
 
-    def smooth_white(self, npix=2, save=True):
-
+    def get_smoothed_white(self, npix=2, save=True, **kwargs):
+        """Gets an smoothed version (Gaussian of sig=npix)
+        of the white image. If save is True, it writes a file
+        to disk called `smoothed_white.fits`.
+        **kwargs are passed down to scipy.ndimage.gaussian_filter()
+        """
         hdulist = fits.open(self.filename_white)
         im = hdulist[1].data
-        smooth_im = ndimage.gaussian_filter(im, sigma=npix)
+        smooth_im = ndimage.gaussian_filter(im, sigma=npix, **kwargs)
         if save:
             hdulist[1].data = smooth_im
+            prihdr = hdulist[0].header
+            comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
+            # print(comment)
+            prihdr['history'] = comment
             hdulist.writeto('smoothed_white.fits', clobber=True)
         return smooth_im
 
@@ -292,7 +300,7 @@ class MuseCube:
 
         return x_c-1, y_c-1,params
 
-    def get_spec_from_region_string(self, region_string, mode='optimal', npix=None, n_figure=2, save=False):
+    def get_spec_from_region_string(self, region_string, mode='optimal', npix=0., n_figure=2, save=False):
         """
         Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
@@ -326,7 +334,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='white_weighted_mean',npix = None):
+    def spec_from_minicube_mask(self, new_3dmask, mode='white_weighted_mean', npix=None):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -339,6 +347,7 @@ class MuseCube:
               * `ivar` - inverse variance weighting
               * `sum` - Sum
               * `optimal` - Weighted sum by spatial profile (only works for circular thus far)
+              * `white_weighted_mean` - bla bla
 
         Returns
         -------
@@ -353,23 +362,20 @@ class MuseCube:
         n = len(self.wavelength)
         fl = np.zeros(n)
         er = np.zeros(n)
-        # I think we can avoid redefining the masks
-        # self.cube.mask=new_3dmask
-        # self.stat.mask=new_3dmask
+
         if mode == 'white_weighted_mean':
-            smoothed_white = self.smooth_white(npix=npix,save = False)
+            smoothed_white = self.get_smoothed_white(npix=npix, save=False)
 
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
-            mask = np.where(mask != 0, True, False)  # not sure if this is needed
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
             if mode == 'white_weighted_mean':
                 im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii]=np.sum(im_fl * im_weights)
-                er[wv_ii]=np.sum(im_var*(im_weights**2))
-
+                import pdb; pdb.set_trace() # sacar el ratio sum(fl[wv_ii]) / sum(im_fl) y renormalizar?
+                er[wv_ii]=np.sqrt(np.sum(im_var*(im_weights**2)))
             if mode == 'ivar':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
@@ -379,7 +385,7 @@ class MuseCube:
                 er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
-                er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)
+                er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
         # import pdb;pdb.set_trace()
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
@@ -609,7 +615,7 @@ class MuseCube:
         :param region_string: Region defined by ds9 format
         :return: complete_mask_new: a new mask for the cube
         """
-        complete_mask_new = self.create_new_3dmask(region_string)
+        complete_mask_new = self.get_new_3dmask(region_string)
         return complete_mask_new
 
     def get_mini_cube_mask_from_ellipse_params(self, x_c, y_c, params, coord_system='pix'):
@@ -640,7 +646,7 @@ class MuseCube:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
 
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta, coord_system=coord_system)
-        complete_mask_new = self.create_new_3dmask(region_string)
+        complete_mask_new = self.get_new_3dmask(region_string)
         return complete_mask_new
 
     def ellipse_param_to_ds9reg_string(self, xc, yc, a, b, theta, color='green', coord_system='pix'):
@@ -657,13 +663,23 @@ class MuseCube:
         return region_string
 
     def _test_3dmask(self, region_string, alpha=0.8, slice=0):
-        complete_mask = self.create_new_3dmask(region_string)
+        complete_mask = self.get_new_3dmask(region_string)
         mask_slice = complete_mask[int(slice)]
         plt.figure(self.n)
         plt.imshow(mask_slice, alpha=alpha)
         self.draw_pyregion(region_string)
 
-    def create_new_3dmask(self, region_string, _2d=False):
+    def get_new_2dmask(self, region_string):
+        """Write something here please"""
+        im_aux = np.ones_like(self.white_data)
+        hdu_aux = fits.open(self.filename_white)[1]
+        hdu_aux.data = im_aux
+        r = pyregion.parse(region_string)
+        mask_new = r.get_mask(hdu=hdu_aux)
+        mask_new_inverse = np.where(~mask_new, True, False)
+        return mask_new_inverse
+
+    def get_new_3dmask(self, region_string):
         """Creates a 3D mask for the cube that also mask out
         spaxels that are outside the gemoetrical redion defined by
         region_string.
@@ -682,17 +698,10 @@ class MuseCube:
         Notes: It uses pyregion package.
 
         """
-        im_aux = np.ones_like(self.white_data)
-        hdu_aux = fits.open(self.filename_white)[1]
-        hdu_aux.data = im_aux
-        r = pyregion.parse(region_string)
-        mask_new = r.get_mask(hdu=hdu_aux)
-        mask_new_inverse = ~mask_new
-        complete_mask_new = mask_new_inverse + self.mask_init
+        mask2d = self.get_new_2dmask(region_string)
+        complete_mask_new = mask2d + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
-        if _2d:
-            return mask_new_inverse
         return complete_mask_new
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32):
@@ -1212,7 +1221,7 @@ class MuseCube:
             region_string = self.ellipse_param_to_ds9reg_string(xc, yc, a, b, theta)
         else:
             region_string=region_string_
-        new_2dmask = self.create_new_3dmask(region_string, _2d=True)
+        new_2dmask = self.get_new_2dmask(region_string)
         masked_white = ma.MaskedArray(self.white_data)
         masked_white.mask = new_2dmask
         ###### Define domain matrix:
@@ -1240,7 +1249,7 @@ class MuseCube:
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        new_3dmask = self.create_new_3dmask(region_string)
+        new_3dmask = self.get_new_3dmask(region_string)
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
