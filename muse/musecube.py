@@ -1221,7 +1221,10 @@ class MuseCube:
             x_center, y_center, params = x_c, y_c, [a, b, theta]
         xc = x_center
         yc = y_center
-        spec_sum = self.get_spec_from_ellipse_params(x_center,y_center,params, mode = 'sum')
+
+        new_mask = self.get_mini_cube_mask_from_ellipse_params(x_center, y_center, params)
+        spec_sum = self.spec_from_minicube_mask(new_mask, mode='sum')
+
         from astropy.modeling import models, fitting
         halfsize = [a, b]
         if region_string_==None:
