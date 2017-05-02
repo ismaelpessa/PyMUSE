@@ -1313,7 +1313,8 @@ class MuseCube:
             raise ValueError('Cannot trust the model, please try other imput parameters.')
 
         seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
-        print 'FWHM={:.2f}'.format(seeing)
+        print 'FWHM={:.2f} (arcsecs)'.format(seeing)
+        print 'stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev*self.pixelsize.to('arcsec'))
         return seeing
 
     def w2p(self, xw, yw):
