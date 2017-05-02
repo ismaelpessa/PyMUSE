@@ -354,7 +354,7 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median','white_weighted_mean','sum']:
+        if mode not in ['ivar', 'mean', 'median','white_weighted_mean','sum','ivar_wwm']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -363,7 +363,7 @@ class MuseCube:
         fl = np.zeros(n)
         er = np.zeros(n)
 
-        if mode == 'white_weighted_mean':
+        if mode == 'white_weighted_mean' or mode =='ivar_wwm':
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
 
         for wv_ii in xrange(n):
@@ -379,6 +379,13 @@ class MuseCube:
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
                 er[wv_ii] = np.sqrt(np.sum(1. / im_var))
+            if mode =='ivar_wwm':
+                im_weights = smoothed_white[~mask]
+                im_weights = im_weights / np.sum(im_weights)
+                flux_ivar_wwm = im_weights*im_fl / im_var
+                fl[wv_ii] = np.sum(flux_ivar_wwm) / np.sum(im_weights/im_var)
+                er[wv_ii] = np.sqrt(np.sum(im_weights**2 / im_var))
+
             elif mode =='sum':
                 fl[wv_ii]=np.sum(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var))
