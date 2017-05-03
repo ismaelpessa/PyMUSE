@@ -81,7 +81,36 @@ def get_rm_spec(rm_spec_name,rm_out_file = None,rm_fit_number = None):
     return w_spec,f_spec
 
 
+def is_local_minima(a):
+    """For a given array a, it returns true for local minima
+    (copied from pyntejos.utils)."""
+    a = np.array(a)
+    mask = []
+    for i in range(1, len(a) - 1):
+        cond = (a[i] < a[i - 1]) and (a[i] < a[i + 1])
+        if cond:
+            mask += [1]
+        else:
+            mask += [0]
+    mask = np.array(mask)
+    mask = np.append(0, mask)
+    mask = np.append(mask, 0)
+    return mask == 1
 
 
-
+def is_local_maxima(a):
+    """For a given array a, returns true for local maxima
+    (copied from pyntejos.utils)"""
+    a = np.array(a)
+    mask = []
+    for i in range(1, len(a) - 1):
+        cond = (a[i] > a[i - 1]) and (a[i] > a[i + 1])
+        if cond:
+            mask += [1]
+        else:
+            mask += [0]
+    mask = np.array(mask)
+    mask = np.append(0, mask)
+    mask = np.append(mask, 0)
+    return mask == 1
 
