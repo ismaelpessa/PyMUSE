@@ -370,7 +370,7 @@ class MuseCube:
               * `ivar` - inverse variance weighting
               * `sum` - Sum
               * `optimal` - Weighted sum by spatial profile (only works for circular thus far)
-              * `white_weighted_mean` - bla bla
+              * `white_weighted_mean` -
 
         Returns
         -------
@@ -388,8 +388,11 @@ class MuseCube:
         n = len(self.wavelength)
         fl = np.zeros(n)
         er = np.zeros(n)
+        if mode == 'robertson':
+            var_white = self.create_white(stat=True, save=False)
 
-        if mode == 'white_weighted_mean' or mode =='ivar_wwm':
+
+        if mode in ['white_weighted_mean','ivar_wwm','robertson']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
 
         for wv_ii in xrange(n):
@@ -412,10 +415,12 @@ class MuseCube:
                 fl[wv_ii] = np.sum(flux_ivar_wwm) / np.sum(im_weights/im_var)
                 er[wv_ii] = np.sqrt(np.sum(im_weights**2 / im_var))
             elif mode == 'robertson':
-                im_weights = im_fl / im_var
+                im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii]=np.sum(im_fl * im_weights)
-                er[wv_ii]=np.sqrt(np.sum(im_var*(im_weights**2)))
+                im_var_white = var_white[~mask]
+                im_var_white = im_var_white/np.sum(im_var_white)
+                fl[wv_ii]=np.sum(im_fl * im_weights / im_var_white)/np.sum(im_weights/im_var_white)
+                er[wv_ii]=np.sqrt(np.sum(im_var*((im_weights/im_var_white)**2)))
             elif mode =='sum':
                 fl[wv_ii] = np.sum(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var))
@@ -805,7 +810,7 @@ class MuseCube:
         inds = np.unique(inds)
         return inds
 
-    def sub_cube(self, wv_input):
+    def sub_cube(self, wv_input, stat = False):
         """
         Returns a cube-like object with fewer wavelength elements
 
@@ -819,10 +824,16 @@ class MuseCube:
             wv_inds = self.find_wv_inds(wv_input)
             ind_min = np.min(wv_inds)
             ind_max = np.max(wv_inds)
-            sub_cube = self.cube[ind_min:ind_max, :, :]
+            if stat:
+                sub_cube = self.stat[ind_min:ind_max, :, :]
+            else:
+                sub_cube = self.cube[ind_min:ind_max, :, :]
         else:  # assuming array-like for wv_input
             wv_inds = self.find_wv_inds(wv_input)
-            sub_cube = self.cube[wv_inds, :, :]
+            if stat:
+                sub_cube = self.stat[wv_inds, :, :]
+            else:
+                sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
     def get_filtered_image(self, _filter='r', save=True, n_figure=5):
@@ -850,7 +861,7 @@ class MuseCube:
             self.__save2fits(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
         return new_filtered_image
 
-    def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False):
+    def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False,stat=False):
         """
         Function used to colapse a determined wavelength range in a sum or a median type
         :param wv_input: tuple or list
@@ -863,7 +874,7 @@ class MuseCube:
                          Figure to display the new image if it is saved
         :return:
         """
-        sub_cube = self.sub_cube(wv_input)
+        sub_cube = self.sub_cube(wv_input,stat=stat)
         if type == 'sum':
             matrix_flat = np.sum(sub_cube, axis=0)
         elif type == 'median':
@@ -909,7 +920,7 @@ class MuseCube:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
 
-    def create_white(self, new_white_fitsname='white_from_colapse.fits'):
+    def create_white(self, new_white_fitsname='white_from_colapse.fits',stat=False,save=True):
         """
         Function that collapses all wavelengths available to produce a new white image
         :param new_white_fitsname: Name of the new image
@@ -917,7 +928,8 @@ class MuseCube:
         """
         wave = self.create_wavelength_array()
         n = len(wave)
-        self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, save=True)
+        white_image=self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, stat=stat,save=save)
+        return white_image
 
     def spec_to_redmonster_format(self, spec, fitsname, n_id=None, mag=None):
         """
