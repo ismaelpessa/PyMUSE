@@ -427,7 +427,8 @@ class MuseCube:
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
 
             if empirical_std:  # empirical std
-                er[wv_ii] = np.sqrt( np.sum( (im_fl - fl[wv_ii])**2 )  / len(im_fl))
+                #er[wv_ii] = np.sqrt( np.sum( (im_fl - fl[wv_ii])**2 )/ len(im_fl))
+                er[wv_ii] = np.std(im_fl)
 
         if mode != 'sum':  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
