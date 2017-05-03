@@ -414,18 +414,19 @@ class MuseCube:
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
                 er[wv_ii] = np.sqrt(np.sum(1. / im_var))
             elif mode =='ivar_wwm':
-                im_weights = smoothed_white[~mask]
+                im_white=smoothed_white[~mask]
+                im_weights=im_white/im_var
                 im_weights = im_weights / np.sum(im_weights)
-                flux_ivar_wwm = im_weights*im_fl / im_var
-                fl[wv_ii] = np.sum(flux_ivar_wwm) / np.sum(im_weights/im_var)
-                er[wv_ii] = np.sqrt(np.sum(im_weights**2 / im_var))
+                flux_ivar_wwm = im_weights*im_fl
+                fl[wv_ii] = np.sum(flux_ivar_wwm)
+                er[wv_ii] = np.sqrt(np.sum(im_weights**2 * im_var))
             elif mode == 'robertson':
-                im_weights = smoothed_white[~mask]
-                im_weights = im_weights / np.sum(im_weights)
+                im_white = smoothed_white[~mask]
                 im_var_white = var_white[~mask]
-                im_var_white = im_var_white/np.sum(im_var_white)
-                fl[wv_ii]=np.sum(im_fl * im_weights / im_var_white)/np.sum(im_weights/im_var_white)
-                er[wv_ii]=np.sqrt(np.sum(im_var*((im_weights/im_var_white)**2)))
+                im_weights = im_white/ im_var_white
+                im_weights=im_weights/np.sum(im_weights)
+                fl[wv_ii]=np.sum(im_fl * im_weights)
+                er[wv_ii]=np.sqrt(np.sum(im_var*im_weights**2))
             elif mode =='sum':
                 fl[wv_ii] = np.sum(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var))
