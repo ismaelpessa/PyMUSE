@@ -142,8 +142,6 @@ def calculate_empirical_rms(spec,test = False):
         plt.plot(wv,fl)
         plt.plot(wv_mins,fl[min_local_inds],marker='o',color='r',label='Local minimum')
         plt.plot(wv_maxs,fl[max_local_inds],marker='o',color='green',label='Local maximum')
-        plt.legend()
-        plt.show()
     wv_all_index = list(concatenate((wv_mins,wv_maxs)))
     all_mean_diferences=list(concatenate((min_mean_diferences,max_mean_diferences)))
     wv_all_index_sorted,all_mean_diferences_sorted = zip(*sorted(zip(wv_all_index,all_mean_diferences)))
@@ -161,6 +159,11 @@ def calculate_empirical_rms(spec,test = False):
     wv_all_index_sorted, all_mean_diferences_sorted = np.array(wv_all_index_sorted),np.array(all_mean_diferences_sorted)
     interpolator = interp1d(wv_all_index_sorted, all_mean_diferences_sorted,kind = 'linear')
     sigma = interpolator(wv)
+    if test:
+        plt.plot(wv_all_index_sorted,all_mean_diferences_sorted,maker = 'o',color = 'black',label = 'mean diferences')
+        plt.plot(wv,sigma,label = 'interpolated sigma')
+        plt.legend()
+        plt.show()
     return XSpectrum1D.from_tuple((wv, fl, sigma))
 
 
