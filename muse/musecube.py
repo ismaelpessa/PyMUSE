@@ -318,7 +318,7 @@ class MuseCube:
 
         return x_c-1, y_c-1,params
 
-    def get_spec_from_region_string(self, region_string, mode='optimal', npix=0., empirical_std=empirical_std, n_figure=2, save=False):
+    def get_spec_from_region_string(self, region_string, mode='optimal', npix=0., empirical_std=False, n_figure=2, save=False):
         """
         Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
@@ -424,7 +424,7 @@ class MuseCube:
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
 
             if empirical_std:  # empirical std
-                er[wv_ii] = np.sqrt( np.sum( (im_fl - fl[wv_ii])**2 ) )
+                er[wv_ii] = np.sqrt( np.sum( (im_fl - fl[wv_ii])**2 ) ) / len(im_fl)
 
         if mode != 'sum':  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
