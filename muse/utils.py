@@ -3,6 +3,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
+from scipy.interpolate import interp1d
+from linetools.spectra.xspectrum1d import XSpectrum1D
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
     """Plot two spectra for comparison purposes"""
@@ -58,6 +60,15 @@ def get_spec(specfit):
     return wave,flux
 
 def get_rm_spec(rm_spec_name,rm_out_file = None,rm_fit_number = None):
+    """
+    Function to plot and examine a spectrum which is in a readable format to redmonster software.
+    Optionally, the user can inster a redmonster output file and compare the input spectrum with the
+    template contained in the fit given by rm_fit_number
+    :param rm_spec_name: Name of the fits file which contain the spectrum in redmonster format
+    :param rm_out_file: Optional. Default = None. Output file from redmonster
+    :param rm_fit_number: Optional. Default = None. Number of the fit in rm_out_file (1 to 5)
+    :return:
+    """
     w_spec,f_spec = get_spec(rm_spec_name)
     plt.plot(w_spec,f_spec,color ='Blue',label = rm_spec_name)
     plt.xlabel('Wavelength (Angstroms)')
@@ -113,4 +124,44 @@ def is_local_maxima(a):
     mask = np.append(0, mask)
     mask = np.append(mask, 0)
     return mask == 1
+
+
+def calculate_empirical_rms(spec,test = False):
+    fl = spec.flux.value
+    wv = spec.wavelength.value
+    min_cond = is_local_minima(fl)
+    max_cond = is_local_maxima(fl)
+    min_local_inds = np.where(min_cond)[0]
+    max_local_inds = np.where(max_cond)[0]
+    max_mean_diferences = np.abs(fl[max_local_inds] - (fl[max_local_inds+1]+fl[max_local_inds-1])/2.)
+    min_mean_diferences = np.abs(fl[min_local_inds] - (fl[min_local_inds+1]+fl[min_local_inds-1])/2.)
+    wv_mins=wv[min_local_inds]
+    wv_maxs=wv[max_local_inds]
+    if test:
+        plt.figure()
+        plt.plot(wv,fl)
+        plt.plot(wv_mins,fl[min_local_inds],marker='o',color='r',label='Local minimum')
+        plt.plot(wv_maxs,fl[max_local_inds],marker='o',color='green',label='Local maximum')
+        plt.legend()
+        plt.show()
+    wv_all_index = list(concatenate((wv_mins,wv_maxs)))
+    all_mean_diferences=list(concatenate((min_mean_diferences,max_mean_diferences)))
+    wv_all_index_sorted,all_mean_diferences_sorted = zip(*sorted(zip(wv_all_index,all_mean_diferences)))
+    wv_all_index_sorted, all_mean_diferences_sorted=list(wv_all_index_sorted),list(all_mean_diferences_sorted)
+    if wv_all_index_sorted[0]!=wv[0]:
+        wv_all_index_sorted.insert(0,wv[0])
+        value = all_mean_diferences_sorted[0]
+        all_mean_diferences_sorted.insert(0,value)
+    n = len(wv)
+    m=len(wv_all_index_sorted)
+    if wv_all_index_sorted[m-1]!=wv[n-1]:
+        wv_all_index_sorted.insert(m, wv[n-1])
+        value = all_mean_diferences_sorted[m-1]
+        all_mean_diferences_sorted.insert(m, value)
+    wv_all_index_sorted, all_mean_diferences_sorted = np.array(wv_all_index_sorted),np.array(all_mean_diferences_sorted)
+    interpolator = interp1d(wv_all_index_sorted, all_mean_diferences_sorted,kind = 'linear')
+    sigma = interpolator(wv)
+    return XSpectrum1D.from_tuple((wv, fl, sigma))
+
+
 

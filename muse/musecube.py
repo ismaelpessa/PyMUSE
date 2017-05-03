@@ -3,7 +3,6 @@ import gc
 import glob
 import math as m
 import os
-
 import aplpy
 import numpy as np
 import numpy.ma as ma
@@ -17,6 +16,7 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
+import muse.utils as mcu
 
 
 # spec = XSpectrum1D.from
@@ -246,7 +246,10 @@ class MuseCube:
             spec = self.get_weighted_spec(x_c=x_c,y_c=y_c,params=params)
         else:
             new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
-            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, empirical_std=empirical_std)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix)
+
+        if empirical_std:
+            spec = mcu.calculate_empirical_rms(spec)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         if coord_system == 'wcs':
@@ -284,7 +287,7 @@ class MuseCube:
         mask_inv = np.where(mask == 1, 0, 1)
         complete_mask = self.mask_init + mask_inv
         new_3dmask = np.where(complete_mask == 0, False, True)
-        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, empirical_std=empirical_std)
+        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode)
         self.clean_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
@@ -293,6 +296,8 @@ class MuseCube:
         plt.title('Polygonal region spectrum ')
         plt.figure(self.n)
         MyROI.displayROI()
+        if empirical_std:
+            spec = mcu.calculate_empirical_rms(spec)
         return spec
 
     def params_from_ellipse_region_string(self, region_string,deg=False):
@@ -330,7 +335,9 @@ class MuseCube:
             spec = self.get_weighted_spec(region_string_= region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
-            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, empirical_std=empirical_std)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix)
+        if empirical_std:
+            spec = mcu.calculate_empirical_rms(spec)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         x_world, y_world = self.params_from_ellipse_region_string(region_string,deg=True)
@@ -357,7 +364,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='white_weighted_mean', npix=None, empirical_std=False):
+    def spec_from_minicube_mask(self, new_3dmask, mode='white_weighted_mean', npix=None):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -382,8 +389,6 @@ class MuseCube:
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
 
-        if mode == 'sum':
-            empirical_std=False
 
         n = len(self.wavelength)
         fl = np.zeros(n)
@@ -431,8 +436,6 @@ class MuseCube:
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
 
-            if empirical_std:  # empirical std
-                er[wv_ii] = np.sqrt( np.sum( (im_fl - fl[wv_ii])**2 )/ len(im_fl))
 
         if mode != 'sum':  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
@@ -442,6 +445,7 @@ class MuseCube:
             er = er * norm
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
+
 
     def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix',npix=0):
 
