@@ -5,6 +5,7 @@ import numpy as np
 from astropy.io import fits
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from scipy.interpolate import interp1d
+from scipy.ndimage import gaussian_filter
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -100,17 +101,12 @@ def is_local_minima(a):
     """For a given array a, it returns true for local minima
     (copied from pyntejos.utils)."""
     a = np.array(a)
-    mask = []
-    for i in range(1, len(a) - 1):
+    mask = np.zeros_like(a).astype(bool)
+    for i in range(1, len(a) - 1):  # note that the two edges are always False by definition
         cond = (a[i] < a[i - 1]) and (a[i] < a[i + 1])
-        if cond:
-            mask += [1]
-        else:
-            mask += [0]
-    mask = np.array(mask)
-    mask = np.append(0, mask)
-    mask = np.append(mask, 0)
-    return mask == 1
+        if cond: # local minima
+            mask[i] = True
+    return mask
 
 
 def is_local_maxima(a):
@@ -142,44 +138,32 @@ def calculate_empirical_rms(spec, test=False):
     wv_nominmax = wv[no_minmax_inds]
     fl_nominmax = fl[no_minmax_inds]
     interpolated_nominmax = interp1d(wv_nominmax, fl_nominmax, kind='linear')
-    new_fl_nominmax = interpolated_nominmax(wv)
+    # import pdb; pdb.set_trace()
+    interpolated_max = interp1d(wv[max_local_inds], fl[max_local_inds], kind='linear', bounds_error=False, fill_value=0)
+    interpolated_min = interp1d(wv[min_local_inds], fl[min_local_inds], kind='linear', bounds_error=False, fill_value=0)
+    # these are the envelopes
+    fl_max = interpolated_max(wv)
+    fl_min = interpolated_min(wv)
+    # take the mid value
+    fl_mid = 0.5 * (fl_max + fl_min) # reference flux
 
-    # Segunda implementacion
-    max_mean_diferences = np.abs(fl[max_local_inds] - new_fl_nominmax[max_local_inds])
-    min_mean_diferences = np.abs(fl[min_local_inds] - new_fl_nominmax[min_local_inds])
-    # Primera Implementacion
-    # max_mean_diferences = np.abs(fl[max_local_inds] - (fl[max_local_inds+1]+fl[max_local_inds-1])/2.)
-    # min_mean_diferences = np.abs(fl[min_local_inds] - (fl[min_local_inds+1]+fl[min_local_inds-1])/2.)
+    # the idea here is that these will be the intrinsic rms per pixel (both are the same though)
+    max_mean_diff = np.abs(fl_mid - fl_max)
+    min_mean_diff = np.abs(fl_mid - fl_min)
+    sigma = 0.5 * (max_mean_diff + min_mean_diff)  # anyways these two differences are the same by definition
 
-    wv_mins = wv[min_local_inds]
-    wv_maxs = wv[max_local_inds]
     if test:
+        # fluxes
+        wv_mins = wv[min_local_inds]
+        wv_maxs = wv[max_local_inds]
         plt.figure()
-        plt.plot(wv, fl)
+        plt.plot(wv, fl, drawstyle='steps-mid')
         plt.plot(wv_mins, fl[min_local_inds], marker='o', color='r', label='Local minimum')
         plt.plot(wv_maxs, fl[max_local_inds], marker='o', color='green', label='Local maximum')
-        plt.plot(wv, new_fl_nominmax, color='black', label='nor_min_max_interpolation')
-    wv_all_index = list(np.concatenate((wv_mins, wv_maxs)))
-    all_mean_diferences = list(np.concatenate((min_mean_diferences, max_mean_diferences)))
-    wv_all_index_sorted, all_mean_diferences_sorted = zip(*sorted(zip(wv_all_index, all_mean_diferences)))
-    wv_all_index_sorted, all_mean_diferences_sorted = list(wv_all_index_sorted), list(all_mean_diferences_sorted)
-    if wv_all_index_sorted[0] != wv[0]:
-        wv_all_index_sorted.insert(0, wv[0])
-        value = all_mean_diferences_sorted[0]
-        all_mean_diferences_sorted.insert(0, value)
-    n = len(wv)
-    m = len(wv_all_index_sorted)
-    if wv_all_index_sorted[m - 1] != wv[n - 1]:
-        wv_all_index_sorted.insert(m, wv[n - 1])
-        value = all_mean_diferences_sorted[m - 1]
-        all_mean_diferences_sorted.insert(m, value)
-    wv_all_index_sorted, all_mean_diferences_sorted = np.array(wv_all_index_sorted), np.array(
-        all_mean_diferences_sorted)
-    interpolator = interp1d(wv_all_index_sorted, all_mean_diferences_sorted, kind='linear')
-    sigma = interpolator(wv)
-    if test:
-        plt.plot(wv_all_index_sorted, all_mean_diferences_sorted, marker='o', color='black', label='mean diferences')
-        plt.plot(wv, sigma, label='interpolated sigma', color='pink')
+        plt.plot(wv, fl_mid, color='black', label='flux_mid')
+
+        # sigmas
+        plt.plot(wv, sigma, marker='o-', color='pink', label='Empirical sigma')
         plt.plot(wv, spec.sig.value, color='yellow', label='Original sigma')
         plt.legend()
         plt.show()
