@@ -3,7 +3,9 @@ import gc
 import glob
 import math as m
 import os
+
 import aplpy
+import muse.utils as mcu
 import numpy as np
 import numpy.ma as ma
 import pyregion
@@ -16,7 +18,6 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
-import muse.utils as mcu
 
 
 # spec = XSpectrum1D.from
@@ -243,7 +244,7 @@ class MuseCube:
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
         if mode == 'optimal':
-            spec = self.get_weighted_spec(x_c=x_c,y_c=y_c,params=params)
+            spec = self.get_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
             new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix)
@@ -266,7 +267,8 @@ class MuseCube:
         return spec
 
     def get_spec_from_interactive_polygon_region(self, mode='mean',
-                                                 n_figure=2, empirical_std=False):  ##Se necesita inicializar como ipython --pylab qt
+                                                 n_figure=2,
+                                                 empirical_std=False):  ##Se necesita inicializar como ipython --pylab qt
         """
         Function used to interactively define a region and extract the spectrum of that region
 
@@ -300,7 +302,7 @@ class MuseCube:
             spec = mcu.calculate_empirical_rms(spec)
         return spec
 
-    def params_from_ellipse_region_string(self, region_string,deg=False):
+    def params_from_ellipse_region_string(self, region_string, deg=False):
         """
         Function to get the elliptical parameters of a region_string.
         If deg is True, only will be returned the center in degrees.
@@ -318,12 +320,13 @@ class MuseCube:
             par = r[0].coord_list[2:5]
             x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
         if deg:
-            x_world,y_world=self.p2w(x_c-1,y_c-1)
-            return x_world,y_world
+            x_world, y_world = self.p2w(x_c - 1, y_c - 1)
+            return x_world, y_world
 
-        return x_c-1, y_c-1,params
+        return x_c - 1, y_c - 1, params
 
-    def get_spec_from_region_string(self, region_string, mode='optimal', npix=0., empirical_std=False, n_figure=2, save=False):
+    def get_spec_from_region_string(self, region_string, mode='optimal', npix=0., empirical_std=False, n_figure=2,
+                                    save=False):
         """
         Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
@@ -331,8 +334,8 @@ class MuseCube:
         :param mode: string. default = ivar
         :return: spec: XSpectrum1D object.
         """
-        if mode =='optimal':
-            spec = self.get_weighted_spec(region_string_= region_string)
+        if mode == 'optimal':
+            spec = self.get_weighted_spec(region_string_=region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix)
@@ -340,7 +343,7 @@ class MuseCube:
             spec = mcu.calculate_empirical_rms(spec)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
-        x_world, y_world = self.params_from_ellipse_region_string(region_string,deg=True)
+        x_world, y_world = self.params_from_ellipse_region_string(region_string, deg=True)
         coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         name = name_from_coord(coords)
         plt.title(name)
@@ -384,11 +387,10 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median','white_weighted_mean','sum','ivar_wwm', 'robertson']:
+        if mode not in ['ivar', 'mean', 'median', 'white_weighted_mean', 'sum', 'ivar_wwm', 'robertson']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
-
 
         n = len(self.wavelength)
         fl = np.zeros(n)
@@ -396,8 +398,7 @@ class MuseCube:
         if mode == 'robertson':
             var_white = self.create_white(stat=True, save=False)
 
-
-        if mode in ['white_weighted_mean','ivar_wwm','robertson']:
+        if mode in ['white_weighted_mean', 'ivar_wwm', 'robertson']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
 
         for wv_ii in xrange(n):
@@ -407,27 +408,27 @@ class MuseCube:
             if mode == 'white_weighted_mean':
                 im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii]=np.sum(im_fl * im_weights)
-                er[wv_ii]=np.sqrt(np.sum(im_var*(im_weights**2)))
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
                 flux_ivar = im_fl / im_var
                 fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
                 er[wv_ii] = np.sqrt(np.sum(1. / im_var))
-            elif mode =='ivar_wwm':
-                im_white=smoothed_white[~mask]
-                im_weights=im_white/im_var
+            elif mode == 'ivar_wwm':
+                im_white = smoothed_white[~mask]
+                im_weights = im_white / im_var
                 im_weights = im_weights / np.sum(im_weights)
-                flux_ivar_wwm = im_weights*im_fl
+                flux_ivar_wwm = im_weights * im_fl
                 fl[wv_ii] = np.sum(flux_ivar_wwm)
-                er[wv_ii] = np.sqrt(np.sum(im_weights**2 * im_var))
+                er[wv_ii] = np.sqrt(np.sum(im_weights ** 2 * im_var))
             elif mode == 'robertson':
                 im_white = smoothed_white[~mask]
                 im_var_white = var_white[~mask]
-                im_weights = im_white/ im_var_white
-                im_weights=im_weights/np.sum(im_weights)
-                fl[wv_ii]=np.sum(im_fl * im_weights)
-                er[wv_ii]=np.sqrt(np.sum(im_var*im_weights**2))
-            elif mode =='sum':
+                im_weights = im_white / im_var_white
+                im_weights = im_weights / np.sum(im_weights)
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * im_weights ** 2))
+            elif mode == 'sum':
                 fl[wv_ii] = np.sum(im_fl)
                 er[wv_ii] = np.sqrt(np.sum(im_var))
             elif mode == 'mean':
@@ -436,7 +437,6 @@ class MuseCube:
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
-
 
         if mode != 'sum':  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
@@ -447,8 +447,7 @@ class MuseCube:
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-
-    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix',npix=0):
+    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix', npix=0):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -460,7 +459,7 @@ class MuseCube:
         :return:
         """
         spectrum = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
-                                                     coord_system=coord_system, mode=mode,npix = npix)
+                                                     coord_system=coord_system, mode=mode, npix=npix)
         if isinstance(halfsize, (list, tuple)):
             aux = [halfsize[0], halfsize[1]]
             halfsize = max(aux)
@@ -509,9 +508,6 @@ class MuseCube:
         w = np.linspace(w_ini, w_fin, N)
         # print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
         return w
-
-
-
 
     def __edit_header(self, hdulist, values_list,
                       keywords_list=['CRPIX1', 'CRPIX2', 'CD1_1', 'CD2_2', 'CRVAL1', 'CRVAL2'], hdu=1):
@@ -607,8 +603,6 @@ class MuseCube:
         xc2, yc2, b2 = self.xyr_to_pixel(xc, yc, b)
         radius2 = [a2, b2, radius[2]]
         return xc2, yc2, radius2
-
-
 
     def get_mini_cube_mask_from_region_string(self, region_string):
         """
@@ -728,7 +722,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
-                              mode='white_wheighted_mean', mag_kwrd='mag_r',npix=4):
+                              mode='white_wheighted_mean', mag_kwrd='mag_r', npix=4):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename,
             flag_threshold=flag_threshold)
@@ -740,7 +734,7 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
                 spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
-                                                         mode=mode, npix=npix,save=False, n_figure=n_figure)
+                                                         mode=mode, npix=npix, save=False, n_figure=n_figure)
                 str_id = str(id[i]).zfill(3)
                 spec_fits_name = str_id + '_' + spec_fits_name
                 if redmonster_format:
@@ -815,7 +809,7 @@ class MuseCube:
         inds = np.unique(inds)
         return inds
 
-    def sub_cube(self, wv_input, stat = False):
+    def sub_cube(self, wv_input, stat=False):
         """
         Returns a cube-like object with fewer wavelength elements
 
@@ -866,7 +860,7 @@ class MuseCube:
             self.__save2fits(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
         return new_filtered_image
 
-    def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False,stat=False):
+    def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False):
         """
         Function used to colapse a determined wavelength range in a sum or a median type
         :param wv_input: tuple or list
@@ -879,7 +873,7 @@ class MuseCube:
                          Figure to display the new image if it is saved
         :return:
         """
-        sub_cube = self.sub_cube(wv_input,stat=stat)
+        sub_cube = self.sub_cube(wv_input, stat=stat)
         if type == 'sum':
             matrix_flat = np.sum(sub_cube, axis=0)
         elif type == 'median':
@@ -925,7 +919,7 @@ class MuseCube:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
 
-    def create_white(self, new_white_fitsname='white_from_colapse.fits',stat=False,save=True):
+    def create_white(self, new_white_fitsname='white_from_colapse.fits', stat=False, save=True):
         """
         Function that collapses all wavelengths available to produce a new white image
         :param new_white_fitsname: Name of the new image
@@ -933,7 +927,7 @@ class MuseCube:
         """
         wave = self.create_wavelength_array()
         n = len(wave)
-        white_image=self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, stat=stat,save=save)
+        white_image = self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, stat=stat, save=save)
         return white_image
 
     def spec_to_redmonster_format(self, spec, fitsname, n_id=None, mag=None):
@@ -1190,7 +1184,7 @@ class MuseCube:
         data = table[keyword]
         return data
 
-    def get_weighted_spec(self, x_c=None, y_c=None, params=None,region_string_ = None, coord_system='pix'):
+    def get_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None, coord_system='pix'):
         """
         Function that extract the spectrum from an aperture defined either by elliptical parameters or  by an elliptical region defined by region_string in ds9 format
         :param x_c: x_coordinate of the center of the aperture
@@ -1200,10 +1194,10 @@ class MuseCube:
         :param coord_system: in the case of defining and aperture using x_c,y_c,params, must indicate the type of this coordiantes. Possible values: 'pix' and 'wcs'
         :return: XSpectrum1D object
         """
-        if max(x_c,y_c,params,region_string_)==None:
+        if max(x_c, y_c, params, region_string_) == None:
             raise ValueError('Not valid input')
         if region_string_ != None:
-            x_c,y_c,params = self.params_from_ellipse_region_string(region_string_)
+            x_c, y_c, params = self.params_from_ellipse_region_string(region_string_)
         if not isinstance(params, (int, float, tuple, list, np.array)):
             raise ValueError('Not ready for this `radius` type.')
         if isinstance(params, (int, float)):
@@ -1228,10 +1222,10 @@ class MuseCube:
 
         from astropy.modeling import models, fitting
         halfsize = [a, b]
-        if region_string_==None:
+        if region_string_ == None:
             region_string = self.ellipse_param_to_ds9reg_string(xc, yc, a, b, theta)
         else:
-            region_string=region_string_
+            region_string = region_string_
         new_2dmask = self.get_new_2dmask(region_string)
         masked_white = ma.MaskedArray(self.white_data)
         masked_white.mask = new_2dmask
@@ -1267,8 +1261,8 @@ class MuseCube:
             weigths.mask = mask
             # n_spaxels = np.sum(mask)
             weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths) #* n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2))) #* n_spaxels
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)  # * n_spaxels
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))  # * n_spaxels
         # reset mask
         self.cube.mask = self.mask_init
 
@@ -1319,7 +1313,7 @@ class MuseCube:
 
         seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
         print 'FWHM={:.2f} (arcsecs)'.format(seeing)
-        print 'stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev*self.pixelsize.to('arcsec'))
+        print 'stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec'))
         return seeing
 
     def w2p(self, xw, yw):
