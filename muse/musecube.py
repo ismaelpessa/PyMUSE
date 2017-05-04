@@ -30,7 +30,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air'):
         """
         Parameters
         ----------
@@ -53,6 +53,7 @@ class MuseCube:
         self.vmax = vmax
         self.flux_units = flux_units
         self.n = n_fig
+        self.wave_cal = wave_cal
         plt.close(self.n)
         self.filename = filename_cube
         self.filename_white = filename_white
@@ -107,13 +108,14 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits', clobber=True)
         return smooth_im
 
-    def create_new_stat(self):
-        """Creates a new variance using simple algorithms"""
-        median_var_cube = np.zeros_like(self.cube)
-        for wv_ii in np.arange(len(self.wavelength)):
-            median_ii = np.median(self.stat[wv_ii])
-            median_var_cube[wv_ii, :, :] = median_ii
-        self.new_var = self.cube + median_var_cube
+    def spec_to_vacuum(self, spectrum):
+        spectrum_vac = spectrum
+        if self.wave_cal == 'air':
+            spectrum_vac.meta['airvac'] = 'air'
+            spectrum_vac.airtovac()
+            return spectrum_vac
+        else:
+            return spectrum_vac
 
     def spatial_smooth(self, npix, output="smoothed.fits", test=False, **kwargs):
         """Applies Gaussian filter of std=npix in both spatial directions
@@ -240,7 +242,9 @@ class MuseCube:
         for wv_ii in range(n):
             spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
             sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
-        return XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
+        spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
+        spec = self.spec_to_vacuum(spec)
+        return spec
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', npix=0,
                                      n_figure=2, empirical_std=False, save=False):
@@ -254,6 +258,7 @@ class MuseCube:
 
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
+        spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         if coord_system == 'wcs':
@@ -303,6 +308,7 @@ class MuseCube:
         MyROI.displayROI()
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
+        spec = self.spec_to_vacuum(spec)
         return spec
 
     def params_from_ellipse_region_string(self, region_string, deg=False):
@@ -344,6 +350,7 @@ class MuseCube:
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
+        spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         x_world, y_world = self.params_from_ellipse_region_string(region_string, deg=True)
@@ -414,10 +421,10 @@ class MuseCube:
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
-                im_weights  = 1. / im_var
+                im_weights = 1. / im_var
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2) ))
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'ivar_wwm':
                 im_white = smoothed_white[~mask]
                 im_weights = im_white / im_var
@@ -443,20 +450,14 @@ class MuseCube:
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
 
-        if mode not in ['sum', 'median']: # normalize to match total integrated flux
+        if mode not in ['sum', 'median']:  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
             fl = fl * norm
             er = er * norm
 
-        spec = XSpectrum1D.from_tuple((self.wavelength, fl, er))
-        vacuum  = True
-        if vacuum:
-            spec.meta['airvac'] = 'air'
-            spec.airtovac()
-        # return
-        return spec
+        return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
     def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix', npix=0):
 
@@ -469,8 +470,9 @@ class MuseCube:
         :param n_fig: Figure number to deploy the image
         :return:
         """
-        spectrum = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
-                                                     coord_system=coord_system, mode=mode, npix=npix)
+        spec = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
+                                                 coord_system=coord_system, mode=mode, npix=npix)
+        spec = self.spec_to_vacuum(spec)
         if isinstance(halfsize, (list, tuple)):
             aux = [halfsize[0], halfsize[1]]
             halfsize = max(aux)
@@ -484,8 +486,8 @@ class MuseCube:
         coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         spec_name = name_from_coord(coord)
         plt.title(spec_name)
-        w = spectrum.wavelength.value
-        f = spectrum.flux.value
+        w = spec.wavelength.value
+        f = spec.flux.value
         ax1.plot(w, f)
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
@@ -500,7 +502,7 @@ class MuseCube:
         ax2.imshow(mini_image, cmap='gray')
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
-        return spectrum
+        return spec
 
     def create_wavelength_array(self):
         """

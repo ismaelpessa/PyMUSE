@@ -133,12 +133,7 @@ def calculate_empirical_rms(spec, test=False):
     max_cond = is_local_maxima(fl)
     min_local_inds = np.where(min_cond)[0]
     max_local_inds = np.where(max_cond)[0]
-    ########  Nueva version con interpolacion del espectro
-    no_minmax_inds = np.where(~min_cond & ~max_cond)[0]
-    wv_nominmax = wv[no_minmax_inds]
-    fl_nominmax = fl[no_minmax_inds]
-    interpolated_nominmax = interp1d(wv_nominmax, fl_nominmax, kind='linear')
-    # import pdb; pdb.set_trace()
+
     interpolated_max = interp1d(wv[max_local_inds], fl[max_local_inds], kind='linear', bounds_error=False, fill_value=0)
     interpolated_min = interp1d(wv[min_local_inds], fl[min_local_inds], kind='linear', bounds_error=False, fill_value=0)
     # these are the envelopes
