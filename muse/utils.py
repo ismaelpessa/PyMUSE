@@ -139,7 +139,7 @@ def calculate_empirical_rms(spec,test = False):
     fl_nominmax = fl[no_minmax_inds]
     interpolated_nominmax=interp1d(wv_nominmax,fl_nominmax,kind='linear')
     new_fl_nominmax=interpolated_nominmax(wv)
-    plt.plot(wv, new_fl_nominmax, label='nor_min_max_interpolation')
+
 
     #Segunda implementacion
     max_mean_diferences=np.abs(fl[max_local_inds] - new_fl_nominmax[max_local_inds])
@@ -158,6 +158,7 @@ def calculate_empirical_rms(spec,test = False):
         plt.plot(wv,fl)
         plt.plot(wv_mins,fl[min_local_inds],marker='o',color='r',label='Local minimum')
         plt.plot(wv_maxs,fl[max_local_inds],marker='o',color='green',label='Local maximum')
+        plt.plot(wv, new_fl_nominmax, color ='black',label='nor_min_max_interpolation')
     wv_all_index = list(np.concatenate((wv_mins,wv_maxs)))
     all_mean_diferences=list(np.concatenate((min_mean_diferences,max_mean_diferences)))
     wv_all_index_sorted,all_mean_diferences_sorted = zip(*sorted(zip(wv_all_index,all_mean_diferences)))
