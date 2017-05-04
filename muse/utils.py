@@ -5,6 +5,7 @@ import numpy as np
 from astropy.io import fits
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from scipy.interpolate import interp1d
+from scipy.ndimage import gaussian_filter
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -142,11 +143,21 @@ def calculate_empirical_rms(spec, test=False):
     wv_nominmax = wv[no_minmax_inds]
     fl_nominmax = fl[no_minmax_inds]
     interpolated_nominmax = interp1d(wv_nominmax, fl_nominmax, kind='linear')
-    new_fl_nominmax = interpolated_nominmax(wv)
+    # import pdb; pdb.set_trace()
+    interpolated_max = interp1d(wv[max_local_inds], fl[max_local_inds], kind='linear', bounds_error=False, fill_value=0)
+    interpolated_min = interp1d(wv[min_local_inds], fl[min_local_inds], kind='linear', bounds_error=False, fill_value=0)
+    # these are the envelopes
+    fl_max = interpolated_max(wv)
+    fl_min = interpolated_min(wv)
+    # take the mid value
+    fl_mid = 0.5 * (fl_max + fl_min)
+    new_fl_nominmax = fl_mid # use this as reference
+    # new_fl_nominmax = interpolated_nominmax(wv)
 
     # Segunda implementacion
     max_mean_diferences = np.abs(fl[max_local_inds] - new_fl_nominmax[max_local_inds])
     min_mean_diferences = np.abs(fl[min_local_inds] - new_fl_nominmax[min_local_inds])
+
     # Primera Implementacion
     # max_mean_diferences = np.abs(fl[max_local_inds] - (fl[max_local_inds+1]+fl[max_local_inds-1])/2.)
     # min_mean_diferences = np.abs(fl[min_local_inds] - (fl[min_local_inds+1]+fl[min_local_inds-1])/2.)
@@ -159,8 +170,10 @@ def calculate_empirical_rms(spec, test=False):
         plt.plot(wv_mins, fl[min_local_inds], marker='o', color='r', label='Local minimum')
         plt.plot(wv_maxs, fl[max_local_inds], marker='o', color='green', label='Local maximum')
         plt.plot(wv, new_fl_nominmax, color='black', label='nor_min_max_interpolation')
-    wv_all_index = list(np.concatenate((wv_mins, wv_maxs)))
-    all_mean_diferences = list(np.concatenate((min_mean_diferences, max_mean_diferences)))
+    # wv_all_index = list(np.concatenate((wv_mins, wv_maxs)))
+    # all_mean_diferences = list(np.concatenate((min_mean_diferences, max_mean_diferences)))
+    wv_all_index = wv_maxs  # only take differences w/r to max envelope because of intrinsic real absorption
+    all_mean_diferences = max_mean_diferences  # ditto
     wv_all_index_sorted, all_mean_diferences_sorted = zip(*sorted(zip(wv_all_index, all_mean_diferences)))
     wv_all_index_sorted, all_mean_diferences_sorted = list(wv_all_index_sorted), list(all_mean_diferences_sorted)
     if wv_all_index_sorted[0] != wv[0]:
@@ -177,6 +190,7 @@ def calculate_empirical_rms(spec, test=False):
         all_mean_diferences_sorted)
     interpolator = interp1d(wv_all_index_sorted, all_mean_diferences_sorted, kind='linear')
     sigma = interpolator(wv)
+    sigma = gaussian_filter(sigma, 2)
     if test:
         plt.plot(wv_all_index_sorted, all_mean_diferences_sorted, marker='o', color='black', label='mean diferences')
         plt.plot(wv, sigma, label='interpolated sigma', color='pink')
