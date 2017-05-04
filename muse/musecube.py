@@ -94,7 +94,10 @@ class MuseCube:
         """
         hdulist = fits.open(self.filename_white)
         im = hdulist[1].data
-        smooth_im = ndimage.gaussian_filter(im, sigma=npix, **kwargs)
+        if npix > 0:
+            smooth_im = ndimage.gaussian_filter(im, sigma=npix, **kwargs)
+        else:
+            smooth_im = im
         if save:
             hdulist[1].data = smooth_im
             prihdr = hdulist[0].header
@@ -236,7 +239,7 @@ class MuseCube:
         sigma = np.zeros(n)
         for wv_ii in range(n):
             spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
-            sigma[wv_ii] = self.stat.data[wv_ii][int(y_c)][int(x_c)]
+            sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
         return XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', npix=0,
@@ -367,7 +370,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='white_weighted_mean', npix=None):
+    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=None):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -380,14 +383,14 @@ class MuseCube:
               * `ivar` - inverse variance weighting
               * `sum` - Sum
               * `optimal` - Weighted sum by spatial profile (only works for circular thus far)
-              * `white_weighted_mean` -
+              * `wwm` -
 
         Returns
         -------
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar', 'mean', 'median', 'white_weighted_mean', 'sum', 'ivar_wwm', 'robertson']:
+        if mode not in ['ivar', 'mean', 'median', 'wwm', 'sum', 'ivar_wwm', 'robertson']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -395,57 +398,65 @@ class MuseCube:
         n = len(self.wavelength)
         fl = np.zeros(n)
         er = np.zeros(n)
-        if mode == 'robertson':
-            var_white = self.create_white(stat=True, save=False)
 
-        if mode in ['white_weighted_mean', 'ivar_wwm', 'robertson']:
+        if mode in ['wwm', 'ivar_wwm', 'robertson']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
+            if mode == 'robertson':
+                var_white = self.create_white(stat=True, save=False)
 
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
-            if mode == 'white_weighted_mean':
+            if mode == 'wwm':
                 im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
-                flux_ivar = im_fl / im_var
-                fl[wv_ii] = np.sum(flux_ivar) / np.sum(1. / im_var)
-                er[wv_ii] = np.sqrt(np.sum(1. / im_var))
+                im_weights  = 1. / im_var
+                im_weights = im_weights / np.sum(im_weights)
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2) ))
             elif mode == 'ivar_wwm':
                 im_white = smoothed_white[~mask]
                 im_weights = im_white / im_var
                 im_weights = im_weights / np.sum(im_weights)
-                flux_ivar_wwm = im_weights * im_fl
-                fl[wv_ii] = np.sum(flux_ivar_wwm)
-                er[wv_ii] = np.sqrt(np.sum(im_weights ** 2 * im_var))
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'robertson':
                 im_white = smoothed_white[~mask]
                 im_var_white = var_white[~mask]
                 im_weights = im_white / im_var_white
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * im_weights ** 2))
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'sum':
-                fl[wv_ii] = np.sum(im_fl)
-                er[wv_ii] = np.sqrt(np.sum(im_var))
+                im_weights = 1.
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'mean':
-                fl[wv_ii] = np.mean(im_fl)
-                er[wv_ii] = np.sqrt(np.sum(im_var)) / len(im_fl)
+                im_weights = 1. / len(im_fl)
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
 
-        if mode != 'sum':  # normalize to match total integrated flux
+        if mode not in ['sum', 'median']: # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
             fl = fl * norm
             er = er * norm
 
-        return XSpectrum1D.from_tuple((self.wavelength, fl, er))
+        spec = XSpectrum1D.from_tuple((self.wavelength, fl, er))
+        vacuum  = True
+        if vacuum:
+            spec.meta['airvac'] = 'air'
+            spec.airtovac()
+        # return
+        return spec
 
     def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix', npix=0):
 
