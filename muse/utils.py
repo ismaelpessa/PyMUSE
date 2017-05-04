@@ -69,6 +69,7 @@ def get_rm_spec(rm_spec_name,rm_out_file = None,rm_fit_number = None):
     :param rm_fit_number: Optional. Default = None. Number of the fit in rm_out_file (1 to 5)
     :return:
     """
+    plt.figure()
     w_spec,f_spec = get_spec(rm_spec_name)
     plt.plot(w_spec,f_spec,color ='Blue',label = rm_spec_name)
     plt.xlabel('Wavelength (Angstroms)')
@@ -83,7 +84,7 @@ def get_rm_spec(rm_spec_name,rm_out_file = None,rm_fit_number = None):
     if rm_out_file!=None and rm_fit_number!=None:
         w_temp,flux_temp,z_temp,class_temp,minchi_temp,z_err_temp = get_template(rm_out_file,rm_fit_number)
         label_str = 'Templ. Class = {}, z={:.5f} +- {:.5f}\nchisqr_dof={:.3f}'.format(class_temp, z_temp, z_err_temp, minchi_temp)
-        plt.plot(w_temp,f_temp,color='Red',label=label_str)
+        plt.plot(w_temp,flux_temp,color='Red',label=label_str)
         plt.legend(fontsize=9, bbox_to_anchor=(1.05, -0.13), loc=1, borderaxespad=0.)
         plt.show()
         return w_spec,f_spec,w_temp,flux_temp
