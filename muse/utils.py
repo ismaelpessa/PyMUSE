@@ -139,10 +139,12 @@ def calculate_empirical_rms(spec,test = False):
     fl_nominmax = fl[no_minmax_inds]
     interpolated_nominmax=interp1d(wv_nominmax,fl_nominmax,kind='linear')
     new_fl_nominmax=interpolated_nominmax(wv)
+    plt.plot(wv, new_fl_nominmax, label='nor_min_max_interpolation')
 
     #Segunda implementacion
     max_mean_diferences=np.abs(fl[max_local_inds] - new_fl_nominmax[max_local_inds])
     min_mean_diferences = np.abs(fl[min_local_inds] - new_fl_nominmax[min_local_inds])
+
 
 
     #Primera Implementacion
