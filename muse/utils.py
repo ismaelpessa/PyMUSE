@@ -101,17 +101,12 @@ def is_local_minima(a):
     """For a given array a, it returns true for local minima
     (copied from pyntejos.utils)."""
     a = np.array(a)
-    mask = []
-    for i in range(1, len(a) - 1):
+    mask = np.zeros_like(a).astype(bool)
+    for i in range(1, len(a) - 1):  # note that the two edges are always False by definition
         cond = (a[i] < a[i - 1]) and (a[i] < a[i + 1])
-        if cond:
-            mask += [1]
-        else:
-            mask += [0]
-    mask = np.array(mask)
-    mask = np.append(0, mask)
-    mask = np.append(mask, 0)
-    return mask == 1
+        if cond: # local minima
+            mask[i] = True
+    return mask
 
 
 def is_local_maxima(a):
