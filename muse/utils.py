@@ -133,8 +133,22 @@ def calculate_empirical_rms(spec,test = False):
     max_cond = is_local_maxima(fl)
     min_local_inds = np.where(min_cond)[0]
     max_local_inds = np.where(max_cond)[0]
-    max_mean_diferences = np.abs(fl[max_local_inds] - (fl[max_local_inds+1]+fl[max_local_inds-1])/2.)
-    min_mean_diferences = np.abs(fl[min_local_inds] - (fl[min_local_inds+1]+fl[min_local_inds-1])/2.)
+    ########  Nueva version con interpolacion del espectro
+    no_minmax_inds = np.where(~min_cond & ~max_cond)[0]
+    wv_nominmax = wv[no_minmax_inds]
+    fl_nominmax = fl[no_minmax_inds]
+    interpolated_nominmax=interp1d(wv_nominmax,fl_nominmax,kind='linear')
+    new_fl_nominmax=interpolated_nominmax(wv)
+
+    #Segunda implementacion
+    max_mean_diferences=np.abs(fl[max_local_inds] - new_fl_nominmax[max_local_inds])
+    min_mean_diferences = np.abs(fl[min_local_inds] - new_fl_nominmax[min_local_inds])
+
+
+    #Primera Implementacion
+    #max_mean_diferences = np.abs(fl[max_local_inds] - (fl[max_local_inds+1]+fl[max_local_inds-1])/2.)
+    #min_mean_diferences = np.abs(fl[min_local_inds] - (fl[min_local_inds+1]+fl[min_local_inds-1])/2.)
+
     wv_mins=wv[min_local_inds]
     wv_maxs=wv[max_local_inds]
     if test:
