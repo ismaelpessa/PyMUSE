@@ -274,7 +274,7 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self, mode='mean',
+    def get_spec_from_interactive_polygon_region(self, mode='mean',npix=0,
                                                  n_figure=2,
                                                  empirical_std=False):  ##Se necesita inicializar como ipython --pylab qt
         """
@@ -297,7 +297,7 @@ class MuseCube:
         mask_inv = np.where(mask == 1, 0, 1)
         complete_mask = self.mask_init + mask_inv
         new_3dmask = np.where(complete_mask == 0, False, True)
-        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode)
+        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode,npix=npix)
         self.clean_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
@@ -377,7 +377,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=None):
+    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=0):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
