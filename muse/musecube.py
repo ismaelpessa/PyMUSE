@@ -274,7 +274,7 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self, mode='mean',npix=0,
+    def get_spec_from_interactive_polygon_region(self, mode='mean', npix=0,
                                                  n_figure=2,
                                                  empirical_std=False):  ##Se necesita inicializar como ipython --pylab qt
         """
@@ -297,7 +297,7 @@ class MuseCube:
         mask_inv = np.where(mask == 1, 0, 1)
         complete_mask = self.mask_init + mask_inv
         new_3dmask = np.where(complete_mask == 0, False, True)
-        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode,npix=npix)
+        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix)
         self.clean_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
@@ -397,7 +397,7 @@ class MuseCube:
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivar_wv', 'ivar','mean', 'median', 'wwm', 'sum', 'ivar_wwm', 'robertson']:
+        if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -405,12 +405,12 @@ class MuseCube:
         n = len(self.wavelength)
         fl = np.zeros(n)
         er = np.zeros(n)
-        if mode =='ivar':
+        if mode == 'ivar':
             var_white = self.create_white(stat=True, save=False)
 
-        elif mode in ['wwm', 'ivar_wwm', 'robertson']:
+        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
-            if mode == 'robertson':
+            if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
 
         for wv_ii in xrange(n):
@@ -424,22 +424,22 @@ class MuseCube:
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
                 im_var_white = var_white[~mask]
-                im_weights= 1./im_var_white
+                im_weights = 1. / im_var_white
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
-            elif mode == 'ivar_wv':
+            elif mode == 'ivarwv':
                 im_weights = 1. / im_var
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
-            elif mode == 'ivar_wv_wwm':
+            elif mode == 'wwm_ivarwv':
                 im_white = smoothed_white[~mask]
                 im_weights = im_white / im_var
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
-            elif mode == 'robertson':
+            elif mode == 'wwm_ivar':
                 im_white = smoothed_white[~mask]
                 im_var_white = var_white[~mask]
                 im_weights = im_white / im_var_white
@@ -458,13 +458,13 @@ class MuseCube:
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
 
-        if mode not in ['sum', 'median','mean']:  # normalize to match total integrated flux
+        if mode not in ['sum', 'median', 'mean']:  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
             fl = fl * norm
             er = er * norm
-            print 'normalization factor relative to total flux = '+str(norm)
+            print 'normalization factor relative to total flux = ' + str(norm)
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
