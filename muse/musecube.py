@@ -575,9 +575,12 @@ class MuseCube:
             halfsize = [halfsize,halfsize,0]
         if coord_system=='wcs':
             x_c,y_c,halfsize=self.ellipse_params_to_pixel(center[0],center[1],radius = halfsize)
+            center_=(x_c,y_c)
+        else:
+            center_=center
         aux = [halfsize[0], halfsize[1]]
         halfsize = max(aux)
-        mini_image = self.get_mini_image(center=center, halfsize=halfsize)
+        mini_image = self.get_mini_image(center=center_, halfsize=halfsize)
         plt.figure(n_fig, figsize=(17, 5))
         ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
         if coord_system == 'pix':
