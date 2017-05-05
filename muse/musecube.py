@@ -227,7 +227,7 @@ class MuseCube:
         :param x: x coordinate of the spaxel
         :param y: y coordinate of the spaxel
         :param coord_system: 'pix' or 'wcs'
-        :return: XSpectrum1D object
+        :return: spec: XSpectrum1D object
         """
         if coord_system == 'wcs':
             x_c, y_c = self.w2p(x, y)
@@ -246,11 +246,39 @@ class MuseCube:
         spec = self.spec_to_vacuum(spec)
         return spec
 
+
+
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0,
                                      n_figure=2, empirical_std=False, save=False):
-        """Obtains a combined spectrum of spaxels within a geometrical region defined by
-        x_c, y_c, params."""
-        if mode == 'optimal':
+        """
+        Obtains a combined spectrum of spaxels within a geometrical region defined by
+        x_c, y_c, param
+        :param x_c: x coordinate of the center of the ellipse
+        :param y_c: y coordinate of the center of the ellipse
+        :param params: Either a float that will be interpreted as a radius, or an iterable [a,b,theta] with the ellipse parameters
+        :param coord_system: str. Default = 'pix'.
+            If coord_system = 'wcs' the coordinates will be considered as degrees
+        :param mode: str
+            Mode for combining spaxels:
+              * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
+              * `sum` - Sum of total flux
+              * `gaussian` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile
+              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
+              * `mean`  -  Mean of the total flux
+              * `median` - Median of the total flux
+              * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
+              * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+        :param npix: int. Default = 0
+            Standard deviation of the gaussian filter to smooth (Only in wwm methods)
+        :param n_figure: int. Default = 2. Figure to display the spectrum
+        :param empirical_std: boolean. Default = False.
+            If True, the errors of the spectrum will be determined empirically
+        :param save: boolean. Default = False
+            If True, the spectrum will be saved in hard_disk
+        :return: spec: XSpectrum1D object
+        """
+        if mode == 'gaussian':
             spec = self.get_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
             new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
@@ -274,19 +302,34 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self, mode='mean', npix=0,
+    def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0,
                                                  n_figure=2,
-                                                 empirical_std=False):  ##Se necesita inicializar como ipython --pylab qt
+                                                 empirical_std=False,save = False):
         """
         Function used to interactively define a region and extract the spectrum of that region
 
         To use this function, the class must have been initialized in a "ipython --pylab qt" enviroment
         It's also needed the package roipoly. Installation instructions and LICENSE in:
         https://github.com/jdoepfert/roipoly.py/
+        :param mode: str, default = wwm
+            Mode for combining spaxels:
+              * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
+              * `sum` - Sum of total flux
+              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
+              * `mean`  -  Mean of the total flux
+              * `median` - Median of the total flux
+              * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
+              * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+        :param npix: int. Default = 0
+            Standard deviation of the gaussian filter to smooth (Only in wwm methods)
+        :param n_figure: int. Default = 2. Figure to display the spectrum
+        :param empirical_std: boolean.  Default = False
+            If True, the errors of the spectrum will be determined empirically
+        :param save: boolean. Default = False
+            If True, the spectrum will be saved in hard_disk
+        :return: spec: XSpectrum1D object
 
-        :param mode: type of combination for fluxes. Possible values: mean, median, ivar
-        :param n_figure: figure to display the spectrum
-        :return: spec: XSpectrum1D ob
         """
         from roipoly import roipoly
         current_fig = plt.figure(self.n)
@@ -309,6 +352,8 @@ class MuseCube:
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
+        if save:
+            spec.write_to_fits('Poligonal_region_spec.fits')
         return spec
 
     def params_from_ellipse_region_string(self, region_string, deg=False):
@@ -318,32 +363,54 @@ class MuseCube:
         Otherwise, all parameters will be returned in pixels
         :param region_string: Region defined as string using ds9 format
         :param deg: If True, only the center of the ellipse will be returned, in degrees.
-        :return:
+        :return: x_center,y_center,params, parameter of the ellipse defined in region_string
         """
         r = pyregion.parse(region_string)
-        if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
-            x_c, y_c, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
-        else:
-            x_world = r[0].coord_list[0]
-            y_world = r[0].coord_list[1]
-            par = r[0].coord_list[2:5]
-            x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
         if deg:
-            x_world, y_world = self.p2w(x_c - 1, y_c - 1)
-            return x_world, y_world
-
-        return x_c - 1, y_c - 1, params
+            x_c ,y_c = r[0].coord_list[0],r[0].coord_list[1]
+            if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
+                x_world,y_world=self.p2w(x_c-1,y_c-1)
+            else:
+                x_world,y_world=x_c,y_c
+            return x_world,y_world
+        else:
+            if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
+                x_c, y_c, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
+            else:
+                x_world = r[0].coord_list[0]
+                y_world = r[0].coord_list[1]
+                par = r[0].coord_list[2:5]
+                x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
+            return x_c - 1, y_c - 1, params
 
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., empirical_std=False, n_figure=2,
                                     save=False):
         """
-        Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
+        Obtains a combined spectrum of spaxels within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
-                              String defining a ds9 region
-        :param mode: string. default = ivar
-        :return: spec: XSpectrum1D object.
+            Region defined by a string, using ds9 format (ellipse only in gaussian method)
+        :param mode: str
+            Mode for combining spaxels:
+              * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
+              * `sum` - Sum of total flux
+              * `gaussian` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile
+              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
+              * `mean`  -  Mean of the total flux
+              * `median` - Median of the total flux
+              * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
+              * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+        :param npix: int. Default = 0
+            Standard deviation of the gaussian filter to smooth (Only in wwm methods)
+        :param n_figure: int. Default = 2. Figure to display the spectrum
+        :param empirical_std: boolean. Default = False.
+            If True, the errors of the spectrum will be determined empirically
+        :param save: boolean. Default = False
+            If True, the spectrum will be saved in hard_disk
+        :return: spec: XSpectrum1D object
+
         """
-        if mode == 'optimal':
+        if mode == 'gaussian':
             spec = self.get_weighted_spec(region_string_=region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
@@ -366,8 +433,8 @@ class MuseCube:
     def draw_pyregion(self, region_string):
         """
         Function used to draw in the interface the contour of the region defined by region_string
-        :param region_string:
-        :return:
+        :param region_string: str. Region defined by a string using ds9 format
+        :return: None
         """
         hdulist = fits.open(self.filename_white)
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
@@ -387,11 +454,14 @@ class MuseCube:
             The 3D mask
         mode : str
             Mode for combining spaxels:
-              * `ivar` - inverse variance weighting
-              * `sum` - Sum
-              * `optimal` - Weighted sum by spatial profile (only works for circular thus far)
-              * `wwm` -
-
+              * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
+              * `sum` - Sum of total flux
+              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
+              * `mean`  -  Mean of the total flux
+              * `median` - Median of the total flux
+              * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
+              * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
         Returns
         -------
         An XSpectrum1D object (from linetools) with the combined spectrum.
@@ -468,23 +538,45 @@ class MuseCube:
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='wwm', coord_system='pix', npix=0):
+    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='wwm', coord_system='pix', npix=0, save = False,empirical_std=False):
 
         """
         Function to Get a spectrum and an image of the selected source.
 
-        :param center: Tuple. Contain the coordinates in pixels of the center
-        :param halfsize: int or list. If int, is the halfsize of the image box and the radius of a circular aperture to get the spectrum
+        :param center: Tuple. Contain the coordinates of the source.
+        :param halfsize: flot or list. If int, is the halfsize of the image box and the radius of a circular aperture to get the spectrum
                                       If list, contain the [a,b,alpha] parameter for an eliptical aperture. The box will be a square with the major semiaxis
-        :param n_fig: Figure number to deploy the image
-        :return:
+        :param n_fig: Figure number to display the spectrum and the image
+        :param mode: str
+            Mode for combining spaxels:
+              * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
+              * `sum` - Sum of total flux
+              * `gaussian` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile
+              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
+              * `mean`  -  Mean of the total flux
+              * `median` - Median of the total flux
+              * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
+              * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+        :param npix: int. Default = 0
+            Standard deviation of the gaussian filter to smooth (Only in wwm methods)m
+        :param empirical_std: boolean. Default = False.
+            If True, the errors of the spectrum will be determined empirically
+        :param save: boolean. Default = False
+            If True, the spectrum will be saved in hard_disk
+        :param coord_system: str. Default = 'pix'.
+            If coord_system = 'wcs' the coordinates will be considered as degrees
+        :return: spec: XSpectrum1D object
         """
         spec = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
-                                                 coord_system=coord_system, mode=mode, npix=npix)
+                                                 coord_system=coord_system, mode=mode, npix=npix,empirical_std=empirical_std)
         spec = self.spec_to_vacuum(spec)
-        if isinstance(halfsize, (list, tuple)):
-            aux = [halfsize[0], halfsize[1]]
-            halfsize = max(aux)
+        if isinstance(halfsize, (int, float)):
+            halfsize = [halfsize,halfsize,0]
+        if coord_system=='wcs':
+            x_c,y_c,halfsize=self.ellipse_params_to_pixel(center[0],center[1],radius = halfsize)
+        aux = [halfsize[0], halfsize[1]]
+        halfsize = max(aux)
         mini_image = self.get_mini_image(center=center, halfsize=halfsize)
         plt.figure(n_fig, figsize=(17, 5))
         ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
@@ -494,6 +586,8 @@ class MuseCube:
             x_world, y_world = center[0], center[1]
         coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         spec_name = name_from_coord(coord)
+        if save:
+            spec.write_to_fits(spec_name + '.fits')
         plt.title(spec_name)
         w = spec.wavelength.value
         f = spec.flux.value
@@ -508,7 +602,7 @@ class MuseCube:
         plt.ylim([ymin, ymax])
         plt.xlim([w[0], w[n - 1]])
         ax2 = plt.subplot2grid((1, 4), (0, 3), colspan=1)
-        ax2.imshow(mini_image, cmap='gray')
+        ax2.imshow(mini_image, cmap='gray',vmin= self.vmin,vmax = self.vmax)
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
         return spec
@@ -621,7 +715,7 @@ class MuseCube:
         """
         a = radius[0]
         b = radius[1]
-        Xaux, Yaux, a2 = self.xyr_to_pixel(xc, yc, a)
+        xaux, yaux, a2 = self.xyr_to_pixel(xc, yc, a)
         xc2, yc2, b2 = self.xyr_to_pixel(xc, yc, b)
         radius2 = [a2, b2, radius[2]]
         return xc2, yc2, radius2
@@ -1212,7 +1306,7 @@ class MuseCube:
         :param x_c: x_coordinate of the center of the aperture
         :param y_c: y_coordinate of the center of the aperture
         :param params: Either a single radius or a set of [a,b,theta] params
-        :param region_string: region defined by ds9 format
+        :param region_string: region defined by ds9 format (ellipse)
         :param coord_system: in the case of defining and aperture using x_c,y_c,params, must indicate the type of this coordiantes. Possible values: 'pix' and 'wcs'
         :return: XSpectrum1D object
         """
