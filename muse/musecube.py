@@ -424,7 +424,7 @@ class MuseCube:
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
                 im_var_white = var_white[~mask]
-                im_weights=1/im_var_white
+                im_weights= 1./im_var_white
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
