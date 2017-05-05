@@ -246,7 +246,7 @@ class MuseCube:
         spec = self.spec_to_vacuum(spec)
         return spec
 
-    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='optimal', npix=0,
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0,
                                      n_figure=2, empirical_std=False, save=False):
         """Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, params."""
@@ -334,7 +334,7 @@ class MuseCube:
 
         return x_c - 1, y_c - 1, params
 
-    def get_spec_from_region_string(self, region_string, mode='optimal', npix=0., empirical_std=False, n_figure=2,
+    def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., empirical_std=False, n_figure=2,
                                     save=False):
         """
         Obtains a combined spectru of spaxel within geametrical region defined by the region _string, interpretated by ds9
@@ -459,7 +459,7 @@ class MuseCube:
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='optimal', coord_system='pix', npix=0):
+    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='wwm', coord_system='pix', npix=0):
 
         """
         Function to Get a spectrum and an image of the selected source.
