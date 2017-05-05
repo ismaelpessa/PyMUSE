@@ -433,7 +433,7 @@ class MuseCube:
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
-            elif mode == 'ivar_wwm':
+            elif mode == 'ivar_wv_wwm':
                 im_white = smoothed_white[~mask]
                 im_weights = im_white / im_var
                 im_weights = im_weights / np.sum(im_weights)
