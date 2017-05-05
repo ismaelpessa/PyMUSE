@@ -456,6 +456,7 @@ class MuseCube:
             norm = np.sum(fl_sum) / np.sum(fl)
             fl = fl * norm
             er = er * norm
+            print 'normalization factor relative to total flux = '+str(norm)
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
