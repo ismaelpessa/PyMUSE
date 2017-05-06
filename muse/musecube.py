@@ -1454,7 +1454,7 @@ class MuseCube:
             xpix = 0
         if ypix < 0:
             ypix = 0
-        return xpix, ypix
+        return int(round(xpix)), int(round(ypix))
 
     def p2w(self, xp, yp):
         """
