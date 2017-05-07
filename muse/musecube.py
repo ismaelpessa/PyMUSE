@@ -822,10 +822,10 @@ class MuseCube:
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32):
         self.clean_canvas()
-        x_pix = round(np.array(self.get_from_table(sextractor_filename, 'X_IMAGE')))
-        y_pix = round(np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE')))
-        a = round(np.array(self.get_from_table(sextractor_filename, 'A_IMAGE')))
-        b = round(np.array(self.get_from_table(sextractor_filename, 'B_IMAGE')))
+        x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
+        y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
+        a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
+        b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
         theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))
         flags = self.get_from_table(sextractor_filename, 'FLAGS')
         id = self.get_from_table(sextractor_filename, 'NUMBER')
@@ -853,7 +853,7 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
                 import pdb;pdb.set_trace()
-                spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
+                spec = self.get_spec_from_ellipse_params(x_c=round(x_pix[i]), y_c=round(y_pix[i]), params=[round(a[i]), round(b[i]), theta[i]],
                                                          mode=mode, npix=npix, save=False, n_figure=n_figure)
                 str_id = str(id[i]).zfill(3)
                 spec_fits_name = str_id + '_' + spec_fits_name
