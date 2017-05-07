@@ -852,6 +852,7 @@ class MuseCube:
                 x_world, y_world = self.p2w(x_pix[i], y_pix[i])
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
+                import pdb;pdb.set_trace()
                 spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
                                                          mode=mode, npix=npix, save=False, n_figure=n_figure)
                 str_id = str(id[i]).zfill(3)
