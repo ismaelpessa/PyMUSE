@@ -841,7 +841,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
-                              mode='white_wheighted_mean', mag_kwrd='mag_r', npix=4):
+                              mode='wwm', mag_kwrd='mag_r', npix=4):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename,
             flag_threshold=flag_threshold)
