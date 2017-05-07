@@ -822,10 +822,10 @@ class MuseCube:
 
     def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32):
         self.clean_canvas()
-        x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
-        y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
-        a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
-        b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
+        x_pix = round(np.array(self.get_from_table(sextractor_filename, 'X_IMAGE')))
+        y_pix = round(np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE')))
+        a = round(np.array(self.get_from_table(sextractor_filename, 'A_IMAGE')))
+        b = round(np.array(self.get_from_table(sextractor_filename, 'B_IMAGE')))
         theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))
         flags = self.get_from_table(sextractor_filename, 'FLAGS')
         id = self.get_from_table(sextractor_filename, 'NUMBER')
