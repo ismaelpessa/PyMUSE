@@ -825,11 +825,13 @@ class MuseCube:
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
+        a=np.where(a<1,1,a)
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
+        b=np.where(b<1,1,b)
         theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))
-        flags = self.get_from_table(sextractor_filename, 'FLAGS')
-        id = self.get_from_table(sextractor_filename, 'NUMBER')
-        mag = self.get_from_table(sextractor_filename, 'MAG_AUTO')
+        flags = self.get_from_table(sextractor_filename, 'FLAGS').data
+        id = self.get_from_table(sextractor_filename, 'NUMBER').data
+        mag = self.get_from_table(sextractor_filename, 'MAG_AUTO').data
         n = len(x_pix)
         for i in xrange(n):
             color = 'Green'
@@ -854,6 +856,7 @@ class MuseCube:
                 spec_fits_name = name_from_coord(coord)
                 spec = self.get_spec_from_ellipse_params(x_c=int(round(x_pix[i])), y_c=int(round(y_pix[i])), params=[int(round(a[i])), int(round(b[i])), theta[i]],
                                                          mode=mode, npix=npix, save=False, n_figure=n_figure)
+
                 str_id = str(id[i]).zfill(3)
                 spec_fits_name = str_id + '_' + spec_fits_name
                 if redmonster_format:
