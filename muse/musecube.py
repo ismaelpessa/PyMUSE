@@ -824,7 +824,7 @@ class MuseCube:
         self.draw_pyregion(region_string)
         return complete_mask_new
 
-    def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32):
+    def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32,n_id=None):
         self.clean_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
@@ -837,6 +837,12 @@ class MuseCube:
         id = self.get_from_table(sextractor_filename, 'NUMBER').data
         mag = self.get_from_table(sextractor_filename, 'MAG_AUTO').data
         n = len(x_pix)
+        if n_id!=None:
+            j=np.where(id==n_id)
+            region_string=self.ellipse_param_to_ds9reg_string(x_pix[j], y_pix[j], a[j], b[j], theta[j], color='Green')
+            self.draw_pyregion(region_string)
+            plt.text(x_pix[j], y_pix[j], id[j], color='Red')
+            return
         for i in xrange(n):
             color = 'Green'
             if flags[i] > flag_threshold:
