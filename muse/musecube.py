@@ -871,6 +871,7 @@ class MuseCube:
                     hdulist = fits.open(spec_fits_name + '.fits')
                     hdulist[0].header[mag_kwrd] = mag[i]
                     hdulist.writeto(spec_fits_name + '.fits', clobber=True)
+                print 'ID = '+str_id+' Ready!!'
 
     def __read_files(self, input):
         path = input
