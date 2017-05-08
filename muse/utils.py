@@ -62,7 +62,7 @@ def get_spec(specfit):
     return wave, flux
 
 
-def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=None):
+def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=1):
     """
     Function to plot and examine a spectrum which is in a readable format to redmonster software.
     Optionally, the user can inster a redmonster output file and compare the input spectrum with the
