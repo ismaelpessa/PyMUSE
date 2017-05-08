@@ -3,7 +3,6 @@ import gc
 import glob
 import math as m
 import os
-
 import aplpy
 import muse.utils as mcu
 import numpy as np
@@ -18,6 +17,7 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
+import warnings
 
 
 # spec = XSpectrum1D.from
@@ -530,13 +530,14 @@ class MuseCube:
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
-
         if mode not in ['sum', 'median', 'mean']:  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
+            if norm<0:
+                warnings.warn("Normalization factor is Negative!! (This probably means that you are extracting the spectrum where flux<0)")
             fl = fl * norm
-            er = er * norm
+            er = er * abs(norm)
             print 'normalization factor relative to total flux = ' + str(norm)
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
