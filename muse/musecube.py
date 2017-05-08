@@ -489,7 +489,7 @@ class MuseCube:
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
             if len(im_fl)==0:
                 fl[wv_ii]=0
-                er[wv_ii]=0
+                er[wv_ii]=99
             elif mode == 'wwm':
                 im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
