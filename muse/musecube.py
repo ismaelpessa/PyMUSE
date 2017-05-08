@@ -487,11 +487,14 @@ class MuseCube:
             mask = new_3dmask[wv_ii]  # 2-D mask
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
-            if mode == 'wwm':
+            if len(im_fl)==0:
+                fl[wv_ii]=0
+                er[wv_ii]=0
+            elif mode == 'wwm':
                 im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.nansum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
                 im_var_white = var_white[~mask]
                 im_weights = 1. / im_var_white
@@ -518,8 +521,8 @@ class MuseCube:
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'sum':
                 im_weights = 1.
-                fl[wv_ii] = np.nansum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'mean':
                 im_weights = 1. / len(im_fl)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
