@@ -490,8 +490,8 @@ class MuseCube:
             if mode == 'wwm':
                 im_weights = smoothed_white[~mask]
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
                 im_var_white = var_white[~mask]
                 im_weights = 1. / im_var_white
@@ -518,8 +518,8 @@ class MuseCube:
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
             elif mode == 'sum':
                 im_weights = 1.
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'mean':
                 im_weights = 1. / len(im_fl)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
@@ -854,7 +854,7 @@ class MuseCube:
                 x_world, y_world = self.p2w(x_pix[i], y_pix[i])
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
-                spec = self.get_spec_from_ellipse_params(x_c=int(round(x_pix[i])), y_c=int(round(y_pix[i])), params=[int(round(a[i])), int(round(b[i])), theta[i]],
+                spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
                                                          mode=mode, npix=npix, save=False, n_figure=n_figure)
 
                 str_id = str(id[i]).zfill(3)
