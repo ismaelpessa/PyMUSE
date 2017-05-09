@@ -838,7 +838,7 @@ class MuseCube:
         mag = self.get_from_table(sextractor_filename, 'MAG_AUTO').data
         n = len(x_pix)
         if n_id!=None:
-            j=np.where(id==n_id)
+            j=np.where(id==n_id)[0][0]
             region_string=self.ellipse_param_to_ds9reg_string(x_pix[j], y_pix[j], a[j], b[j], theta[j], color='Green')
             self.draw_pyregion(region_string)
             plt.text(x_pix[j], y_pix[j], id[j], color='Red')
