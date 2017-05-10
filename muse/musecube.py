@@ -1401,7 +1401,7 @@ class MuseCube:
                                    y_stddev=stdev_init_y, amplitude=amp_init, theta=theta)
         fit_g = fitting.LevMarLSQFitter()
         g = fit_g(g_init, matrix_x, matrix_y, masked_white)
-        weigths = ma.MaskedArray(g(matrix_x, matrix_y))
+        weights = ma.MaskedArray(g(matrix_x, matrix_y))
         if (g.y_stddev < 0) or (g.x_stddev < 0):
             raise ValueError('Cannot trust the model, please try other imput parameters.')
         w = self.wavelength
@@ -1412,11 +1412,11 @@ class MuseCube:
         self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
-            weigths.mask = mask
+            weights.mask = mask
             # n_spaxels = np.sum(mask)
-            weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)  # * n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))  # * n_spaxels
+            weights = weights / np.sum(weights)
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weights)  # * n_spaxels
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
         # reset mask
         self.cube.mask = self.mask_init
 
