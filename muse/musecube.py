@@ -59,6 +59,7 @@ class MuseCube:
         self.filename_white = filename_white
         self.load_data()
         self.white_data = fits.open(self.filename_white)[1].data
+        self.white_data=np.where(self.white_data<0,0,self.white_data)
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
@@ -94,7 +95,7 @@ class MuseCube:
         **kwargs are passed down to scipy.ndimage.gaussian_filter()
         """
         hdulist = fits.open(self.filename_white)
-        im = hdulist[1].data
+        im = self.white_data
         if npix > 0:
             smooth_im = ndimage.gaussian_filter(im, sigma=npix, **kwargs)
         else:
