@@ -830,7 +830,7 @@ class MuseCube:
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
-        a_new=np.where(a<3,3,a)
+        a_new=np.where(a<3.5,3.5,a)
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
         ratios = a/b
         b_new=a_new/ratios
