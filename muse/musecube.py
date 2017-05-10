@@ -835,6 +835,8 @@ class MuseCube:
         ratios = a/b
         b_new=a_new/ratios
         b_new=np.where(b_new<1,1,b_new)
+        a=a_new
+        b=b_new
         theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))
         flags = self.get_from_table(sextractor_filename, 'FLAGS').data
         id = self.get_from_table(sextractor_filename, 'NUMBER').data
@@ -853,7 +855,7 @@ class MuseCube:
             region_string = self.ellipse_param_to_ds9reg_string(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color)
             self.draw_pyregion(region_string)
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
-        return x_pix, y_pix, a_new, b_new, theta, flags, id, mag
+        return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
                               mode='wwm', mag_kwrd='mag_r', npix=0):
