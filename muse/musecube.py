@@ -531,7 +531,7 @@ class MuseCube:
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
-            import pdb;pdb.set_trace()
+        import pdb;pdb.set_trace()
         if mode not in ['sum', 'median', 'mean']:  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
             fl_sum = spec_sum.flux.value
