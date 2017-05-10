@@ -825,12 +825,12 @@ class MuseCube:
         self.draw_pyregion(region_string)
         return complete_mask_new
 
-    def plot_sextractor_regions(self, sextractor_filename, flag_threshold=32,n_id=None):
+    def plot_sextractor_regions(self, sextractor_filename, a_min = 3.5,flag_threshold=32,n_id=None):
         self.clean_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
-        a_new=np.where(a<3.5,3.5,a)
+        a_new=np.where(a<a_min,a_min,a)
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
         ratios = a/b
         b_new=a_new/ratios
@@ -857,10 +857,10 @@ class MuseCube:
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
-    def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, n_figure=2,
+    def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True,a_min=3.5, n_figure=2,
                               mode='wwm', mag_kwrd='mag_r', npix=0):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
-            sextractor_filename=sextractor_filename,
+            sextractor_filename=sextractor_filename, a_min=a_min,
             flag_threshold=flag_threshold)
         self.clean_canvas()
         n = len(x_pix)
