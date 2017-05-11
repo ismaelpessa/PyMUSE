@@ -137,6 +137,12 @@ equal than flag_threshold using the specified mode.
 
 If `redmonster_format = True`, the spectra will be saved in a format redeable for redmonster software.
 
+You can  acces to the data of a file writen in this format doing the next::
+
+    import muse.utils as mcu
+    wv,fl,er = mcu.get_rm_spec(rm_spec_name)
+where rm_spec_name is the name of the fits file.
+
 Also, you can set the parameter ``mag_kwrd`` which by default is ``'mag_r'`` to the keyword in the new fits_image that will
 contain the SExtractor's MAG_AUTO value
 
