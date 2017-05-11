@@ -52,6 +52,7 @@ def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o
 def get_spec(specfit):
     hdulist = fits.open(specfit)
     flux = hdulist[0].data[0]
+    er = hdulist[1].data[0]
     n = len(flux)
     COEFF0 = hdulist[0].header['COEFF0']
     COEFF1 = hdulist[0].header['COEFF1']
@@ -59,7 +60,7 @@ def get_spec(specfit):
     WAVE_END = COEFF0 + (NAXIS1 - 1) * COEFF1
     wave_log = np.linspace(COEFF0, WAVE_END, n)
     wave = 10 ** wave_log
-    return wave, flux
+    return wave, flux, er
 
 
 def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=1):
@@ -73,7 +74,7 @@ def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=1):
     :return:
     """
     plt.figure()
-    w_spec, f_spec = get_spec(rm_spec_name)
+    w_spec, f_spec, er_spec = get_spec(rm_spec_name)
     plt.plot(w_spec, f_spec, color='Blue', label=rm_spec_name)
     plt.xlabel('Wavelength (Angstroms)')
     plt.ylabel('Flux (arbitrary units)')
@@ -94,7 +95,7 @@ def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=1):
         return w_spec, f_spec, w_temp, flux_temp
     plt.legend()
     plt.show()
-    return w_spec, f_spec
+    return w_spec, f_spec, er_spec
 
 
 def is_local_minima(a):
