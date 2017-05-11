@@ -222,7 +222,7 @@ class MuseCube:
         self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w, fl, sig))
 
-    def get_spec_spaxel(self, x, y, coord_system='pix'):
+    def get_spec_spaxel(self, x, y, coord_system='pix',n_figure=2,empirical_std=False,save=False):
         """
         Gets the spectrum of a single spaxel (xy) of the MuseCube
         :param x: x coordinate of the spaxel
@@ -232,8 +232,10 @@ class MuseCube:
         """
         if coord_system == 'wcs':
             x_c, y_c = self.w2p(x, y)
+            x_world, y_world = x, y
         else:
             x_c, y_c = x, y
+            x_world, y_world = self.p2w(x, y)
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 1, 1, 0, coord_system='pix')
         self.draw_pyregion(region_string)
         w = self.wavelength
@@ -244,7 +246,18 @@ class MuseCube:
             spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
             sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
         spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
+        if empirical_std:
+            spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
+        plt.figure(n_figure)
+        plt.plot(spec.wavelength, spec.flux)
+        coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+        name = name_from_coord(coords)
+        plt.title(name)
+        plt.xlabel('Angstroms')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        if save:
+            spec.write_to_fits(name + '.fits')
         return spec
 
 
@@ -559,7 +572,7 @@ class MuseCube:
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_fig=3, mode='wwm', coord_system='pix', npix=0, save = False,empirical_std=False):
+    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, save = False,empirical_std=False):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -602,7 +615,7 @@ class MuseCube:
         aux = [halfsize[0], halfsize[1]]
         halfsize = max(aux)
         mini_image = self.get_mini_image(center=center_, halfsize=halfsize)
-        plt.figure(n_fig, figsize=(17, 5))
+        plt.figure(n_figure, figsize=(17, 5))
         ax1 = plt.subplot2grid((1, 4), (0, 0), colspan=3)
         if coord_system == 'pix':
             x_world, y_world = self.p2w(center[0], center[1])
@@ -631,9 +644,10 @@ class MuseCube:
         plt.xlim([0, 2 * halfsize])
         return spec
 
-    def get_spec_from_ds9regfile(self,regfile,mode='wwm',npix=0,empirical_std=False,n_figure=2):
+    def get_spec_from_ds9regfile(self,regfile,mode='wwm',npix=0,empirical_std=False,n_figure=2,save = False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
+        The .reg file MUST be in physical coordiantes
         :param regfile: str. Name of the DS9 region file
         :param mode: str
             Mode for combining spaxels:
@@ -675,6 +689,8 @@ class MuseCube:
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
+        if save:
+            spec.write_to_fits(regfile[:-4]+'.fits')
 
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
