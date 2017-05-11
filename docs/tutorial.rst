@@ -120,7 +120,7 @@ To do this, you should have at least the next parameters in the SExtractor outpu
 
 First, to plot your regions, you can use::
 
-    cube.plot_sextractor_regions('sextractor_filename',flag_threshold = 32,a_min = 3.5)
+    cube.plot_sextractor_regions('sextractor_filename', flag_threshold=32, a_min=3.5)
 
 Where sextractor_filename is the name of the SExtractor's output. Every source with a SExtractor flag higher
 than flag_threshold will be marked in red.
