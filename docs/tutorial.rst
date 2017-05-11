@@ -109,14 +109,14 @@ Use a SExtractor output file as an input
 
 The software allows the extraction and save of a serie of sources detected in a SExtractor output file.
 To do this, you should have at least the next parameters in the SExtractor output file:
-1. X_IMAGE.
-2. Y_IMAGE.
-3. A_IMAGE.
-4. B_IMAGE.
-5. THETA_IMAGE.
-6. FLAGS.
-7. NUMBER.
-8. MAG_AUTO.
+    1. X_IMAGE.
+    2. Y_IMAGE.
+    3. A_IMAGE.
+    4. B_IMAGE.
+    5. THETA_IMAGE.
+    6. FLAGS.
+    7. NUMBER.
+    8. MAG_AUTO
 
 First, to plot your regions, you can use::
 
