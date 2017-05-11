@@ -631,6 +631,34 @@ class MuseCube:
         plt.xlim([0, 2 * halfsize])
         return spec
 
+    def get_spec_from_ds9regfile(self,regfile,mode='wwm',npix=0,empirical_std=False):
+        r=pyregion.open(regfile)
+
+        fig = plt.figure(self.n)
+        ax = fig.axes[0]
+        patch_list, artist_list = r.get_mpl_patches_texts()
+        patch = patch_list[0]
+        ax.add_patch(patch)
+
+        im_aux = np.ones_like(self.white_data)
+        hdu_aux = fits.open(self.filename_white)[1]
+        hdu_aux.data = im_aux
+        mask_new = r.get_mask(hdu=hdu_aux)
+        mask_new_inverse = np.where(~mask_new, True, False)
+        mask2d=mask_new_inverse
+
+        complete_mask_new = mask2d + self.mask_init
+        complete_mask_new = np.where(complete_mask_new != 0, True, False)
+        mask3d= complete_mask_new
+        spec = self.spec_from_minicube_mask(mask3d,mode=mode,npix=npix)
+        if empirical_std:
+            spec = mcu.calculate_empirical_rms(spec)
+        spec = self.spec_to_vacuum(spec)
+        return spec
+
+
+
+
     def create_wavelength_array(self):
         """
         Creates the wavelength array for the spectrum. The values of dw, and limits will depend
