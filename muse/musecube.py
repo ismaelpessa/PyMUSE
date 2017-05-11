@@ -3,6 +3,8 @@ import gc
 import glob
 import math as m
 import os
+import warnings
+
 import aplpy
 import muse.utils as mcu
 import numpy as np
@@ -17,7 +19,6 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
-import warnings
 
 
 # spec = XSpectrum1D.from
@@ -944,7 +945,8 @@ class MuseCube:
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
-    def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True,a_min=3.5, n_figure=2,
+    def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
+                              n_figure=2,
                               mode='wwm', mag_kwrd='mag_r', npix=0):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,

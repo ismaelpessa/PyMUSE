@@ -130,7 +130,7 @@ The original (a/b) ratio will be constant, but this set a minimum size for the e
 
 Once you are satisfied with the regions that will be extracted, you can run::
 
-    cube.save_sextractor_spec(sextractor_filename, flag_threshold=32, redmonster_format=True,a_min=3.5, n_figure=2,
+    cube.save_sextractor_spec('sextractor_filename', flag_threshold=32, redmonster_format=True, a_min=3.5, n_figure=2,
                               mode='wwm', mag_kwrd='mag_r', npix=0)
 This will save in the hard disk the spectra of all the sources defined in the sextractor_filename which flags be lower or
 equal than flag_threshold using the specified mode.
