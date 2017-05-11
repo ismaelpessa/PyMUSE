@@ -631,29 +631,56 @@ class MuseCube:
         plt.xlim([0, 2 * halfsize])
         return spec
 
-    def get_spec_from_ds9regfile(self,regfile,mode='wwm',npix=0,empirical_std=False):
+    def get_spec_from_ds9regfile(self,regfile,mode='wwm',npix=0,empirical_std=False,n_figure=2):
+        """
+        Function to get the spec of a region defined in a ds9 .reg file
+        :param regfile: str. Name of the DS9 region file
+        :param mode: str
+            Mode for combining spaxels:
+              * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
+              * `sum` - Sum of total flux
+              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
+              * `mean`  -  Mean of the total flux
+              * `median` - Median of the total flux
+              * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
+              * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+        :param npix: int. Default = 0
+            Standard deviation of the gaussian filter to smooth (Only in wwm methods)
+        :param n_figure: int. Default = 2. Figure to display the spectrum
+        :param empirical_std: boolean. Default = False.
+            If True, the errors of the spectrum will be determined empirically
+        :return: spec: XSpectrum1D object
+        """
         r=pyregion.open(regfile)
-
+        ##draw region
         fig = plt.figure(self.n)
         ax = fig.axes[0]
         patch_list, artist_list = r.get_mpl_patches_texts()
         patch = patch_list[0]
         ax.add_patch(patch)
-
+        ##Get 2d mask
         im_aux = np.ones_like(self.white_data)
         hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
         mask_new = r.get_mask(hdu=hdu_aux)
         mask_new_inverse = np.where(~mask_new, True, False)
         mask2d=mask_new_inverse
-
+        #Get 3d mask
         complete_mask_new = mask2d + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d= complete_mask_new
+        ##Get spec
         spec = self.spec_from_minicube_mask(mask3d,mode=mode,npix=npix)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
+
+        plt.figure(n_figure)
+        plt.plot(spec.wavelength, spec.flux)
+        plt.title('Spectrum from '+regfile)
+        plt.xlabel('Angstroms')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
         return spec
 
 
