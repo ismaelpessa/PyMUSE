@@ -166,7 +166,7 @@ Estimate seeing
 
 The method::
 
-    cube.determinate_seeing_from_white(x_center,y_Center,halfsize)
+    cube.determinate_seeing_from_white(x_center,y_center,halfsize)
 Will allow  you to estimate the seeing using the white image. The user must insert as the input the xy coordinates in spaxel space
 of a nearly puntual source expanded by the seeing. The method will fit a 2D gaussian to the bright profile and will associate
 the FWHM of the profile with the seeing. The halfsize parameter  indicates the radius size in spaxels of the source that will be fited.
