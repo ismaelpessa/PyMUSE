@@ -16,13 +16,13 @@ Get a spectrum
 
 You can get an spectrum of a geometrical region by using::
 
-    sp1 = cube.get_spec_from_ellipse_params(134, 219, 5, mode='wwm')
+    spectrum = cube.get_spec_from_ellipse_params(134, 219, 5, mode='wwm')
 
-This ``sp1`` is an ``XSpectrum1D`` object of the spaxels within a circle of radius 5 at position xy=(134, 219).
+This ``spectrum`` is an ``XSpectrum1D`` object of the spaxels within a circle of radius 5 at position xy=(134, 219).
 
 You can also define an elliptical aperture by using instead::
 
-    sp1 = cube.get_spec_from_ellipse_params(134,219,[10,5,35], mode='wwm')
+    spectrum = cube.get_spec_from_ellipse_params(134,219,[10,5,35], mode='wwm')
 
 where [10,5,35] corresponds to the semimajor axis, semiminor axis and rotation angle respectively:
 
@@ -30,13 +30,13 @@ where [10,5,35] corresponds to the semimajor axis, semiminor axis and rotation a
 You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see http://ds9.si.edu/doc/ref/region.html)
 To do this, you can use the function::
 
-    sp1 = cube.get_spec_from_region_string(region_string, mode = 'wwm')
+    spectrum = cube.get_spec_from_region_string(region_string, mode = 'wwm')
 
 In both of the get_spec() functions you can set ``save = True`` to save the spectrum to the hard_disk
 
 Another extra feature is given by the  function::
 
-    sp1 = cube.get_spec_image(center,halfsize,mode='wwm')
+    spectrum = cube.get_spec_image(center,halfsize,mode='wwm')
 
 This code will, in addition of extract the spectrum given by center = (x,y) and halfsize either the radius of a circular
 region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot.
@@ -47,7 +47,7 @@ If you want to insert the input positions in wcs space, you can set the coord_sy
 
 Finally, you are able to get the spectrum of a single spaxel of the cube by using::
 
-    sp1 = cube.get_spec_spaxel(x,y,coord_system ='pix')
+    spectrum = cube.get_spec_spaxel(x,y,coord_system ='pix')
 
 Again, you can set coord_system = 'wcs' if you want to insert an xy coordinate in degrees.
 
@@ -59,7 +59,7 @@ https://github.com/jdoepfert/roipoly.py/
 
 This feature allows the user to interactively define a region in the canvas as a polygon. To do this::
 
-    spec=cube.get_spec_from_interactive_polygon_region(mode='wwm')
+    spectrum=cube.get_spec_from_interactive_polygon_region(mode='wwm')
 
 This will turn interactive the canvas. To select the spaxel that will be the vertices of the region, just press left click on them.
 When you have finished, just press right click and then enter to continue. The las vertex that you selected will link the first one to define the contour of the region.
@@ -71,7 +71,7 @@ Get the spectrum of a region defined in a DS9 .reg file
 You also can define a region in a ds9 .reg file.
 The only thing needed is that the .reg file MUST be saved in physical coordinates. Once this is done, you can get the spectrum::
 
-    spec = cube.get_spec_from_ds9regfile(regfile,mode='wwm')
+    spectrum = cube.get_spec_from_ds9regfile(regfile,mode='wwm')
 
 Modes of spectrum extraction
 ++++++++++++++++++++++++++++
@@ -135,7 +135,7 @@ Once you are satisfied with the regions that will be extracted, you can run::
 This will save in the hard disk the spectra of all the sources defined in the sextractor_filename which flags be lower or
 equal than flag_threshold using the specified mode.
 
-If `redmonster_format = True`, the spectra will be saved in a format redeable for redmonster software.
+If `redmonster_format = True`, the spectra will be saved in a format redeable for redmonster software (http://www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/).
 
 You can  acces to the data of a file writen in this format doing the next::
 
@@ -145,6 +145,20 @@ where rm_spec_name is the name of the fits file.
 
 Also, you can set the parameter ``mag_kwrd`` which by default is ``'mag_r'`` to the keyword in the new fits_image that will
 contain the SExtractor's MAG_AUTO value
+
+Saving a single spectrum to the hard disk
++++++++++++++++++++++++++++++++++++++++++
+
+To do this you can use the ``XSpectrum1D`` functions::
+
+    spectrum.write_to_ascii(outfile_name)
+    spectrum.write_to_fits(outfile_name)
+You also may want to save the spectrum in a fits redeable for redmonster. In that case use the MuseCube function::
+
+    cube.spec_to_redmonster_format(spectrum, fitsname, n_id=None, mag=None)
+If `n_id` is not  `None`, the new fitsfile will contain a ID keyword with n_id in it.
+If `mag` is not `None`, must be a  tuple with two elements. The first one must contain the keyword that will be in the header (example: mag_r) and the second one must contain the value that will be in that keyword on the header of the new fitsfile
+
 
 
 Estimate seeing
