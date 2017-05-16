@@ -263,7 +263,7 @@ class MuseCube:
 
 
 
-    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0,
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.9,
                                      n_figure=2, empirical_std=False, save=False):
         """
         Obtains a combined spectrum of spaxels within a geometrical region defined by
@@ -283,7 +283,8 @@ class MuseCube:
               * `mean`  -  Mean of the total flux
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
-              * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+              * `wwm_ivar` - Weights given by both, `wwm` and `ivar`
+              * `wfrac` - XXXXX
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -297,7 +298,7 @@ class MuseCube:
             spec = self.get_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
             new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
-            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
 
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
@@ -317,9 +318,9 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0,
+    def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0, frac=0.9,
                                                  n_figure=2,
-                                                 empirical_std=False,save = False):
+                                                 empirical_std=False,save=False):
         """
         Function used to interactively define a region and extract the spectrum of that region
 
@@ -336,6 +337,7 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+              * `wfrac` - XXXXX
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -355,7 +357,7 @@ class MuseCube:
         mask_inv = np.where(mask == 1, 0, 1)
         complete_mask = self.mask_init + mask_inv
         new_3dmask = np.where(complete_mask == 0, False, True)
-        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix)
+        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix, frac=frac)
         self.clean_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
@@ -398,7 +400,7 @@ class MuseCube:
                 x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
             return x_c - 1, y_c - 1, params
 
-    def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., empirical_std=False, n_figure=2,
+    def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.9, empirical_std=False, n_figure=2,
                                     save=False):
         """
         Obtains a combined spectrum of spaxels within geametrical region defined by the region _string, interpretated by ds9
@@ -415,6 +417,7 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+              * `wfrac` - XXXXX
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -429,7 +432,7 @@ class MuseCube:
             spec = self.get_weighted_spec(region_string_=region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
-            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix)
+            spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
@@ -459,7 +462,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=0):
+    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=0, frac=0.9):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -477,12 +480,13 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+              * `wfrac` - It only takes the fraction frac of brightest spaxels (white) in the region
         Returns
         -------
         An XSpectrum1D object (from linetools) with the combined spectrum.
 
         """
-        if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar']:
+        if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
@@ -561,7 +565,19 @@ class MuseCube:
             elif mode == 'median':
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
-        if mode not in ['sum', 'median', 'mean']:  # normalize to match total integrated flux
+            elif mode == 'wfrac':
+                im_weights = smoothed_white[~mask]
+                fl_limit = np.percentile(im_white, frac*100)
+                im_weights = np.where(im_weights >= fl_limit, 1. , 0.)
+
+                n_weights = len(im_weights)
+                if np.sum(im_weights)==0:
+                    im_weights[:]=1./n_weights
+                im_weights = im_weights / np.sum(im_weights)
+                fl[wv_ii] = np.sum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+
+        if mode not in ['sum', 'median', 'mean', 'wfrac']:  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
@@ -573,7 +589,7 @@ class MuseCube:
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, save = False,empirical_std=False):
+    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.9, save=False, empirical_std=False):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -593,6 +609,7 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+              * `wfrac` - XXXXXX
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)m
         :param empirical_std: boolean. Default = False.
@@ -604,7 +621,7 @@ class MuseCube:
         :return: spec: XSpectrum1D object
         """
         spec = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
-                                                 coord_system=coord_system, mode=mode, npix=npix,empirical_std=empirical_std)
+                                                 coord_system=coord_system, mode=mode, frac=frac, npix=npix,empirical_std=empirical_std)
         spec = self.spec_to_vacuum(spec)
         if isinstance(halfsize, (int, float)):
             halfsize = [halfsize,halfsize,0]
@@ -645,7 +662,7 @@ class MuseCube:
         plt.xlim([0, 2 * halfsize])
         return spec
 
-    def get_spec_from_ds9regfile(self,regfile,mode='wwm',npix=0,empirical_std=False,n_figure=2,save = False):
+    def get_spec_from_ds9regfile(self,regfile,mode='wwm',frac=0.9,npix=0,empirical_std=False,n_figure=2,save = False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
         The .reg file MUST be in physical coordiantes
@@ -660,6 +677,7 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
+              * `wfrac` - XXXXX
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -686,7 +704,7 @@ class MuseCube:
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d= complete_mask_new
         ##Get spec
-        spec = self.spec_from_minicube_mask(mask3d,mode=mode,npix=npix)
+        spec = self.spec_from_minicube_mask(mask3d,mode=mode,npix=npix, frac=frac)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
@@ -699,9 +717,6 @@ class MuseCube:
         plt.xlabel('Angstroms')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         return spec
-
-
-
 
     def create_wavelength_array(self):
         """
@@ -947,7 +962,7 @@ class MuseCube:
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2,
-                              mode='wwm', mag_kwrd='mag_r', npix=0):
+                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.9):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
             flag_threshold=flag_threshold)
@@ -959,7 +974,7 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
                 spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
-                                                         mode=mode, npix=npix, save=False, n_figure=n_figure)
+                                                         mode=mode, npix=npix, frac=frac,save=False, n_figure=n_figure)
 
                 str_id = str(id[i]).zfill(3)
                 spec_fits_name = str_id + '_' + spec_fits_name
