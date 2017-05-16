@@ -497,7 +497,7 @@ class MuseCube:
         if mode == 'ivar':
             var_white = self.create_white(stat=True, save=False)
 
-        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar']:
+        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar','wfrac']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
             if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
