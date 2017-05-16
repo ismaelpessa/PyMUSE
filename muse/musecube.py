@@ -497,7 +497,7 @@ class MuseCube:
         if mode == 'ivar':
             var_white = self.create_white(stat=True, save=False)
 
-        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar','wfrac']:
+        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
             if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
@@ -566,10 +566,8 @@ class MuseCube:
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
             elif mode == 'wfrac':
-                im_weights = smoothed_white[~mask]
-                fl_limit = np.percentile(im_white, frac*100)
-                im_weights = np.where(im_weights >= fl_limit, 1. , 0.)
-
+                fl_limit = np.percentile(im_fl, frac*100)
+                im_weights = np.where(im_fl >= fl_limit, 1. , 0.)
                 n_weights = len(im_weights)
                 if np.sum(im_weights)==0:
                     im_weights[:]=1./n_weights
