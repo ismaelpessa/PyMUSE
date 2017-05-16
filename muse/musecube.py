@@ -718,9 +718,6 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         return spec
 
-
-
-
     def create_wavelength_array(self):
         """
         Creates the wavelength array for the spectrum. The values of dw, and limits will depend
