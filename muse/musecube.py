@@ -514,6 +514,7 @@ class MuseCube:
             elif mode == 'wwm':
                 im_weights = smoothed_white[~mask]
                 n_weights = len(im_weights)
+                im_weights=np.where(np.isnan(im_weights),0,im_weights)
                 if np.sum(im_weights)==0:
                     im_weights[:]=1./n_weights
                     warn = True
@@ -524,6 +525,7 @@ class MuseCube:
                 im_var_white = var_white[~mask]
                 im_weights = 1. / im_var_white
                 n_weights = len(im_weights)
+                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
                 if np.sum(im_weights)==0:
                     im_weights[:]=1./n_weights
                     warn = True
@@ -533,6 +535,7 @@ class MuseCube:
             elif mode == 'ivarwv':
                 im_weights = 1. / im_var
                 n_weights = len(im_weights)
+                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
                 if np.sum(im_weights)==0:
                     im_weights[:]=1./n_weights
                     warn = True
@@ -543,6 +546,7 @@ class MuseCube:
                 im_white = smoothed_white[~mask]
                 im_weights = im_white / im_var
                 n_weights = len(im_weights)
+                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
                 if np.sum(im_weights)==0:
                     im_weights[:]=1./n_weights
                     warn = True
@@ -554,6 +558,7 @@ class MuseCube:
                 im_var_white = var_white[~mask]
                 im_weights = im_white / im_var_white
                 n_weights = len(im_weights)
+                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
                 if np.sum(im_weights)==0:
                     im_weights[:]=1./n_weights
                     warn = True
@@ -577,6 +582,7 @@ class MuseCube:
                 fl_limit = np.percentile(im_fl, (1.- frac)*100.)
                 im_weights = np.where(im_fl >= fl_limit, 1. , 0.)
                 n_weights = len(im_weights)
+                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
                 if np.sum(im_weights) == 0:
                     im_weights[:] = 1. / n_weights
                     warn = True
