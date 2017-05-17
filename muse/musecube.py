@@ -263,7 +263,7 @@ class MuseCube:
 
 
 
-    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.9,
+    def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.1,
                                      n_figure=2, empirical_std=False, save=False):
         """
         Obtains a combined spectrum of spaxels within a geometrical region defined by
@@ -318,7 +318,7 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0, frac=0.9,
+    def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0, frac=0.1,
                                                  n_figure=2,
                                                  empirical_std=False,save=False):
         """
@@ -400,7 +400,7 @@ class MuseCube:
                 x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
             return x_c - 1, y_c - 1, params
 
-    def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.9, empirical_std=False, n_figure=2,
+    def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
                                     save=False):
         """
         Obtains a combined spectrum of spaxels within geametrical region defined by the region _string, interpretated by ds9
@@ -587,7 +587,7 @@ class MuseCube:
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.9, save=False, empirical_std=False):
+    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.1, save=False, empirical_std=False):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -660,7 +660,7 @@ class MuseCube:
         plt.xlim([0, 2 * halfsize])
         return spec
 
-    def get_spec_from_ds9regfile(self,regfile,mode='wwm',frac=0.9,npix=0,empirical_std=False,n_figure=2,save = False):
+    def get_spec_from_ds9regfile(self,regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,n_figure=2,save = False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
         The .reg file MUST be in physical coordiantes
@@ -961,7 +961,7 @@ class MuseCube:
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2,
-                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.9):
+                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
             flag_threshold=flag_threshold)
