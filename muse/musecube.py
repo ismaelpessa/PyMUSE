@@ -1381,7 +1381,7 @@ class MuseCube:
         final_flux_filter = []
 
         for j, w in enumerate(wavelength_spec):
-            k = self.indexOf(new_filter_wavelength, w)
+            k = list(new_filter_wavelength).index(w)
             if k >= 0:
                 final_flux_filter.append(new_filter_flux[k])
             else:
