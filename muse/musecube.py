@@ -462,7 +462,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=0, frac=0.9):
+    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=0, frac=0.1):
         """Given a 3D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -481,6 +481,7 @@ class MuseCube:
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction frac of brightest spaxels (white) in the region
+                         e.g. frac=0.1 means 10% brightest.
         Returns
         -------
         An XSpectrum1D object (from linetools) with the combined spectrum.
@@ -566,11 +567,10 @@ class MuseCube:
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
             elif mode == 'wfrac':
-                fl_limit = np.percentile(im_fl, frac*100)
+                if (frac > 1) or (frac < 0):
+                    raise ValueError('`frac` must be value within (0,1)')
+                fl_limit = np.percentile(im_fl, (1.- frac)*100.)
                 im_weights = np.where(im_fl >= fl_limit, 1. , 0.)
-                n_weights = len(im_weights)
-                if np.sum(im_weights)==0:
-                    im_weights[:]=1./n_weights
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
@@ -892,7 +892,8 @@ class MuseCube:
         self.draw_pyregion(region_string)
 
     def get_new_2dmask(self, region_string):
-        """Creates a 2D mask for the white imake that mask out spaxel that are outside the region defined by region_string"""
+        """Creates a 2D mask for the white image that mask out spaxel that are outside
+        the region defined by region_string"""
         im_aux = np.ones_like(self.white_data)
         hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
