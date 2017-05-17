@@ -567,7 +567,7 @@ class MuseCube:
                 fl[wv_ii] = np.median(im_fl)
                 er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
             elif mode == 'wfrac':
-                if (frac > 1) or (frac <0):
+                if (frac > 1) or (frac < 0):
                     raise ValueError('`frac` must be value within (0,1)')
                 fl_limit = np.percentile(im_fl, (1.- frac)*100.)
                 im_weights = np.where(im_fl >= fl_limit, 1. , 0.)
