@@ -571,7 +571,6 @@ class MuseCube:
                     raise ValueError('`frac` must be value within (0,1)')
                 fl_limit = np.percentile(im_fl, (1.- frac)*100.)
                 im_weights = np.where(im_fl >= fl_limit, 1. , 0.)
-                n_weights = len(im_weights)
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
