@@ -892,7 +892,8 @@ class MuseCube:
         self.draw_pyregion(region_string)
 
     def get_new_2dmask(self, region_string):
-        """Creates a 2D mask for the white imake that mask out spaxel that are outside the region defined by region_string"""
+        """Creates a 2D mask for the white image that mask out spaxel that are outside
+        the region defined by region_string"""
         im_aux = np.ones_like(self.white_data)
         hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
