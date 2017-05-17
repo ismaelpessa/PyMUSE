@@ -24,6 +24,12 @@ def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
     print("<FL_IVAR2> = {}".format(np.median(sp2.flux / sp2.sig ** 2)))
     print("<FL1>/<FL2> = {}".format(np.median(sp1.flux / sp2.flux)))
 
+def indexOf(array,element):
+    for i,j in enumerate(array):
+        if j==element:
+            return i
+    return -1
+
 
 def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o 4 o 5
     hdulist = fits.open(redmonster_file)
