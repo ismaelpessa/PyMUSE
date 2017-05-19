@@ -284,7 +284,8 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weights given by both, `wwm` and `ivar`
-              * `wfrac` - XXXXX
+              * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
+                         (e.g. frac=0.1 means 10% brightest) with equal weight.
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -337,7 +338,8 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
-              * `wfrac` - XXXXX
+              * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
+                         (e.g. frac=0.1 means 10% brightest) with equal weight.
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -417,7 +419,8 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
-              * `wfrac` - XXXXX
+              * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
+                         (e.g. frac=0.1 means 10% brightest) with equal weight.
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -480,8 +483,8 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
-              * `wfrac` - It only takes the fraction frac of brightest spaxels (white) in the region
-                         e.g. frac=0.1 means 10% brightest.
+              * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
+                         (e.g. frac=0.1 means 10% brightest) with equal weight.
         Returns
         -------
         An XSpectrum1D object (from linetools) with the combined spectrum.
@@ -625,7 +628,8 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
-              * `wfrac` - XXXXXX
+              * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
+                         (e.g. frac=0.1 means 10% brightest) with equal weight.
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)m
         :param empirical_std: boolean. Default = False.
@@ -693,7 +697,8 @@ class MuseCube:
               * `median` - Median of the total flux
               * `wwm_ivarwv' - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
-              * `wfrac` - XXXXX
+              * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
+                         (e.g. frac=0.1 means 10% brightest) with equal weight.
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
