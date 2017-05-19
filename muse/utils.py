@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from linetools.spectra.xspectrum1d import XSpectrum1D
+from linetools import utils as ltu
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter
 
@@ -104,40 +105,11 @@ def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=1):
     return w_spec, f_spec, er_spec
 
 
-def is_local_minima(a):
-    """For a given array a, it returns true for local minima
-    (copied from pyntejos.utils)."""
-    a = np.array(a)
-    mask = np.zeros_like(a).astype(bool)
-    for i in range(1, len(a) - 1):  # note that the two edges are always False by definition
-        cond = (a[i] < a[i - 1]) and (a[i] < a[i + 1])
-        if cond: # local minima
-            mask[i] = True
-    return mask
-
-
-def is_local_maxima(a):
-    """For a given array a, returns true for local maxima
-    (copied from pyntejos.utils)"""
-    a = np.array(a)
-    mask = []
-    for i in range(1, len(a) - 1):
-        cond = (a[i] > a[i - 1]) and (a[i] > a[i + 1])
-        if cond:
-            mask += [1]
-        else:
-            mask += [0]
-    mask = np.array(mask)
-    mask = np.append(0, mask)
-    mask = np.append(mask, 0)
-    return mask == 1
-
-
 def calculate_empirical_rms(spec, test=False):
     fl = spec.flux.value
     wv = spec.wavelength.value
-    min_cond = is_local_minima(fl)
-    max_cond = is_local_maxima(fl)
+    min_cond = ltu.is_local_minima(fl)
+    max_cond = ltu.is_local_maxima(fl)
     min_local_inds = np.where(min_cond)[0]
     max_local_inds = np.where(max_cond)[0]
 
