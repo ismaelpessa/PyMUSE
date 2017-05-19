@@ -32,6 +32,38 @@ def indexOf(array,element):
     return -1
 
 
+def spec_to_redmonster_format(spec, fitsname, n_id=None, mag=None):
+    """
+    Function used to create a spectrum in the REDMONSTER software format
+    :param spec: XSpectrum1D object
+    :param mag: List containing 2 elements, the first is the keyword in the header that will contain the magnitud saved in the second element
+    :param fitsname:  Name of the fitsfile that will be created
+    :return:
+    """
+    from scipy import interpolate
+    wave = spec.wavelength.value
+    wave_log = np.log10(wave)
+    n = len(wave)
+    spec.wavelength = wave_log * u.angstrom
+    new_wave_log = np.arange(wave_log[1], wave_log[n - 2], 0.0001)
+    spec_rebined = spec.rebin(new_wv=new_wave_log * u.angstrom)
+    flux = spec_rebined.flux.value
+    f = interpolate.interp1d(wave_log, spec.sig.value)
+    sig = f(new_wave_log)
+    inv_sig = 1. / np.array(sig) ** 2
+    inv_sig = np.where(np.isinf(inv_sig), 0, inv_sig)
+    inv_sig = np.where(np.isnan(inv_sig), 0, inv_sig)
+    hdu1 = fits.PrimaryHDU([flux])
+    hdu2 = fits.ImageHDU([inv_sig])
+    hdu1.header['COEFF0'] = new_wave_log[0]
+    hdu1.header['COEFF1'] = new_wave_log[1] - new_wave_log[0]
+    if n_id != None:
+        hdu1.header['ID'] = n_id
+    if mag != None:
+        hdu1.header[mag[0]] = mag[1]
+    hdulist_new = fits.HDUList([hdu1, hdu2])
+    hdulist_new.writeto(fitsname, clobber=True)
+
 def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o 4 o 5
     hdulist = fits.open(redmonster_file)
     templates = hdulist[2]
