@@ -7,6 +7,7 @@ from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools import utils as ltu
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter
+from astropy import units as u
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):

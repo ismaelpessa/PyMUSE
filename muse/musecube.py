@@ -286,6 +286,8 @@ class MuseCube:
               * `wwm_ivar` - Weights given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
+        :param frac. FLoat, default = 0.1
+                     Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -340,6 +342,8 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
+        :param frac. FLoat, default = 0.1
+                     Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -421,6 +425,8 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
+        :param frac. FLoat, default = 0.1
+                     Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -630,6 +636,8 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
+        :param frac. FLoat, default = 0.1
+                     Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)m
         :param empirical_std: boolean. Default = False.
@@ -682,6 +690,66 @@ class MuseCube:
         plt.xlim([0, 2 * halfsize])
         return spec
 
+    def draw_region(self,r):
+        fig = plt.figure(self.n)
+        ax = fig.axes[0]
+        patch_list, artist_list = r.get_mpl_patches_texts()
+        patch = patch_list[0]
+        ax.add_patch(patch)
+
+    def region_2dmask(self,r):
+        im_aux = np.ones_like(self.white_data)
+        hdu_aux = fits.open(self.filename_white)[1]
+        hdu_aux.data = im_aux
+        mask_new = r.get_mask(hdu=hdu_aux)
+        mask_new_inverse = np.where(~mask_new, True, False)
+        mask2d = mask_new_inverse
+        return mask2d
+    def region_3dmask(self,r):
+        mask2d=self.region_2dmask(r)
+        complete_mask_new = mask2d + self.mask_init
+        complete_mask_new = np.where(complete_mask_new != 0, True, False)
+        mask3d = complete_mask_new
+        return mask3d
+
+    def save_ds9regfile_specs(self,regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,n_figure=2,redmonster_format=True,id_start=1):
+        """
+        Function used to save a set of spectra given by a DS9 regionfile "regfile"
+        :param regfile: str. Name of the DS9 region file
+        :param mode: str.  Default = 'wwm'. see more modes and details in self.spec_from_minicube_mask()
+        :param frac. FLoat, default = 0.1
+                     Parameter needed for wfrac mode
+        :param npix: int. Default = 0
+            Standard deviation of the gaussian filter to smooth (Only in wwm methods)
+        :param empirical_std: boolean. Default = False.
+            If True, the errors of the spectrum will be determined empirically
+        :param redmonster_format: If True, the specta will be saved in a redeable format for redmonster software
+        :param id_start: int. Default = 1
+                Initial id assigned to diferent spectra
+        :return:
+        """
+        r=pyregion.open(regfile)
+        n=len(r)
+        self.clean_canvas()
+        for i in xrange(n):
+            id_ = id_start + i
+            r_i =pyregion.ShapeList([r[i]])
+            self.draw_region(r_i)
+            mask3d = self.region_3dmask(r_i)
+            ##Get spec
+            spec = self.spec_from_minicube_mask(mask3d, mode=mode, npix=npix, frac=frac)
+            if empirical_std:
+                spec = mcu.calculate_empirical_rms(spec)
+            spec = self.spec_to_vacuum(spec)
+            str_id = str(id_).zfill(3)
+            spec_fits_name=str_id+'_'+regfile[:-4]
+            if redmonster_format:
+                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_)
+            else:
+                spec.write_to_fits(spec_fits_name + '.fits')
+            print 'ID = ' + str_id + ' Ready!!'
+
+
     def get_spec_from_ds9regfile(self,regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,n_figure=2,save = False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
@@ -699,6 +767,8 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
+        :param frac. FLoat, default = 0.1
+                     Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
         :param n_figure: int. Default = 2. Figure to display the spectrum
@@ -707,24 +777,11 @@ class MuseCube:
         :return: spec: XSpectrum1D object
         """
         r=pyregion.open(regfile)
-        ##draw region
-        fig = plt.figure(self.n)
-        ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts()
-        patch = patch_list[0]
-        ax.add_patch(patch)
-        ##Get 2d mask
-        im_aux = np.ones_like(self.white_data)
-        hdu_aux = fits.open(self.filename_white)[1]
-        hdu_aux.data = im_aux
-        mask_new = r.get_mask(hdu=hdu_aux)
-        mask_new_inverse = np.where(~mask_new, True, False)
-        mask2d=mask_new_inverse
-        #Get 3d mask
-        complete_mask_new = mask2d + self.mask_init
-        complete_mask_new = np.where(complete_mask_new != 0, True, False)
-        mask3d= complete_mask_new
-        ##Get spec
+
+        self.draw_region(r)
+
+        mask3d= self.region_3dmask(r)
+
         spec = self.spec_from_minicube_mask(mask3d,mode=mode,npix=npix, frac=frac)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
