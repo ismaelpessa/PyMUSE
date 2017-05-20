@@ -60,7 +60,7 @@ class MuseCube:
         self.filename_white = filename_white
         self.load_data()
         self.white_data = fits.open(self.filename_white)[1].data
-        self.white_data=np.where(self.white_data<0,0,self.white_data)
+        self.white_data = np.where(self.white_data < 0, 0, self.white_data)
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
@@ -223,7 +223,7 @@ class MuseCube:
         self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w, fl, sig))
 
-    def get_spec_spaxel(self, x, y, coord_system='pix',n_figure=2,empirical_std=False,save=False):
+    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
         """
         Gets the spectrum of a single spaxel (xy) of the MuseCube
         :param x: x coordinate of the spaxel
@@ -260,8 +260,6 @@ class MuseCube:
         if save:
             spec.write_to_fits(name + '.fits')
         return spec
-
-
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.1,
                                      n_figure=2, empirical_std=False, save=False):
@@ -323,7 +321,7 @@ class MuseCube:
 
     def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0, frac=0.1,
                                                  n_figure=2,
-                                                 empirical_std=False,save=False):
+                                                 empirical_std=False, save=False):
         """
         Function used to interactively define a region and extract the spectrum of that region
 
@@ -390,12 +388,12 @@ class MuseCube:
         """
         r = pyregion.parse(region_string)
         if deg:
-            x_c ,y_c = r[0].coord_list[0],r[0].coord_list[1]
+            x_c, y_c = r[0].coord_list[0], r[0].coord_list[1]
             if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
-                x_world,y_world=self.p2w(x_c-1,y_c-1)
+                x_world, y_world = self.p2w(x_c - 1, y_c - 1)
             else:
-                x_world,y_world=x_c,y_c
-            return x_world,y_world
+                x_world, y_world = x_c, y_c
+            return x_world, y_world
         else:
             if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
                 x_c, y_c, params = r[0].coord_list[0], r[0].coord_list[1], r[0].coord_list[2:5]
@@ -517,15 +515,15 @@ class MuseCube:
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
-            if len(im_fl)==0:
-                fl[wv_ii]=0
-                er[wv_ii]=99
+            if len(im_fl) == 0:
+                fl[wv_ii] = 0
+                er[wv_ii] = 99
             elif mode == 'wwm':
                 im_weights = smoothed_white[~mask]
                 n_weights = len(im_weights)
-                im_weights=np.where(np.isnan(im_weights),0,im_weights)
-                if np.sum(im_weights)==0:
-                    im_weights[:]=1./n_weights
+                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
+                if np.sum(im_weights) == 0:
+                    im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
@@ -535,8 +533,8 @@ class MuseCube:
                 im_weights = 1. / im_var_white
                 n_weights = len(im_weights)
                 im_weights = np.where(np.isnan(im_weights), 0, im_weights)
-                if np.sum(im_weights)==0:
-                    im_weights[:]=1./n_weights
+                if np.sum(im_weights) == 0:
+                    im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
@@ -545,8 +543,8 @@ class MuseCube:
                 im_weights = 1. / im_var
                 n_weights = len(im_weights)
                 im_weights = np.where(np.isnan(im_weights), 0, im_weights)
-                if np.sum(im_weights)==0:
-                    im_weights[:]=1./n_weights
+                if np.sum(im_weights) == 0:
+                    im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
@@ -556,8 +554,8 @@ class MuseCube:
                 im_weights = im_white / im_var
                 n_weights = len(im_weights)
                 im_weights = np.where(np.isnan(im_weights), 0, im_weights)
-                if np.sum(im_weights)==0:
-                    im_weights[:]=1./n_weights
+                if np.sum(im_weights) == 0:
+                    im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
@@ -568,8 +566,8 @@ class MuseCube:
                 im_weights = im_white / im_var_white
                 n_weights = len(im_weights)
                 im_weights = np.where(np.isnan(im_weights), 0, im_weights)
-                if np.sum(im_weights)==0:
-                    im_weights[:]=1./n_weights
+                if np.sum(im_weights) == 0:
+                    im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
@@ -588,8 +586,8 @@ class MuseCube:
             elif mode == 'wfrac':
                 if (frac > 1) or (frac < 0):
                     raise ValueError('`frac` must be value within (0,1)')
-                fl_limit = np.percentile(im_fl, (1.- frac)*100.)
-                im_weights = np.where(im_fl >= fl_limit, 1. , 0.)
+                fl_limit = np.percentile(im_fl, (1. - frac) * 100.)
+                im_weights = np.where(im_fl >= fl_limit, 1., 0.)
                 n_weights = len(im_weights)
                 im_weights = np.where(np.isnan(im_weights), 0, im_weights)
                 if np.sum(im_weights) == 0:
@@ -599,22 +597,24 @@ class MuseCube:
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
         if warn:
-            warning.warn('Some wavelengths could not be combined using the selected mode (a mean where used only on those cases)')
-
+            warning.warn(
+                'Some wavelengths could not be combined using the selected mode (a mean where used only on those cases)')
 
         if mode not in ['sum', 'median', 'mean', 'wfrac']:  # normalize to match total integrated flux
             spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
-            if norm<0:
-                warnings.warn("Normalization factor is Negative!! (This probably means that you are extracting the spectrum where flux<0)")
+            if norm < 0:
+                warnings.warn(
+                    "Normalization factor is Negative!! (This probably means that you are extracting the spectrum where flux<0)")
             fl = fl * norm
             er = er * abs(norm)
             print 'normalization factor relative to total flux = ' + str(norm)
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.1, save=False, empirical_std=False):
+    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.1,
+                       save=False, empirical_std=False):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -649,15 +649,16 @@ class MuseCube:
         :return: spec: XSpectrum1D object
         """
         spec = self.get_spec_from_ellipse_params(x_c=center[0], y_c=center[1], params=halfsize,
-                                                 coord_system=coord_system, mode=mode, frac=frac, npix=npix,empirical_std=empirical_std)
+                                                 coord_system=coord_system, mode=mode, frac=frac, npix=npix,
+                                                 empirical_std=empirical_std)
         spec = self.spec_to_vacuum(spec)
         if isinstance(halfsize, (int, float)):
-            halfsize = [halfsize,halfsize,0]
-        if coord_system=='wcs':
-            x_c,y_c,halfsize=self.ellipse_params_to_pixel(center[0],center[1],radius = halfsize)
-            center_=(x_c,y_c)
+            halfsize = [halfsize, halfsize, 0]
+        if coord_system == 'wcs':
+            x_c, y_c, halfsize = self.ellipse_params_to_pixel(center[0], center[1], radius=halfsize)
+            center_ = (x_c, y_c)
         else:
-            center_=center
+            center_ = center
         aux = [halfsize[0], halfsize[1]]
         halfsize = max(aux)
         mini_image = self.get_mini_image(center=center_, halfsize=halfsize)
@@ -685,19 +686,19 @@ class MuseCube:
         plt.ylim([ymin, ymax])
         plt.xlim([w[0], w[n - 1]])
         ax2 = plt.subplot2grid((1, 4), (0, 3), colspan=1)
-        ax2.imshow(mini_image, cmap='gray',vmin= self.vmin,vmax = self.vmax)
+        ax2.imshow(mini_image, cmap='gray', vmin=self.vmin, vmax=self.vmax)
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
         return spec
 
-    def draw_region(self,r):
+    def draw_region(self, r):
         fig = plt.figure(self.n)
         ax = fig.axes[0]
         patch_list, artist_list = r.get_mpl_patches_texts()
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def region_2dmask(self,r):
+    def region_2dmask(self, r):
         im_aux = np.ones_like(self.white_data)
         hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
@@ -705,14 +706,16 @@ class MuseCube:
         mask_new_inverse = np.where(~mask_new, True, False)
         mask2d = mask_new_inverse
         return mask2d
-    def region_3dmask(self,r):
-        mask2d=self.region_2dmask(r)
+
+    def region_3dmask(self, r):
+        mask2d = self.region_2dmask(r)
         complete_mask_new = mask2d + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
 
-    def save_ds9regfile_specs(self,regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,n_figure=2,redmonster_format=True,id_start=1):
+    def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
+                              id_start=1):
         """
         Function used to save a set of spectra given by a DS9 regionfile "regfile"
         :param regfile: str. Name of the DS9 region file
@@ -726,14 +729,13 @@ class MuseCube:
         :param redmonster_format: If True, the specta will be saved in a redeable format for redmonster software
         :param id_start: int. Default = 1
                 Initial id assigned to diferent spectra
-        :return:
         """
-        r=pyregion.open(regfile)
-        n=len(r)
+        r = pyregion.open(regfile)
+        n = len(r)
         self.clean_canvas()
         for i in xrange(n):
             id_ = id_start + i
-            r_i =pyregion.ShapeList([r[i]])
+            r_i = pyregion.ShapeList([r[i]])
             self.draw_region(r_i)
             mask3d = self.region_3dmask(r_i)
             ##Get spec
@@ -742,15 +744,15 @@ class MuseCube:
                 spec = mcu.calculate_empirical_rms(spec)
             spec = self.spec_to_vacuum(spec)
             str_id = str(id_).zfill(3)
-            spec_fits_name=str_id+'_'+regfile[:-4]
+            spec_fits_name = str_id + '_' + regfile[:-4]
             if redmonster_format:
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_)
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
             print 'ID = ' + str_id + ' Ready!!'
 
-
-    def get_spec_from_ds9regfile(self,regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,n_figure=2,save = False):
+    def get_spec_from_ds9regfile(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, n_figure=2,
+                                 save=False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
         The .reg file MUST be in physical coordiantes
@@ -776,22 +778,22 @@ class MuseCube:
             If True, the errors of the spectrum will be determined empirically
         :return: spec: XSpectrum1D object
         """
-        r=pyregion.open(regfile)
+        r = pyregion.open(regfile)
 
         self.draw_region(r)
 
-        mask3d= self.region_3dmask(r)
+        mask3d = self.region_3dmask(r)
 
-        spec = self.spec_from_minicube_mask(mask3d,mode=mode,npix=npix, frac=frac)
+        spec = self.spec_from_minicube_mask(mask3d, mode=mode, npix=npix, frac=frac)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
         if save:
-            spec.write_to_fits(regfile[:-4]+'.fits')
+            spec.write_to_fits(regfile[:-4] + '.fits')
 
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
-        plt.title('Spectrum from '+regfile)
+        plt.title('Spectrum from ' + regfile)
         plt.xlabel('Angstroms')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         return spec
@@ -1007,26 +1009,26 @@ class MuseCube:
         self.draw_pyregion(region_string)
         return complete_mask_new
 
-    def plot_sextractor_regions(self, sextractor_filename, a_min = 3.5,flag_threshold=32,n_id=None):
+    def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, n_id=None):
         self.clean_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
-        a_new=np.where(a<a_min,a_min,a)
+        a_new = np.where(a < a_min, a_min, a)
         b = np.array(self.get_from_table(sextractor_filename, 'B_IMAGE'))
-        ratios = a/b
-        b_new=a_new/ratios
-        b_new=np.where(b_new<1,1,b_new)
-        a=a_new
-        b=b_new
+        ratios = a / b
+        b_new = a_new / ratios
+        b_new = np.where(b_new < 1, 1, b_new)
+        a = a_new
+        b = b_new
         theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))
         flags = self.get_from_table(sextractor_filename, 'FLAGS').data
         id = self.get_from_table(sextractor_filename, 'NUMBER').data
         mag = self.get_from_table(sextractor_filename, 'MAG_AUTO').data
         n = len(x_pix)
-        if n_id!=None:
-            j=np.where(id==n_id)[0][0]
-            region_string=self.ellipse_param_to_ds9reg_string(x_pix[j], y_pix[j], a[j], b[j], theta[j], color='Green')
+        if n_id != None:
+            j = np.where(id == n_id)[0][0]
+            region_string = self.ellipse_param_to_ds9reg_string(x_pix[j], y_pix[j], a[j], b[j], theta[j], color='Green')
             self.draw_pyregion(region_string)
             plt.text(x_pix[j], y_pix[j], id[j], color='Red')
             return
@@ -1053,19 +1055,19 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
                 spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
-                                                         mode=mode, npix=npix, frac=frac,save=False, n_figure=n_figure)
+                                                         mode=mode, npix=npix, frac=frac, save=False, n_figure=n_figure)
 
                 str_id = str(id[i]).zfill(3)
                 spec_fits_name = str_id + '_' + spec_fits_name
                 if redmonster_format:
                     mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id[i],
-                                                   mag=[mag_kwrd, mag[i]])
+                                                  mag=[mag_kwrd, mag[i]])
                 else:
                     spec.write_to_fits(spec_fits_name + '.fits')
                     hdulist = fits.open(spec_fits_name + '.fits')
                     hdulist[0].header[mag_kwrd] = mag[i]
                     hdulist.writeto(spec_fits_name + '.fits', clobber=True)
-                print 'ID = '+str_id+' Ready!!'
+                print 'ID = ' + str_id + ' Ready!!'
 
     def __read_files(self, input):
         path = input
@@ -1250,7 +1252,6 @@ class MuseCube:
         n = len(wave)
         white_image = self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, stat=stat, save=save)
         return white_image
-
 
     def calculate_mag(self, wavelength, flux, _filter, zeropoint_flux=9.275222661263278e-07):
         dw = np.diff(wavelength)

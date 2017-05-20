@@ -87,15 +87,18 @@ As you have noted, all the diferent `get_spec_` functions have the keyword argum
               * `median` - Median of the total flux
               * `wwm_ivarwv` - Weights given by both, `ivarwv` and `wwm`
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
-
+              * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
+                         (e.g. frac=0.1 means 10% brightest) with equal weight.
 Note: The gaussian method is not available in `get_spec_from_ds9regfile()` nor `get_spec_from_interactive_polygon_region()`
 
 Other keyword parameters
 ------------------------
-Also, all the `get_spec_` function have the keyword arguments `npix` , `empirical_std`, `n_figure` and `save`.
+Also, all the `get_spec_` function have the keyword arguments `npix` , `empirical_std`, `n_figure` and `save`, `frac`
 
 Some modes of extraction require a npix value (default = 0). This value correspond to the sigma of the gaussian function
 that will smooth the white image, where the bright profile will be obtained. If npix = 0, no smooth is done.
+
+The parameter `frac` (default = 0.1) will be used in mode = `wfrac`, and it defined the fraction of brightest pixels that will be considered in the sum of the flux.
 
 If `empirical_std = True` (default = False) the uncertainties of the spectrum will be calculated empirically
 
@@ -145,6 +148,16 @@ where rm_spec_name is the name of the fits file.
 
 Also, you can set the parameter ``mag_kwrd`` which by default is ``'mag_r'`` to the keyword in the new fits_image that will
 contain the SExtractor's MAG_AUTO value
+
+Save a set of spectra defined by a multi regionfile DS9 .reg file
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+You can save all the spectra of regions defined by a DS9 region file to the hard disk. Just use::
+
+    cube.save_ds9regfile_specs(regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,redmonster_format=True,id_start=1)
+
+Again, you can select between all available modes (except gaussian). The different spectra in the file will be identified by an id,
+starting from id_start (default = 1).
+
 
 Saving a single spectrum to the hard disk
 +++++++++++++++++++++++++++++++++++++++++
