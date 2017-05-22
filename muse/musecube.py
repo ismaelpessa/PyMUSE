@@ -4,7 +4,7 @@ import glob
 import math as m
 import os
 import warnings
-
+from astropy.modeling import models, fitting
 import aplpy
 import muse.utils as mcu
 import numpy as np
@@ -713,6 +713,69 @@ class MuseCube:
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
+    def compute_kinematics(self,x_c,y_c,params,wv_line,wv_range_size=15,z=0,type='abs',test=False):
+        region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
+        mask2d = self.get_new_2dmask(region_string)
+        ##Find center guessing parameters
+        spec_c = self.get_spec_spaxel(x_c,y_c)
+        fl_c=spec_c.flux.value
+        wv_c = spec_c.wavelength.value
+        wv_eff = wv_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
+        fl_eff = fl_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
+        #### Define initial guessings
+        if type=='abs':
+            a_init = np.min(fl_eff)
+        if type == 'emi':
+            a_init = np.max(fl_eff)
+        n= len(wv_eff)
+        intercept_init = (fl_eff[0]+fl_eff[n-1])/2.
+        slope_ini = 0
+        sigma_ini=wv_range_size/2.
+        mean_ini = wv_line
+        gaussian = models.Gaussian1D(amplitude = a_init,mean=mean_ini,stddev=sigma_ini)
+        line = models.Linear1D(slope = slope_ini,intercept = intercept_init)
+        model_init = gaussian + line
+        fitter = fitting.SLSQPLSQFitter()
+        model_fit = fitter(model_init,wv_eff,fl_eff)
+
+        ####Initial guessings
+        init_a = model_fit[0].amplitude.value
+        init_sig = model_fit[0].stddev.value
+        init_mean=model_fit[0].mean.value
+        init_slope=model_fit[1].slope.value
+        init_intercept = model_fit[1].intercept.value
+        gaussian = models.Gaussian1D(amplitude=init_a, mean=init_mean, stddev=init_sig)
+        line = models.Linear1D(slope=init_slope, intercept=init_intercept)
+        model_init=gaussian+line
+
+        ##get spaxel in mask2d
+        y,x = np.where(mask2d==False)
+        n = len(x)
+        output_im=np.where(self.white_data==0,nan,nan)
+
+        for i in xrange(n):
+            spec = self.get_spec_spaxel(x[i],y[i])
+            wv = spec.wavelength.value
+            fl = spec.flux.value
+            wv_eff=wv[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
+            fl_eff=fl[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
+            fitter = fitting.SLSQPLSQFitter()
+            model_fit = fitter(model_init,wv_eff,fl_eff)
+            if test:
+                plt.figure()
+                plt.plot(wv_eff,fl_eff)
+                plt.plot(wv_eff,model_fit(wv_eff))
+                raw_input('Enter to continue...')
+            mean = model_fit[0].mean.value
+            amp = model_fit[0].amplitude.value
+            if abs(amp)>=0.2 * init_a:
+                output_im[x[i]][y[i]]=init_mean-mean
+        return output_im
+
+
+
+
+
 
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
                               id_start=1):
@@ -1511,7 +1574,7 @@ class MuseCube:
         new_mask = self.get_mini_cube_mask_from_ellipse_params(x_center, y_center, params)
         spec_sum = self.spec_from_minicube_mask(new_mask, mode='sum')
 
-        from astropy.modeling import models, fitting
+
         halfsize = [a, b]
         if region_string_ == None:
             region_string = self.ellipse_param_to_ds9reg_string(xc, yc, a, b, theta)
@@ -1573,7 +1636,6 @@ class MuseCube:
         :return: seeing: float
                          the observational seeing of the image defined as the FWHM of the gaussian
         """
-        from astropy.modeling import models, fitting
         hdulist = fits.open(self.filename_white)
         data = hdulist[1].data
         w, h = 2 * halfsize + 1, 2 * halfsize + 1
