@@ -30,7 +30,7 @@ class MuseCube:
 
     """
 
-    def __init__(self, filename_cube, filename_white, pixelsize=0.2 * u.arcsec, n_fig=1,
+    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
                  flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air'):
         """
         Parameters
@@ -59,6 +59,28 @@ class MuseCube:
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
+        if not filename_white:
+            w_data = self.create_white(save=False).data
+            
+            w_header_0 = self.header_0
+            w_header_1 = self.header_1
+            for i in w_header_0.keys():
+                if '3' in i:
+                    del w_header_0[i]
+            for i in w_header_1.keys():
+                if '3' in i:
+                    del w_header_1[i]
+
+            #Con estos 'for' se elimina la tercera dimension de los datos.
+            hdu = fits.HDUList()
+            hdu_0 = fits.PrimaryHDU(data=np.zeros(w_data.shape),header=self.header_0)
+            hdu_1 = fits.ImageHDU(data=w_data,header=self.header_1)
+            hdu.append(hdu_0)
+            hdu.append(hdu_1)
+            #Lo agrego dos veces ya que en general se llama a la imagen como el segundo elemento de la lista, por ahora no se que deberia ir en la primera entrada.
+            hdu.writeto('new_white.fits',overwrite=True)
+            self.filename_white = 'new_white.fits'
+
         self.white_data = fits.open(self.filename_white)[1].data
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
@@ -88,7 +110,8 @@ class MuseCube:
 
         # wavelength array
         self.wavelength = self.create_wavelength_array()
-
+        self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
+        self.header_0 = hdulist[0].header
     def get_smoothed_white(self, npix=2, save=True, **kwargs):
         """Gets an smoothed version (Gaussian of sig=npix)
         of the white image. If save is True, it writes a file
@@ -1273,6 +1296,7 @@ class MuseCube:
         :param fitsname: str
                          The name of the fits that will contain the new image
         :param type: str, possible values: 'sum' or 'median'
+                     c
                      The type of combination that will be done
         :param n_figure: int
                          Figure to display the new image if it is saved
