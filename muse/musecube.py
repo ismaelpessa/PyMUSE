@@ -713,8 +713,9 @@ class MuseCube:
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
-    def compute_kinematics(self,x_c,y_c,params,wv_line,wv_range_size=35,type='abs',test=False):
+    def compute_kinematics(self,x_c,y_c,params,wv_line_vac,wv_range_size=35,type='abs',test=False,z=0):
         dwmax=5
+        wv_line = wv_line_vac*(1+z)
         region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
         mask2d = self.get_new_2dmask(region_string)
         ##Find center guessing parameters
@@ -724,6 +725,8 @@ class MuseCube:
         wv_eff = wv_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_eff = fl_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         #### Define central gaussian_mean
+        wv_c_eff=wv_eff
+        fl_c_eff=fl_eff
         fl_left = fl_eff[:3]
         fl_right = fl_eff[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
@@ -746,7 +749,7 @@ class MuseCube:
         ##get spaxel in mask2d
         y,x = np.where(mask2d==False)
         n = len(x)
-        output_im=np.where(self.white_data==0,nan,nan)
+        output_im=np.where(self.white_data==0,np.nan,np.nan)
 
         for i in xrange(n):
             spec = self.get_spec_spaxel(x[i],y[i])
@@ -771,15 +774,20 @@ class MuseCube:
             model_fit = fitter(model_init, wv_eff, fl_eff)
             if test:
                 plt.figure()
-                plt.plot(wv_eff,fl_eff)
+                plt.plot(wv_c_eff,fl_c_eff,drawstyle = 'steps-mid',color='grey')
+                plt.plot(wv_eff,fl_eff,drawstyle = 'steps-mid')
                 plt.plot(wv_eff,model_fit(wv_eff))
+                m = fitter.fit_info['param_cov']
+                plt.figure()
+                plt.imshow(m)
+                plt.colorbar()
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
             if abs(amp)>=0.2 * abs(a_center) and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
                 if test:
                     print 'Fit Aceptado'
                     print str(x[i])+','+str(y[i])
-                vel = ((mean_center/mean)-1)*299792458 ##km per sec
+                vel = ltu.dv_from_z((mean/wv_line_vac) -1,z)
                 output_im[x[i]][y[i]]=vel
             else:
                 if test:
