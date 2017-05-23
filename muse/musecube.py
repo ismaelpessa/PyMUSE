@@ -779,7 +779,7 @@ class MuseCube:
                 if test:
                     print 'Fit Aceptado'
                     print str(x[i])+','+str(y[i])
-                vel = ((mean_center/mean)-1)*299 792.458 ##km per sec
+                vel = ((mean_center/mean)-1)*299792458 ##km per sec
                 output_im[x[i]][y[i]]=vel
             else:
                 if test:
