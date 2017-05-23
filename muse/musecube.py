@@ -713,7 +713,8 @@ class MuseCube:
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
-    def compute_kinematics(self,x_c,y_c,params,wv_line,wv_range_size=15,z=0,type='abs',test=False):
+    def compute_kinematics(self,x_c,y_c,params,wv_line,wv_range_size=35,type='abs',test=False):
+        dwmax=5
         region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
         mask2d = self.get_new_2dmask(region_string)
         ##Find center guessing parameters
@@ -722,11 +723,24 @@ class MuseCube:
         wv_c = spec_c.wavelength.value
         wv_eff = wv_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_eff = fl_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
-        #### Define initial guessings
-        if type=='abs':
-            a_init = np.min(fl_eff)
+        #### Define central gaussian_mean
+        fl_left = fl_eff[:3]
+        fl_right = fl_eff[-3:]
+        intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+        if type == 'abs':
+            a_init = np.min(fl_eff)-intercept_init
         if type == 'emi':
-            a_init = np.max(fl_eff)
+            a_init = np.max(fl_eff)-intercept_init
+        slope_init = 0
+        sigma_init = wv_range_size / 3.
+        mean_init = wv_line
+        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = gaussian + line
+        fitter = fitting.SLSQPLSQFitter()
+        model_fit = fitter(model_init, wv_eff, fl_eff)
+        mean_center = model_fit[0].mean.value
+        a_center=model_fit[0].amplitude.value
 
 
         ##get spaxel in mask2d
@@ -740,11 +754,16 @@ class MuseCube:
             fl = spec.flux.value
             wv_eff=wv[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
             fl_eff=fl[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
-            n = len(wv_eff)
-            intercept_init = (fl_eff[0] + fl_eff[n - 1]) / 2.
+            fl_left=fl_eff[:3]
+            fl_right=fl_eff[-3:]
+            intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+            if type == 'abs':
+                a_init = np.min(fl_eff)-intercept_init
+            if type == 'emi':
+                a_init = np.max(fl_eff)-intercept_init
             slope_init = 0
-            sigma_init = wv_range_size / 2.
-            mean_init = wv_line
+            sigma_init = wv_range_size / 3.
+            mean_init = mean_center
             gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
             line = models.Linear1D(slope=slope_init, intercept=intercept_init)
             model_init = gaussian + line
@@ -752,13 +771,24 @@ class MuseCube:
             model_fit = fitter(model_init, wv_eff, fl_eff)
             if test:
                 plt.figure()
-                plt.plot(wv,fl)
+                plt.plot(wv_eff,fl_eff)
                 plt.plot(wv_eff,model_fit(wv_eff))
-                raw_input('Enter to continue...')
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
-            if abs(amp)>=0.2 * init_a:
-                output_im[x[i]][y[i]]=init_mean-mean
+            if abs(amp)>=0.2 * abs(a_center) and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
+                if test:
+                    print 'Fit Aceptado'
+                    print str(x[i])+','+str(y[i])
+                vel = ((mean_center/mean)-1)*299 792.458 ##km per sec
+                output_im[x[i]][y[i]]=vel
+            else:
+                if test:
+                    print 'Fit Negado'
+                    print str(x[i]) + ',' + str(y[i])
+            if test:
+                print 'value of wv_dif = ' + str(mean_center - mean)
+                print 'amplitude = '+str(amp)
+                raw_input('Enter to continue...')
         return output_im
 
 
