@@ -714,8 +714,32 @@ class MuseCube:
         mask3d = complete_mask_new
         return mask3d
     def compute_kinematics(self,x_c,y_c,params,wv_line_vac,wv_range_size=35,type='abs',test=False,z=0):
+        ##Get the integrated spec fit, and estimate the 0 velocity wv from there
+        wv_line = wv_line_vac * (1 + z)
+        spec_total = self.get_spec_from_ellipse_params(x_c,y_c,params,mode='wwm')
+        wv_t = spec_total.wavelength.value
+        fl_t = spec_total.flux.value
+        wv_eff = wv_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
+        fl_eff = fl_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
+        fl_left = fl_eff[:3]
+        fl_right = fl_eff[-3:]
+        intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+        if type == 'abs':
+            a_init = np.min(fl_eff)-intercept_init
+        if type == 'emi':
+            a_init = np.max(fl_eff)-intercept_init
+        slope_init = 0
+        sigma_init = wv_range_size / 3.
+        mean_init = wv_line
+        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = gaussian + line
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv_eff, fl_eff)
+        mean_total = model_fit[0].mean.value
+        z_line = (mean_total / wv_line_vac) - 1.
+
         dwmax=5
-        wv_line = wv_line_vac*(1+z)
         region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
         mask2d = self.get_new_2dmask(region_string)
         ##Find center guessing parameters
@@ -740,7 +764,7 @@ class MuseCube:
         gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
         line = models.Linear1D(slope=slope_init, intercept=intercept_init)
         model_init = gaussian + line
-        fitter = fitting.SLSQPLSQFitter()
+        fitter = fitting.LevMarLSQFitter()
         model_fit = fitter(model_init, wv_eff, fl_eff)
         mean_center = model_fit[0].mean.value
         a_center=model_fit[0].amplitude.value
@@ -770,24 +794,25 @@ class MuseCube:
             gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
             line = models.Linear1D(slope=slope_init, intercept=intercept_init)
             model_init = gaussian + line
-            fitter = fitting.SLSQPLSQFitter()
+            fitter = fitting.LevMarLSQFitter()
             model_fit = fitter(model_init, wv_eff, fl_eff)
             if test:
                 plt.figure()
                 plt.plot(wv_c_eff,fl_c_eff,drawstyle = 'steps-mid',color='grey')
                 plt.plot(wv_eff,fl_eff,drawstyle = 'steps-mid')
                 plt.plot(wv_eff,model_fit(wv_eff))
-                m = fitter.fit_info['param_cov']
-                plt.figure()
-                plt.imshow(m)
-                plt.colorbar()
+                #m = fitter.fit_info['param_cov']
+                #plt.figure()
+                #plt.imshow(m)
+                #plt.colorbar()
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
             if abs(amp)>=0.2 * abs(a_center) and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
                 if test:
                     print 'Fit Aceptado'
                     print str(x[i])+','+str(y[i])
-                vel = ltu.dv_from_z((mean/wv_line_vac) -1,z)
+                units = u.km/u.s
+                vel = ltu.dv_from_z((mean/wv_line_vac) -1,z_line).to(units).value
                 output_im[x[i]][y[i]]=vel
             else:
                 if test:
