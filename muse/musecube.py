@@ -743,14 +743,14 @@ class MuseCube:
     def compute_kinematics(self,x_c,y_c,params,wv_line_vac,wv_range_size=35,type='abs',test=False,z=0):
         ##Get the integrated spec fit, and estimate the 0 velocity wv from there
         wv_line = wv_line_vac * (1 + z)
-        dwmax = 5
+        dwmax = 10
         spec_total = self.get_spec_from_ellipse_params(x_c,y_c,params,mode='wwm')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t=spec_total.sig.value
-        sig_eff = sig_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
-        wv_eff = wv_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
-        fl_eff = fl_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
+        sig_eff = sig_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        wv_eff = wv_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        fl_eff = fl_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
         fl_left = fl_eff[:3]
         fl_right = fl_eff[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
@@ -765,7 +765,7 @@ class MuseCube:
         line = models.Linear1D(slope=slope_init, intercept=intercept_init)
         model_init = gaussian + line
         fitter = fitting.LevMarLSQFitter()
-        model_fit = fitter(model_init, wv_eff, fl_eff)
+        model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
         mean_total = model_fit[0].mean.value
         sigma_total = model_fit[0].stddev.value
         z_line = (mean_total / wv_line_vac) - 1.
@@ -776,8 +776,11 @@ class MuseCube:
         spec_c = self.get_spec_spaxel(x_c,y_c)
         fl_c=spec_c.flux.value
         wv_c = spec_c.wavelength.value
+        sig_c = spec_total.sig.value
+        sig_eff = sig_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         wv_eff = wv_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_eff = fl_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
+
         #### Define central gaussian_mean
         wv_c_eff=wv_eff
         fl_c_eff=fl_eff
@@ -795,7 +798,7 @@ class MuseCube:
         line = models.Linear1D(slope=slope_init, intercept=intercept_init)
         model_init = gaussian + line
         fitter = fitting.LevMarLSQFitter()
-        model_fit = fitter(model_init, wv_eff, fl_eff)
+        model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
         mean_center = model_fit[0].mean.value
         a_center=model_fit[0].amplitude.value
         sigma_center=model_fit[0].stddev.value
@@ -810,6 +813,8 @@ class MuseCube:
             spec = self.get_spec_spaxel(x[i],y[i])
             wv = spec.wavelength.value
             fl = spec.flux.value
+            sig = spec_total.sig.value
+            sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
             wv_eff=wv[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
             fl_eff=fl[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
             fl_left=fl_eff[:3]
@@ -826,7 +831,7 @@ class MuseCube:
             line = models.Linear1D(slope=slope_init, intercept=intercept_init)
             model_init = gaussian + line
             fitter = fitting.LevMarLSQFitter()
-            model_fit = fitter(model_init, wv_eff, fl_eff)
+            model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
             m = fitter.fit_info['param_cov']
             residual = model_fit(wv_eff) - fl_eff
             noise = np.std(residual)
