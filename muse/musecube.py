@@ -748,7 +748,7 @@ class MuseCube:
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t=spec_total.sig.value
-        sig_eff=
+        sig_eff = sig_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         wv_eff = wv_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_eff = fl_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_left = fl_eff[:3]
