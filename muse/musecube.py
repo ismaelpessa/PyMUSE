@@ -528,10 +528,13 @@ class MuseCube:
         if mode == 'ivar':
             var_white = self.create_white(stat=True, save=False)
 
-        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar']:
+        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
             if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
+            elif mode == 'wfrac':
+                mask2d=new_3dmask[0]
+                self.wfrac_show_spaxels(frac=frac,mask2d=mask2d,smoothed_white=smoothed_white)
         warn = False
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
@@ -609,10 +612,11 @@ class MuseCube:
             elif mode == 'wfrac':
                 if (frac > 1) or (frac < 0):
                     raise ValueError('`frac` must be value within (0,1)')
-                fl_limit = np.percentile(im_fl, (1. - frac) * 100.)
-                im_weights = np.where(im_fl >= fl_limit, 1., 0.)
+                im_white = smoothed_white[~mask]
+                fl_limit = np.percentile(im_white, (1. - frac) * 100.)
+                im_weights = np.where(im_white >= fl_limit, 1., 0.)
                 n_weights = len(im_weights)
-                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
+                im_weights = np.where(np.isnan(im_weights), 0., im_weights)
                 if np.sum(im_weights) == 0:
                     im_weights[:] = 1. / n_weights
                     warn = True
@@ -743,6 +747,8 @@ class MuseCube:
         spec_total = self.get_spec_from_ellipse_params(x_c,y_c,params,mode='wwm')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
+        sig_t=spec_total.sig.value
+        sig_eff=
         wv_eff = wv_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_eff = fl_t[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_left = fl_eff[:3]
@@ -796,7 +802,7 @@ class MuseCube:
 
 
         ##get spaxel in mask2d
-        y,x = np.where(mask2d==False)
+        y,x = np.where(~mask2d)
         n = len(x)
         output_im=np.where(self.white_data==0,np.nan,np.nan)
 
@@ -1116,6 +1122,17 @@ class MuseCube:
                                                                                radius[1],
                                                                                radius[2], color)
         return region_string
+
+    def wfrac_show_spaxels(self,frac,mask2d,smoothed_white):
+        y,x = np.where(~mask2d)
+        n = len(x)
+        im_white = smoothed_white[~mask2d]
+        fl_limit = np.percentile(im_white, (1. - frac) * 100.)
+        for i in xrange(n):
+            if smoothed_white[y[i]][x[i]]>=fl_limit:
+                plt.figure(self.n)
+                plt.plot(x[i],y[i],'o',color='Blue')
+
 
     def _test_3dmask(self, region_string, alpha=0.8, slice=0):
         complete_mask = self.get_new_3dmask(region_string)
