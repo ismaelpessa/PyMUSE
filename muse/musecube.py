@@ -822,11 +822,14 @@ class MuseCube:
             fitter = fitting.LevMarLSQFitter()
             model_fit = fitter(model_init, wv_eff, fl_eff)
             m = fitter.fit_info['param_cov']
+            residual = model_fit(wv_eff) - fl_eff
+            noise = np.std(residual)
             if test:
                 plt.figure()
                 plt.plot(wv_c_eff,fl_c_eff,drawstyle = 'steps-mid',color='grey')
                 plt.plot(wv_eff,fl_eff,drawstyle = 'steps-mid')
                 plt.plot(wv_eff,model_fit(wv_eff))
+                plt.plot(wv_eff, residual, color='red')
                 m = fitter.fit_info['param_cov']
                 if m!=None:
                     print 'Display Cov Matrix'
@@ -837,7 +840,9 @@ class MuseCube:
                     print 'Cov Matrix undefined'
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
-            if abs(amp)>=0.2 * abs(a_center) and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
+
+
+            if abs(amp) >=3*noise and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
                 if test:
                     print 'Fit Aceptado'
                     print str(x[i])+','+str(y[i])
@@ -851,6 +856,7 @@ class MuseCube:
             if test:
                 print 'value of wv_dif = ' + str(mean_center - mean)
                 print 'amplitude = '+str(amp)
+                print 'noise = '+str(noise)
                 raw_input('Enter to continue...')
         return output_im
 
