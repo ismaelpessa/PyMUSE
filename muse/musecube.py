@@ -75,7 +75,7 @@ class MuseCube:
 
             #Con estos 'for' se elimina la tercera dimension de los datos.
             hdu = fits.HDUList()
-            hdu_0 = fits.PrimaryHDU(data=w_data,header=self.header_0)
+            hdu_0 = fits.PrimaryHDU(header=self.header_0)
             hdu_1 = fits.ImageHDU(data=w_data,header=self.header_1)
             hdu.append(hdu_0)
             hdu.append(hdu_1)
@@ -120,7 +120,7 @@ class MuseCube:
         :param cmap: string. matplotlib's color map. cmap = 'none' to gray scale again
         :return:
         """
-        if cmap='none':
+        if cmap=='none':
             self.color=False
             self.cmap=""
         else:
