@@ -50,6 +50,8 @@ class MuseCube:
         """
 
         # init
+        self.color=False
+        self.cmap=""
         self.vmin = vmin
         self.vmax = vmax
         self.flux_units = flux_units
@@ -112,6 +114,20 @@ class MuseCube:
         self.wavelength = self.create_wavelength_array()
         self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
         self.header_0 = hdulist[0].header
+
+    def color_gui(self,cmap):
+        """
+        Function to change the cmap of the canvas
+        :param cmap: string. matplotlib's color map. cmap = 'none' to gray scale again
+        :return:
+        """
+        if cmap='none':
+            self.color=False
+            self.cmap=""
+        else:
+            self.color=True
+            self.cmap=cmap
+        self.clean_canvas()
     def get_smoothed_white(self, npix=2, save=True, **kwargs):
         """Gets an smoothed version (Gaussian of sig=npix)
         of the white image. If save is True, it writes a file
@@ -1612,14 +1628,17 @@ class MuseCube:
 
     def clean_canvas(self):
         """
-        Clean everything from the canvas with the colapsed cube image
+        Clean everything from the canvas with the white image
         :param self:
         :return:
         """
         plt.figure(self.n)
         plt.clf()
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
+        if self.color:
+            self.gc2.show_colorscale(cmap=self.cmap,vmin=self.vmin,vmax=self.vmax)
+        else:
+            self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         plt.show()
 
     def create_table(self, input_file):
