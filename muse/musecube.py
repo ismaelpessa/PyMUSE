@@ -79,7 +79,7 @@ class MuseCube:
             hdu_1 = fits.ImageHDU(data=w_data,header=self.header_1)
             hdu.append(hdu_0)
             hdu.append(hdu_1)
-            hdu.writeto('new_white.fits',overwrite=True)
+            hdu.writeto('new_white.fits',clobber=True)
             self.filename_white = 'new_white.fits'
 
         self.white_data = fits.open(self.filename_white)[1].data
