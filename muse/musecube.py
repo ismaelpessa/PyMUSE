@@ -19,6 +19,7 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
+import linetools.utils as ltu
 
 
 # spec = XSpectrum1D.from
