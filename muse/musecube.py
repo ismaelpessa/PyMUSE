@@ -75,11 +75,10 @@ class MuseCube:
 
             #Con estos 'for' se elimina la tercera dimension de los datos.
             hdu = fits.HDUList()
-            hdu_0 = fits.PrimaryHDU(data=np.zeros(w_data.shape),header=self.header_0)
+            hdu_0 = fits.PrimaryHDU(data=w_data,header=self.header_0)
             hdu_1 = fits.ImageHDU(data=w_data,header=self.header_1)
             hdu.append(hdu_0)
             hdu.append(hdu_1)
-            #Lo agrego dos veces ya que en general se llama a la imagen como el segundo elemento de la lista, por ahora no se que deberia ir en la primera entrada.
             hdu.writeto('new_white.fits',overwrite=True)
             self.filename_white = 'new_white.fits'
 
