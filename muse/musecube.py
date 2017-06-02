@@ -19,6 +19,7 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
+import linetools.utils as ltu
 
 
 # spec = XSpectrum1D.from
@@ -50,6 +51,8 @@ class MuseCube:
         """
 
         # init
+        self.color=False
+        self.cmap=""
         self.vmin = vmin
         self.vmax = vmax
         self.flux_units = flux_units
@@ -73,12 +76,13 @@ class MuseCube:
 
             #Con estos 'for' se elimina la tercera dimension de los datos.
             hdu = fits.HDUList()
+
             hdu_0 = fits.PrimaryHDU(header=self.header_1)
             hdu_1 = fits.ImageHDU(data=w_data,header=self.header_0)
+
             hdu.append(hdu_0)
             hdu.append(hdu_1)
-            #Lo agrego dos veces ya que en general se llama a la imagen como el segundo elemento de la lista, por ahora no se que deberia ir en la primera entrada.
-            hdu.writeto('new_white.fits',overwrite=True)
+            hdu.writeto('new_white.fits',clobber=True)
             self.filename_white = 'new_white.fits'
 
         self.white_data = fits.open(self.filename_white)[1].data
@@ -110,6 +114,20 @@ class MuseCube:
 
         self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
         self.header_0 = hdulist[0].header
+
+    def color_gui(self,cmap):
+        """
+        Function to change the cmap of the canvas
+        :param cmap: string. matplotlib's color map. cmap = 'none' to gray scale again
+        :return:
+        """
+        if cmap=='none':
+            self.color=False
+            self.cmap=""
+        else:
+            self.color=True
+            self.cmap=cmap
+        self.clean_canvas()
     def get_smoothed_white(self, npix=2, save=True, **kwargs):
         """Gets an smoothed version (Gaussian of sig=npix)
         of the white image. If save is True, it writes a file
@@ -526,10 +544,13 @@ class MuseCube:
         if mode == 'ivar':
             var_white = self.create_white(stat=True, save=False)
 
-        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar']:
+        elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             smoothed_white = self.get_smoothed_white(npix=npix, save=False)
             if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
+            elif mode == 'wfrac':
+                mask2d=new_3dmask[0]
+                self.wfrac_show_spaxels(frac=frac,mask2d=mask2d,smoothed_white=smoothed_white)
         warn = False
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
@@ -607,10 +628,11 @@ class MuseCube:
             elif mode == 'wfrac':
                 if (frac > 1) or (frac < 0):
                     raise ValueError('`frac` must be value within (0,1)')
-                fl_limit = np.percentile(im_fl, (1. - frac) * 100.)
-                im_weights = np.where(im_fl >= fl_limit, 1., 0.)
+                im_white = smoothed_white[~mask]
+                fl_limit = np.percentile(im_white, (1. - frac) * 100.)
+                im_weights = np.where(im_white >= fl_limit, 1., 0.)
                 n_weights = len(im_weights)
-                im_weights = np.where(np.isnan(im_weights), 0, im_weights)
+                im_weights = np.where(np.isnan(im_weights), 0., im_weights)
                 if np.sum(im_weights) == 0:
                     im_weights[:] = 1. / n_weights
                     warn = True
@@ -734,63 +756,135 @@ class MuseCube:
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
-    def compute_kinematics(self,x_c,y_c,params,wv_line,wv_range_size=15,z=0,type='abs',test=False):
+    def compute_kinematics(self,x_c,y_c,params,wv_line_vac,wv_range_size=35,type='abs',test=False,z=0):
+        ##Get the integrated spec fit, and estimate the 0 velocity wv from there
+        wv_line = wv_line_vac * (1 + z)
+        dwmax = 10
+        spec_total = self.get_spec_from_ellipse_params(x_c,y_c,params,mode='wwm')
+        wv_t = spec_total.wavelength.value
+        fl_t = spec_total.flux.value
+        sig_t=spec_total.sig.value
+        sig_eff = sig_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        wv_eff = wv_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        fl_eff = fl_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        fl_left = fl_eff[:3]
+        fl_right = fl_eff[-3:]
+        intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+        if type == 'abs':
+            a_init = np.min(fl_eff)-intercept_init
+        if type == 'emi':
+            a_init = np.max(fl_eff)-intercept_init
+        slope_init = 0
+        sigma_init = wv_range_size / 3.
+        mean_init = wv_line
+        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = gaussian + line
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
+        mean_total = model_fit[0].mean.value
+        sigma_total = model_fit[0].stddev.value
+        z_line = (mean_total / wv_line_vac) - 1.
+
         region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
         mask2d = self.get_new_2dmask(region_string)
         ##Find center guessing parameters
         spec_c = self.get_spec_spaxel(x_c,y_c)
         fl_c=spec_c.flux.value
         wv_c = spec_c.wavelength.value
+        sig_c = spec_total.sig.value
+        sig_eff = sig_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         wv_eff = wv_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
         fl_eff = fl_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
-        #### Define initial guessings
-        if type=='abs':
-            a_init = np.min(fl_eff)
-        if type == 'emi':
-            a_init = np.max(fl_eff)
-        n= len(wv_eff)
-        intercept_init = (fl_eff[0]+fl_eff[n-1])/2.
-        slope_ini = 0
-        sigma_ini=wv_range_size/2.
-        mean_ini = wv_line
-        gaussian = models.Gaussian1D(amplitude = a_init,mean=mean_ini,stddev=sigma_ini)
-        line = models.Linear1D(slope = slope_ini,intercept = intercept_init)
-        model_init = gaussian + line
-        fitter = fitting.SLSQPLSQFitter()
-        model_fit = fitter(model_init,wv_eff,fl_eff)
 
-        ####Initial guessings
-        init_a = model_fit[0].amplitude.value
-        init_sig = model_fit[0].stddev.value
-        init_mean=model_fit[0].mean.value
-        init_slope=model_fit[1].slope.value
-        init_intercept = model_fit[1].intercept.value
-        gaussian = models.Gaussian1D(amplitude=init_a, mean=init_mean, stddev=init_sig)
-        line = models.Linear1D(slope=init_slope, intercept=init_intercept)
-        model_init=gaussian+line
+        #### Define central gaussian_mean
+        wv_c_eff=wv_eff
+        fl_c_eff=fl_eff
+        fl_left = fl_eff[:3]
+        fl_right = fl_eff[-3:]
+        intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+        if type == 'abs':
+            a_init = np.min(fl_eff)-intercept_init
+        if type == 'emi':
+            a_init = np.max(fl_eff)-intercept_init
+        slope_init = 0
+        sigma_init = sigma_total
+        mean_init = wv_line
+        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = gaussian + line
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
+        mean_center = model_fit[0].mean.value
+        a_center=model_fit[0].amplitude.value
+        sigma_center=model_fit[0].stddev.value
+
 
         ##get spaxel in mask2d
-        y,x = np.where(mask2d==False)
+        y,x = np.where(~mask2d)
         n = len(x)
-        output_im=np.where(self.white_data==0,nan,nan)
+        output_im=np.where(self.white_data==0,np.nan,np.nan)
 
         for i in xrange(n):
             spec = self.get_spec_spaxel(x[i],y[i])
             wv = spec.wavelength.value
             fl = spec.flux.value
+            sig = spec_total.sig.value
+            sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
             wv_eff=wv[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
             fl_eff=fl[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
-            fitter = fitting.SLSQPLSQFitter()
-            model_fit = fitter(model_init,wv_eff,fl_eff)
+            fl_left=fl_eff[:3]
+            fl_right=fl_eff[-3:]
+            intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+            if type == 'abs':
+                a_init = np.min(fl_eff)-intercept_init
+            if type == 'emi':
+                a_init = np.max(fl_eff)-intercept_init
+            slope_init = 0
+            sigma_init = sigma_center
+            mean_init = mean_center
+            gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+            line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+            model_init = gaussian + line
+            fitter = fitting.LevMarLSQFitter()
+            model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
+            m = fitter.fit_info['param_cov']
+            residual = model_fit(wv_eff) - fl_eff
+            noise = np.std(residual)
             if test:
                 plt.figure()
-                plt.plot(wv_eff,fl_eff)
+                plt.plot(wv_c_eff,fl_c_eff,drawstyle = 'steps-mid',color='grey')
+                plt.plot(wv_eff,fl_eff,drawstyle = 'steps-mid')
                 plt.plot(wv_eff,model_fit(wv_eff))
-                raw_input('Enter to continue...')
+                plt.plot(wv_eff, residual, color='red')
+                m = fitter.fit_info['param_cov']
+                if m!=None:
+                    print 'Display Cov Matrix'
+                    plt.figure()
+                    plt.imshow(m,interpolation='none',vmin=0,vmax=15)
+                    plt.colorbar()
+                else:
+                    print 'Cov Matrix undefined'
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
-            if abs(amp)>=0.2 * init_a:
-                output_im[x[i]][y[i]]=init_mean-mean
+
+
+            if abs(amp) >=3*noise and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
+                if test:
+                    print 'Fit Aceptado'
+                    print str(x[i])+','+str(y[i])
+                units = u.km/u.s
+                vel = ltu.dv_from_z((mean/wv_line_vac) -1,z_line).to(units).value
+                output_im[x[i]][y[i]]=vel
+            else:
+                if test:
+                    print 'Fit Negado'
+                    print str(x[i]) + ',' + str(y[i])
+            if test:
+                print 'value of wv_dif = ' + str(mean_center - mean)
+                print 'amplitude = '+str(amp)
+                print 'noise = '+str(noise)
+                raw_input('Enter to continue...')
         return output_im
 
 
@@ -1047,6 +1141,17 @@ class MuseCube:
                                                                                radius[1],
                                                                                radius[2], color)
         return region_string
+
+    def wfrac_show_spaxels(self,frac,mask2d,smoothed_white):
+        y,x = np.where(~mask2d)
+        n = len(x)
+        im_white = smoothed_white[~mask2d]
+        fl_limit = np.percentile(im_white, (1. - frac) * 100.)
+        for i in xrange(n):
+            if smoothed_white[y[i]][x[i]]>=fl_limit:
+                plt.figure(self.n)
+                plt.plot(x[i],y[i],'o',color='Blue')
+
 
     def _test_3dmask(self, region_string, alpha=0.8, slice=0):
         complete_mask = self.get_new_3dmask(region_string)
@@ -1521,14 +1626,17 @@ class MuseCube:
 
     def clean_canvas(self):
         """
-        Clean everything from the canvas with the colapsed cube image
+        Clean everything from the canvas with the white image
         :param self:
         :return:
         """
         plt.figure(self.n)
         plt.clf()
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
+        if self.color:
+            self.gc2.show_colorscale(cmap=self.cmap,vmin=self.vmin,vmax=self.vmax)
+        else:
+            self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         plt.show()
 
     def create_table(self, input_file):
