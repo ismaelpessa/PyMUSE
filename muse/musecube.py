@@ -60,10 +60,10 @@ class MuseCube:
         self.filename_white = filename_white
         self.load_data()
         if not filename_white:
-            w_data = self.create_white(save=False).data
+            w_data = copy.deepcopy(self.create_white(save=False).data)
             
-            w_header_0 = self.header_0
-            w_header_1 = self.header_1
+            w_header_0 = copy.deepcopy(self.header_0)
+            w_header_1 = copy.deepcopy(self.header_1)
             for i in w_header_0.keys():
                 if '3' in i:
                     del w_header_0[i]
@@ -73,8 +73,8 @@ class MuseCube:
 
             #Con estos 'for' se elimina la tercera dimension de los datos.
             hdu = fits.HDUList()
-            hdu_0 = fits.PrimaryHDU(data=np.zeros(w_data.shape),header=self.header_0)
-            hdu_1 = fits.ImageHDU(data=w_data,header=self.header_1)
+            hdu_0 = fits.PrimaryHDU(header=self.header_1)
+            hdu_1 = fits.ImageHDU(data=w_data,header=self.header_0)
             hdu.append(hdu_0)
             hdu.append(hdu_1)
             #Lo agrego dos veces ya que en general se llama a la imagen como el segundo elemento de la lista, por ahora no se que deberia ir en la primera entrada.
@@ -108,8 +108,6 @@ class MuseCube:
         # for ivar weighting ; consider creating it in init ; takes long
         # self.flux_over_ivar = self.cube / self.stat
 
-        # wavelength array
-        self.wavelength = self.create_wavelength_array()
         self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
         self.header_0 = hdulist[0].header
     def get_smoothed_white(self, npix=2, save=True, **kwargs):
@@ -883,19 +881,17 @@ class MuseCube:
         plt.xlabel('Angstroms')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         return spec
-
-    def create_wavelength_array(self):
+    @property
+    def wavelength(self):
         """
         Creates the wavelength array for the spectrum. The values of dw, and limits will depend
         of the data and should be revised.
         :return: w: array[]
                  array which contain an evenly sampled wavelength range
         """
-        hdulist = fits.open(self.filename)
-        header = hdulist[1].header
-        dw = header['CD3_3']
-        w_ini = header['CRVAL3']
-        N = header['NAXIS3']
+        dw = self.header_1['CD3_3']
+        w_ini = self.header_1['CRVAL3']
+        N = self.header_1['NAXIS3']
         w_fin = w_ini + (N - 1) * dw
         # w_aux = w_ini + dw*np.arange(0, N) #todo: check whether w_aux and w are the same
         w = np.linspace(w_ini, w_fin, N)
@@ -1171,7 +1167,7 @@ class MuseCube:
         :param erase: if True, the individual frames will be erased after producing the video
         :return:
         """
-        wave = self.create_wavelength_array()
+        wave = self.wavelength
         n = len(wave)
         if initial_wavelength < wave[0]:
             print str(
@@ -1254,7 +1250,7 @@ class MuseCube:
         :return:
         """
 
-        w = self.create_wavelength_array()
+        w = self.wavelength
         filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
         condition = np.where(filter_curve > 0)[0]
         fitsname = 'new_image_' + _filter + '_filter.fits'
@@ -1335,7 +1331,7 @@ class MuseCube:
         :param new_white_fitsname: Name of the new image
         :return:
         """
-        wave = self.create_wavelength_array()
+        wave = self.wavelength
         n = len(wave)
         white_image = self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, stat=stat, save=save)
         return white_image
@@ -1760,18 +1756,13 @@ class MuseCube:
         y_center_pix = y_center
         radius_pix = radius
         return x_center_pix, y_center_pix, radius_pix
-
-    def size(self):
+    @property
+    def shape(self):
         """
-        Print the dimension size (x,y,lambda) of the datacube.
         :param self:
         :return:
         """
-        input = self.filename
-        hdulist = fits.open(input)
-        hdulist.info()
-        self.cube.data.shape
-
+        return self.cube.data.shape
     def substring(self, string, i, j):
         """
         Obtain a the substring of string, from index i to index j, both included
@@ -1802,7 +1793,7 @@ class MuseCube:
         :return:
         """
         OII = 3728.483
-        wave = self.create_wavelength_array()
+        wave = self.wavelength
         n = len(wave)
         w_max = wave[n - 1]
         max_z_allowed = (w_max / OII) - 1.
@@ -1856,7 +1847,7 @@ class MuseCube:
         :param width: width  in pixels of the emission lines
         :return:
         """
-        wave = self.create_wavelength_array()
+        wave = self.wavelength
         n = len(wave)
         w_max = wave[n - 1]
         w_min = wave[0]
