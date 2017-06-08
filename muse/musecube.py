@@ -25,7 +25,7 @@ import linetools.utils as ltu
 # spec = XSpectrum1D.from
 
 
-class MuseCube(ma):
+class MuseCube():
     """
     Class to handle VLT/MUSE data
 
@@ -98,7 +98,6 @@ class MuseCube(ma):
         hdulist = fits.open(self.filename)
         print("MuseCube: Loading the cube fluxes and variances...")
 
-        # import pdb; pdb.set_trace()
         self.cube = ma.MaskedArray(hdulist[1].data)
         self.stat = ma.MaskedArray(hdulist[2].data)
 
