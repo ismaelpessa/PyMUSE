@@ -25,7 +25,7 @@ import linetools.utils as ltu
 # spec = XSpectrum1D.from
 
 
-class MuseCube:
+class MuseCube(ma):
     """
     Class to handle VLT/MUSE data
 
