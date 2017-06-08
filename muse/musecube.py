@@ -920,7 +920,7 @@ class MuseCube():
             str_id = str(id_).zfill(3)
             spec_fits_name = str_id + '_' + regfile[:-4]
             if redmonster_format:
-                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_)
+                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=['mag_r','-'])
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
             print 'ID = ' + str_id + ' Ready!!'
