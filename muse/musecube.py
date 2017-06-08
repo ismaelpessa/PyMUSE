@@ -73,7 +73,6 @@ class MuseCube:
             for i in w_header_1.keys():
                 if '3' in i:
                     del w_header_1[i]
-
             #Con estos 'for' se elimina la tercera dimension de los datos.
             hdu = fits.HDUList()
 
@@ -202,8 +201,6 @@ class MuseCube:
                     import pdb
                     pdb.set_trace()
             cube_new[wv_ii, :, :] = smooth_ii
-            # import pdb; pdb.set_trace()
-
         hdulist = fits.open(self.filename)
         hdulist[1].data = cube_new.data
         prihdr = hdulist[0].header
@@ -987,9 +984,7 @@ class MuseCube:
         w_ini = self.header_1['CRVAL3']
         N = self.header_1['NAXIS3']
         w_fin = w_ini + (N - 1) * dw
-        # w_aux = w_ini + dw*np.arange(0, N) #todo: check whether w_aux and w are the same
         w = np.linspace(w_ini, w_fin, N)
-        # print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
         return w
 
     def __edit_header(self, hdulist, values_list,
@@ -1871,25 +1866,6 @@ class MuseCube:
         :return:
         """
         return self.cube.data.shape
-    def substring(self, string, i, j):
-        """
-        Obtain a the substring of string, from index i to index j, both included
-
-        :param self:
-        :param string: string
-                       input string
-        :param i: int
-                  initial index
-        :param j: int
-                  final index
-        :return: out: string
-                      output substring
-        """
-        out = ''
-        for k in xrange(i, j + 1):
-            out = out + string[k]
-        return out
-
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
