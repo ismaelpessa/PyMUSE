@@ -25,7 +25,7 @@ import linetools.utils as ltu
 # spec = XSpectrum1D.from
 
 
-class MuseCube():
+class MuseCube:
     """
     Class to handle VLT/MUSE data
 
@@ -1878,6 +1878,24 @@ class MuseCube():
         hdulist.info()
         self.cube.data.shape
 
+    def substring(self, string, i, j):
+        """
+        Obtain a the substring of string, from index i to index j, both included
+
+        :param self:
+        :param string: string
+                       input string
+        :param i: int
+                  initial index
+        :param j: int
+                  final index
+        :return: out: string
+                      output substring
+        """
+        out = ''
+        for k in xrange(i, j + 1):
+            out = out + string[k]
+        return out
 
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         """
