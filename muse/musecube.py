@@ -889,7 +889,7 @@ class MuseCube():
 
 
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
-                              id_start=1):
+                              id_start=1,coord_name=False):
         """
         Function used to save a set of spectra given by a DS9 regionfile "regfile"
         :param regfile: str. Name of the DS9 region file
@@ -903,6 +903,9 @@ class MuseCube():
         :param redmonster_format: If True, the specta will be saved in a redeable format for redmonster software
         :param id_start: int. Default = 1
                 Initial id assigned to diferent spectra
+        :param coord_name: Boolean, default = False
+                           If True, the spectra will be labeled with the coordinates that correspond to the first
+                           two coords of each region in the region file. Usefull for ellipses and circles.
         """
         r = pyregion.open(regfile)
         n = len(r)
@@ -919,6 +922,13 @@ class MuseCube():
             spec = self.spec_to_vacuum(spec)
             str_id = str(id_).zfill(3)
             spec_fits_name = str_id + '_' + regfile[:-4]
+            if coord_name:
+                r_aux=r[i]
+                x=r_aux.coord_list[0]
+                y=r_aux.coord_list[1]
+                x_world,y_world=self.p2w(x,y)
+                coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+                spec_fits_name = str_id + '_' + name_from_coord(coord)
             if redmonster_format:
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=['mag_r','-'])
             else:
