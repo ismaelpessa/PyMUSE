@@ -49,6 +49,7 @@ class MuseCube(np.ma.MaskedArray):
             XXXXXXXXXX
 
         """
+
         hdulist = fits.open(filename_cube)
         print("MuseCube: Loading the cube fluxes and variances...")
 
@@ -61,7 +62,6 @@ class MuseCube(np.ma.MaskedArray):
         data = np.empty((cube.shape[0],cube.shape[1],cube.shape[2],2))
         mask = np.empty((cube.shape[0],cube.shape[1],cube.shape[2],2))
 
-        print(data.shape)
         data[:,:,:,0] = cube
         data[:,:,:,1] = stat
         mask[:,:,:,0] = mask_init
@@ -70,9 +70,8 @@ class MuseCube(np.ma.MaskedArray):
         # for ivar weighting ; consider creating it in init ; takes long
         # self.flux_over_ivar = self.cube / self.stat
 
-        
-        print(self.__dict__.keys())
-        # init
+        self.cube = self[:,:,:,0]
+        self.stat = self[:,:,:,1] #Esto es para que las funciones sigan funcionando 
         self.color=False
         self.cmap=""
         self.vmin = vmin
@@ -107,16 +106,19 @@ class MuseCube(np.ma.MaskedArray):
             hdu.writeto('new_white.fits',clobber=True)
             self.filename_white = 'new_white.fits'
         self.filename_white = filename_white
-        self.white_data = fits.open(self.filename_white)[1].data
+        self.white_data = fits.open(self.filename_white)[1].data #Sirve para algo este atributo?
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
+       
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
+        
+
+
         gc.enable()
         plt.close(20)
         print("MuseCube: Ready!")
-        print(type(self))
         
         return self
     def color_gui(self,cmap):
