@@ -25,14 +25,14 @@ import linetools.utils as ltu
 # spec = XSpectrum1D.from
 
 
-class MuseCube(np.ma.MaskedArray):
+class MuseCube():
     """
     Class to handle VLT/MUSE data
 
     """
 
-    def __new__(cls, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air',**kwargs):
+    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air'):
         """
         Parameters
         ----------
@@ -50,28 +50,7 @@ class MuseCube(np.ma.MaskedArray):
 
         """
 
-        hdulist = fits.open(filename_cube)
-        print("MuseCube: Loading the cube fluxes and variances...")
-
-        cube = np.array(hdulist[1].data)
-        stat = np.array(hdulist[2].data)
-        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
-        # masking
-        mask_init = np.isnan(cube) | np.isnan(stat)
-
-        data = np.empty((cube.shape[0],cube.shape[1],cube.shape[2],2))
-        mask = np.empty((cube.shape[0],cube.shape[1],cube.shape[2],2))
-
-        data[:,:,:,0] = cube
-        data[:,:,:,1] = stat
-        mask[:,:,:,0] = mask_init
-        mask[:,:,:,1] = mask_init
-        self = super(MuseCube,cls).__new__(cls,data=data,mask=mask,**kwargs)
-        # for ivar weighting ; consider creating it in init ; takes long
-        # self.flux_over_ivar = self.cube / self.stat
-
-        self.cube = self[:,:,:,0]
-        self.stat = self[:,:,:,1] #Esto es para que las funciones sigan funcionando 
+        # init
         self.color=False
         self.cmap=""
         self.vmin = vmin
@@ -81,9 +60,8 @@ class MuseCube(np.ma.MaskedArray):
         self.wave_cal = wave_cal
         plt.close(self.n)
         self.filename = filename_cube
-        self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
-        self.header_0 = hdulist[0].header
-
+        self.filename_white = filename_white
+        self.load_data()
         if not filename_white:
             w_data = copy.deepcopy(self.create_white(save=False).data)
             
@@ -105,22 +83,36 @@ class MuseCube(np.ma.MaskedArray):
             hdu.append(hdu_1)
             hdu.writeto('new_white.fits',clobber=True)
             self.filename_white = 'new_white.fits'
-        self.filename_white = filename_white
-        self.white_data = fits.open(self.filename_white)[1].data #Sirve para algo este atributo?
+
+        self.white_data = fits.open(self.filename_white)[1].data
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
-       
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-        
-
-
         gc.enable()
         plt.close(20)
         print("MuseCube: Ready!")
-        
-        return self
+
+    def load_data(self):
+        hdulist = fits.open(self.filename)
+        print("MuseCube: Loading the cube fluxes and variances...")
+
+        self.cube = ma.MaskedArray(hdulist[1].data)
+        self.stat = ma.MaskedArray(hdulist[2].data)
+
+        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
+        # masking
+        self.mask_init = np.isnan(self.cube) | np.isnan(self.stat)
+        self.cube.mask = self.mask_init
+        self.stat.mask = self.mask_init
+
+        # for ivar weighting ; consider creating it in init ; takes long
+        # self.flux_over_ivar = self.cube / self.stat
+
+        self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
+        self.header_0 = hdulist[0].header
+
     def color_gui(self,cmap):
         """
         Function to change the cmap of the canvas
@@ -656,7 +648,7 @@ class MuseCube(np.ma.MaskedArray):
                     "Normalization factor is Negative!! (This probably means that you are extracting the spectrum where flux<0)")
             fl = fl * norm
             er = er * abs(norm)
-            print('normalization factor relative to total flux = ' + str(norm))
+            print 'normalization factor relative to total flux = ' + str(norm)
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
@@ -863,31 +855,31 @@ class MuseCube(np.ma.MaskedArray):
                 plt.plot(wv_eff, residual, color='red')
                 m = fitter.fit_info['param_cov']
                 if m!=None:
-                    print('Display Cov Matrix')
+                    print 'Display Cov Matrix'
                     plt.figure()
                     plt.imshow(m,interpolation='none',vmin=0,vmax=15)
                     plt.colorbar()
                 else:
-                    print('Cov Matrix undefined')
+                    print 'Cov Matrix undefined'
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
 
 
             if abs(amp) >=3*noise and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
                 if test:
-                    print('Fit Aceptado')
-                    print(str(x[i])+','+str(y[i]))
+                    print 'Fit Aceptado'
+                    print str(x[i])+','+str(y[i])
                 units = u.km/u.s
                 vel = ltu.dv_from_z((mean/wv_line_vac) -1,z_line).to(units).value
                 output_im[x[i]][y[i]]=vel
             else:
                 if test:
-                    print('Fit Negado')
-                    print(str(x[i]) + ',' + str(y[i]))
+                    print 'Fit Negado'
+                    print str(x[i]) + ',' + str(y[i])
             if test:
-                print('value of wv_dif = ' + str(mean_center - mean))
-                print('amplitude = '+str(amp))
-                print('noise = '+str(noise))
+                print 'value of wv_dif = ' + str(mean_center - mean)
+                print 'amplitude = '+str(amp)
+                print 'noise = '+str(noise)
                 raw_input('Enter to continue...')
         return output_im
 
@@ -941,7 +933,7 @@ class MuseCube(np.ma.MaskedArray):
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=['mag_r','-'])
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
-            print('ID = ' + str_id + ' Ready!!')
+            print 'ID = ' + str_id + ' Ready!!'
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, n_figure=2,
                                  save=False):
@@ -1266,7 +1258,7 @@ class MuseCube(np.ma.MaskedArray):
                     hdulist = fits.open(spec_fits_name + '.fits')
                     hdulist[0].header[mag_kwrd] = mag[i]
                     hdulist.writeto(spec_fits_name + '.fits', clobber=True)
-                print('ID = ' + str_id + ' Ready!!')
+                print 'ID = ' + str_id + ' Ready!!'
 
     def __read_files(self, input):
         path = input
@@ -1287,10 +1279,13 @@ class MuseCube(np.ma.MaskedArray):
         wave = self.wavelength
         n = len(wave)
         if initial_wavelength < wave[0]:
-            print(str(initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(wave[0]))
+            print str(
+                initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(
+                wave[0])
             initial_wavelength = wave[0]
         if final_wavelength > wave[n - 1]:
-            print(str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(wave[n - 1]))
+            print str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(
+                wave[n - 1])
             final_wavelength = wave[n - 1]
 
         images_names = []
@@ -1802,8 +1797,8 @@ class MuseCube(np.ma.MaskedArray):
             raise ValueError('Cannot trust the model, please try other imput parameters.')
 
         seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
-        print('FWHM={:.2f} (arcsecs)'.format(seeing))
-        print('stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec')))
+        print 'FWHM={:.2f} (arcsecs)'.format(seeing)
+        print 'stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec'))
         return seeing
 
     def w2p(self, xw, yw):
@@ -1873,6 +1868,13 @@ class MuseCube(np.ma.MaskedArray):
         y_center_pix = y_center
         radius_pix = radius
         return x_center_pix, y_center_pix, radius_pix
+    @property
+    def shape(self):
+        """
+        :param self:
+        :return:
+        """
+        return self.cube.data.shape
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
@@ -1889,13 +1891,14 @@ class MuseCube(np.ma.MaskedArray):
         w_max = wave[n - 1]
         max_z_allowed = (w_max / OII) - 1.
         if z_fin > max_z_allowed:
-            print('maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(z_fin))
+            print 'maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
+                z_fin)
             z_fin = max_z_allowed
         z_array = np.arange(z_ini, z_fin, dz)
         images_names = []
         fitsnames = []
         for z in z_array:
-            print('z = ' + str(z))
+            print 'z = ' + str(z)
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True)
