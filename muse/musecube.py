@@ -25,14 +25,14 @@ import linetools.utils as ltu
 # spec = XSpectrum1D.from
 
 
-class MuseCube():
+class MuseCube(np.ma.MaskedArray):
     """
     Class to handle VLT/MUSE data
 
     """
 
-    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air'):
+    def __new__(cls, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air',**kwargs):
         """
         Parameters
         ----------
@@ -50,7 +50,23 @@ class MuseCube():
 
         """
 
-        # init
+        hdulist = fits.open(filename_cube)
+        print("MuseCube: Loading the cube fluxes and variances...")
+
+        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
+        # masking
+
+        data = np.empty((np.array(hdulist[1].data).shape[0],np.array(hdulist[1].data).shape[1],np.array(hdulist[1].data).shape[2],2))
+        mask = np.empty((np.array(hdulist[1].data).shape[0],np.array(hdulist[1].data).shape[1],np.array(hdulist[1].data).shape[2],2))
+
+        data[:,:,:,0] = np.array(hdulist[1].data)
+        data[:,:,:,1] = np.array(hdulist[2].data)
+        mask[:,:,:,0] = np.isnan(np.array(hdulist[1].data)) | np.isnan(np.array(hdulist[2].data))
+        mask[:,:,:,1] = np.isnan(np.array(hdulist[1].data)) | np.isnan(np.array(hdulist[2].data))
+        self = super(MuseCube,cls).__new__(cls,data=data,mask=mask,**kwargs)
+        # for ivar weighting ; consider creating it in init ; takes long
+        # self.flux_over_ivar = self[:,:,:,0] / self[:,:,:,1]
+
         self.color=False
         self.cmap=""
         self.vmin = vmin
@@ -60,8 +76,9 @@ class MuseCube():
         self.wave_cal = wave_cal
         plt.close(self.n)
         self.filename = filename_cube
-        self.filename_white = filename_white
-        self.load_data()
+        self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
+        self.header_0 = hdulist[0].header
+
         if not filename_white:
             w_data = copy.deepcopy(self.create_white(save=False).data)
             
@@ -83,36 +100,22 @@ class MuseCube():
             hdu.append(hdu_1)
             hdu.writeto('new_white.fits',clobber=True)
             self.filename_white = 'new_white.fits'
-
-        self.white_data = fits.open(self.filename_white)[1].data
+        self.filename_white = filename_white
+        self.white_data = fits.open(self.filename_white)[1].data #Sirve para algo este atributo?
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
+       
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
+        hdulist.close() 
+
+
         gc.enable()
         plt.close(20)
         print("MuseCube: Ready!")
-
-    def load_data(self):
-        hdulist = fits.open(self.filename)
-        print("MuseCube: Loading the cube fluxes and variances...")
-
-        self.cube = ma.MaskedArray(hdulist[1].data)
-        self.stat = ma.MaskedArray(hdulist[2].data)
-
-        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
-        # masking
-        self.mask_init = np.isnan(self.cube) | np.isnan(self.stat)
-        self.cube.mask = self.mask_init
-        self.stat.mask = self.mask_init
-
-        # for ivar weighting ; consider creating it in init ; takes long
-        # self.flux_over_ivar = self.cube / self.stat
-
-        self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
-        self.header_0 = hdulist[0].header
-
+        
+        return self
     def color_gui(self,cmap):
         """
         Function to change the cmap of the canvas
@@ -180,11 +183,11 @@ class MuseCube():
         if not isinstance(npix, int):
             raise ValueError("npix must be integer.")
 
-        cube_new = copy.deepcopy(self.cube)
-        ntot = len(self.cube)
+        cube_new = copy.deepcopy(self[:,:,:,0])
+        ntot = len(self[:,:,:,0])
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii + 1, ntot))
-            image_aux = self.cube[wv_ii, :, :]
+            image_aux = self[:,:,:,0][wv_ii, :, :]
             smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
@@ -245,7 +248,7 @@ class MuseCube():
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        self.cube.mask = new_3dmask
+        self[:,:,:,0].mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
@@ -253,9 +256,9 @@ class MuseCube():
             weigths = ma.MaskedArray(fi.gaussian_filter(center, nsig))
             weigths.mask = mask
             weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))
-        self.cube.mask = self.mask_init
+            fl[wv_ii] = np.sum(self[:,:,:,0][wv_ii] * weigths)
+            sig[wv_ii] = np.sqrt(np.sum(self[:,:,:,1][wv_ii] * (weigths ** 2)))
+        self[:,:,:,0].mask = self[:,:,:,1].mask
         return XSpectrum1D.from_tuple((w, fl, sig))
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
@@ -279,8 +282,8 @@ class MuseCube():
         spec = np.zeros(n)
         sigma = np.zeros(n)
         for wv_ii in range(n):
-            spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
-            sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
+            spec[wv_ii] = self[:,:,:,0].data[wv_ii][int(y_c)][int(x_c)]
+            sigma[wv_ii] = np.sqrt(self[:,:,:,1].data[wv_ii][int(y_c)][int(x_c)])
         spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
@@ -394,7 +397,7 @@ class MuseCube():
         print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
-        complete_mask = self.mask_init + mask_inv
+        complete_mask = self[:,:,:,0].mask + mask_inv
         new_3dmask = np.where(complete_mask == 0, False, True)
         spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix, frac=frac)
         self.clean_canvas()
@@ -510,7 +513,7 @@ class MuseCube():
 
         Parameters
         ----------
-        new_3dmask : np.array of same shape as self.cube
+        new_3dmask : np.array of same shape as self[:,:,:,0]
             The 3D mask
         mode : str
             Mode for combining spaxels:
@@ -531,7 +534,7 @@ class MuseCube():
         """
         if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
-        if np.shape(new_3dmask) != np.shape(self.cube.mask):
+        if np.shape(new_3dmask) != np.shape(self[:,:,:,0].mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
 
         n = len(self.wavelength)
@@ -550,8 +553,8 @@ class MuseCube():
         warn = False
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
-            im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
-            im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
+            im_fl = self[:,:,:,0][wv_ii][~mask]  # this is a 1-d np.array()
+            im_var = self[:,:,:,1][wv_ii][~mask]  # this is a 1-d np.array()
 
             if len(im_fl) == 0:
                 fl[wv_ii] = 0
@@ -648,7 +651,7 @@ class MuseCube():
                     "Normalization factor is Negative!! (This probably means that you are extracting the spectrum where flux<0)")
             fl = fl * norm
             er = er * abs(norm)
-            print 'normalization factor relative to total flux = ' + str(norm)
+            print('normalization factor relative to total flux = ' + str(norm))
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
@@ -748,7 +751,7 @@ class MuseCube():
 
     def region_3dmask(self, r):
         mask2d = self.region_2dmask(r)
-        complete_mask_new = mask2d + self.mask_init
+        complete_mask_new = mask2d + self[:,:,:,0].mask
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
@@ -855,31 +858,31 @@ class MuseCube():
                 plt.plot(wv_eff, residual, color='red')
                 m = fitter.fit_info['param_cov']
                 if m!=None:
-                    print 'Display Cov Matrix'
+                    print('Display Cov Matrix')
                     plt.figure()
                     plt.imshow(m,interpolation='none',vmin=0,vmax=15)
                     plt.colorbar()
                 else:
-                    print 'Cov Matrix undefined'
+                    print('Cov Matrix undefined')
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
 
 
             if abs(amp) >=3*noise and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
                 if test:
-                    print 'Fit Aceptado'
-                    print str(x[i])+','+str(y[i])
+                    print('Fit Aceptado')
+                    print(str(x[i])+','+str(y[i]))
                 units = u.km/u.s
                 vel = ltu.dv_from_z((mean/wv_line_vac) -1,z_line).to(units).value
                 output_im[x[i]][y[i]]=vel
             else:
                 if test:
-                    print 'Fit Negado'
-                    print str(x[i]) + ',' + str(y[i])
+                    print('Fit Negado')
+                    print(str(x[i]) + ',' + str(y[i]))
             if test:
-                print 'value of wv_dif = ' + str(mean_center - mean)
-                print 'amplitude = '+str(amp)
-                print 'noise = '+str(noise)
+                print('value of wv_dif = ' + str(mean_center - mean))
+                print('amplitude = '+str(amp))
+                print('noise = '+str(noise))
                 raw_input('Enter to continue...')
         return output_im
 
@@ -933,7 +936,7 @@ class MuseCube():
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=['mag_r','-'])
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
-            print 'ID = ' + str_id + ' Ready!!'
+            print('ID = ' + str_id + ' Ready!!')
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, n_figure=2,
                                  save=False):
@@ -1195,7 +1198,7 @@ class MuseCube():
 
         """
         mask2d = self.get_new_2dmask(region_string)
-        complete_mask_new = mask2d + self.mask_init
+        complete_mask_new = mask2d + self[:,:,:,0].mask
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
         return complete_mask_new
@@ -1258,7 +1261,7 @@ class MuseCube():
                     hdulist = fits.open(spec_fits_name + '.fits')
                     hdulist[0].header[mag_kwrd] = mag[i]
                     hdulist.writeto(spec_fits_name + '.fits', clobber=True)
-                print 'ID = ' + str_id + ' Ready!!'
+                print('ID = ' + str_id + ' Ready!!')
 
     def __read_files(self, input):
         path = input
@@ -1279,13 +1282,10 @@ class MuseCube():
         wave = self.wavelength
         n = len(wave)
         if initial_wavelength < wave[0]:
-            print str(
-                initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(
-                wave[0])
+            print(str(initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(wave[0]))
             initial_wavelength = wave[0]
         if final_wavelength > wave[n - 1]:
-            print str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(
-                wave[n - 1])
+            print(str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(wave[n - 1]))
             final_wavelength = wave[n - 1]
 
         images_names = []
@@ -1338,15 +1338,15 @@ class MuseCube():
             ind_min = np.min(wv_inds)
             ind_max = np.max(wv_inds)
             if stat:
-                sub_cube = self.stat[ind_min:ind_max, :, :]
+                sub_cube = self[:,:,:,1][ind_min:ind_max, :, :]
             else:
-                sub_cube = self.cube[ind_min:ind_max, :, :]
+                sub_cube = self[:,:,:,0][ind_min:ind_max, :, :]
         else:  # assuming array-like for wv_input
             wv_inds = self.find_wv_inds(wv_input)
             if stat:
-                sub_cube = self.stat[wv_inds, :, :]
+                sub_cube = self[:,:,:,1][wv_inds, :, :]
             else:
-                sub_cube = self.cube[wv_inds, :, :]
+                sub_cube = self[:,:,:,0][wv_inds, :, :]
         return sub_cube
 
     def get_filtered_image(self, _filter='r', save=True, n_figure=5):
@@ -1363,7 +1363,7 @@ class MuseCube():
         filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
         condition = np.where(filter_curve > 0)[0]
         fitsname = 'new_image_' + _filter + '_filter.fits'
-        sub_cube = self.cube[condition]
+        sub_cube = self[:,:,:,0][condition]
         filter_curve_final = filter_curve[condition]
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
         new_shape = filter_curve_final.shape + (1,) * extra_dims
@@ -1741,16 +1741,16 @@ class MuseCube():
         fl = np.zeros(n)
         sig = np.zeros(n)
         new_3dmask = self.get_new_3dmask(region_string)
-        self.cube.mask = new_3dmask
+        self[:,:,:,0].mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             weights.mask = mask
             # n_spaxels = np.sum(mask)
             weights = weights / np.sum(weights)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weights)  # * n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
+            fl[wv_ii] = np.sum(self[:,:,:,0][wv_ii] * weights)  # * n_spaxels
+            sig[wv_ii] = np.sqrt(np.sum(self[:,:,:,1][wv_ii] * (weights ** 2)))  # * n_spaxels
         # reset mask
-        self.cube.mask = self.mask_init
+        self[:,:,:,0].mask = self[:,:,:,1].mask
 
         # renormalize
         fl_sum = spec_sum.flux.value
@@ -1797,8 +1797,8 @@ class MuseCube():
             raise ValueError('Cannot trust the model, please try other imput parameters.')
 
         seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
-        print 'FWHM={:.2f} (arcsecs)'.format(seeing)
-        print 'stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec'))
+        print('FWHM={:.2f} (arcsecs)'.format(seeing))
+        print('stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec')))
         return seeing
 
     def w2p(self, xw, yw):
@@ -1868,13 +1868,6 @@ class MuseCube():
         y_center_pix = y_center
         radius_pix = radius
         return x_center_pix, y_center_pix, radius_pix
-    @property
-    def shape(self):
-        """
-        :param self:
-        :return:
-        """
-        return self.cube.data.shape
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
@@ -1891,14 +1884,13 @@ class MuseCube():
         w_max = wave[n - 1]
         max_z_allowed = (w_max / OII) - 1.
         if z_fin > max_z_allowed:
-            print 'maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
-                z_fin)
+            print('maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(z_fin))
             z_fin = max_z_allowed
         z_array = np.arange(z_ini, z_fin, dz)
         images_names = []
         fitsnames = []
         for z in z_array:
-            print 'z = ' + str(z)
+            print('z = ' + str(z))
             ranges = self.create_ranges(z)
             filename = 'emission_linea_image_redshif_' + str(z) + '_'
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True)
