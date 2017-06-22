@@ -929,7 +929,7 @@ class MuseCube:
                 y = r_aux.coord_list[1]
                 x_world, y_world = self.p2w(x, y)
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
-            spec_fits_name = str_id + '_' + name_from_coord(coord)
+                spec_fits_name = str_id + '_' + name_from_coord(coord)
             if redmonster_format:
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=['mag_r','-'])
             else:
