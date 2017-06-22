@@ -50,25 +50,7 @@ class MuseCube():
 
         """
 
-
-        hdulist = fits.open(filename_cube)
-        print("MuseCube: Loading the cube fluxes and variances...")
-
-        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
-        # masking
-
-        data = np.empty((np.array(hdulist[1].data).shape[0],np.array(hdulist[1].data).shape[1],np.array(hdulist[1].data).shape[2],2))
-        mask = np.empty((np.array(hdulist[1].data).shape[0],np.array(hdulist[1].data).shape[1],np.array(hdulist[1].data).shape[2],2))
-
-        data[:,:,:,0] = np.array(hdulist[1].data)
-        data[:,:,:,1] = np.array(hdulist[2].data)
-        mask[:,:,:,0] = np.isnan(np.array(hdulist[1].data)) | np.isnan(np.array(hdulist[2].data))
-        mask[:,:,:,1] = np.isnan(np.array(hdulist[1].data)) | np.isnan(np.array(hdulist[2].data))
-        self = super(MuseCube,cls).__new__(cls,data=data,mask=mask,**kwargs)
-        # for ivar weighting ; consider creating it in init ; takes long
-        # self.flux_over_ivar = self[:,:,:,0] / self[:,:,:,1]
-
-
+        # init
         self.color=False
         self.cmap=""
         self.vmin = vmin
@@ -108,10 +90,6 @@ class MuseCube():
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-
-        hdulist.close() 
-
-
         gc.enable()
         plt.close(20)
         print("MuseCube: Ready!")
@@ -202,11 +180,11 @@ class MuseCube():
         if not isinstance(npix, int):
             raise ValueError("npix must be integer.")
 
-        cube_new = copy.deepcopy(self[:,:,:,0])
-        ntot = len(self[:,:,:,0])
+        cube_new = copy.deepcopy(self.cube)
+        ntot = len(self.cube)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii + 1, ntot))
-            image_aux = self[:,:,:,0][wv_ii, :, :]
+            image_aux = self.cube[wv_ii, :, :]
             smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
@@ -267,7 +245,7 @@ class MuseCube():
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        self[:,:,:,0].mask = new_3dmask
+        self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
@@ -275,9 +253,9 @@ class MuseCube():
             weigths = ma.MaskedArray(fi.gaussian_filter(center, nsig))
             weigths.mask = mask
             weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self[:,:,:,0][wv_ii] * weigths)
-            sig[wv_ii] = np.sqrt(np.sum(self[:,:,:,1][wv_ii] * (weigths ** 2)))
-        self[:,:,:,0].mask = self[:,:,:,1].mask
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))
+        self.cube.mask = self.mask_init
         return XSpectrum1D.from_tuple((w, fl, sig))
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
@@ -301,8 +279,8 @@ class MuseCube():
         spec = np.zeros(n)
         sigma = np.zeros(n)
         for wv_ii in range(n):
-            spec[wv_ii] = self[:,:,:,0].data[wv_ii][int(y_c)][int(x_c)]
-            sigma[wv_ii] = np.sqrt(self[:,:,:,1].data[wv_ii][int(y_c)][int(x_c)])
+            spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
+            sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
         spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
@@ -416,7 +394,7 @@ class MuseCube():
         print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
-        complete_mask = self[:,:,:,0].mask + mask_inv
+        complete_mask = self.mask_init + mask_inv
         new_3dmask = np.where(complete_mask == 0, False, True)
         spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix, frac=frac)
         self.clean_canvas()
@@ -532,7 +510,7 @@ class MuseCube():
 
         Parameters
         ----------
-        new_3dmask : np.array of same shape as self[:,:,:,0]
+        new_3dmask : np.array of same shape as self.cube
             The 3D mask
         mode : str
             Mode for combining spaxels:
@@ -553,7 +531,7 @@ class MuseCube():
         """
         if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
-        if np.shape(new_3dmask) != np.shape(self[:,:,:,0].mask):
+        if np.shape(new_3dmask) != np.shape(self.cube.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
 
         n = len(self.wavelength)
@@ -572,8 +550,8 @@ class MuseCube():
         warn = False
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
-            im_fl = self[:,:,:,0][wv_ii][~mask]  # this is a 1-d np.array()
-            im_var = self[:,:,:,1][wv_ii][~mask]  # this is a 1-d np.array()
+            im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
+            im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
             if len(im_fl) == 0:
                 fl[wv_ii] = 0
@@ -770,7 +748,7 @@ class MuseCube():
 
     def region_3dmask(self, r):
         mask2d = self.region_2dmask(r)
-        complete_mask_new = mask2d + self[:,:,:,0].mask
+        complete_mask_new = mask2d + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
@@ -1217,7 +1195,7 @@ class MuseCube():
 
         """
         mask2d = self.get_new_2dmask(region_string)
-        complete_mask_new = mask2d + self[:,:,:,0].mask
+        complete_mask_new = mask2d + self.mask_init
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         self.draw_pyregion(region_string)
         return complete_mask_new
@@ -1360,15 +1338,15 @@ class MuseCube():
             ind_min = np.min(wv_inds)
             ind_max = np.max(wv_inds)
             if stat:
-                sub_cube = self[:,:,:,1][ind_min:ind_max, :, :]
+                sub_cube = self.stat[ind_min:ind_max, :, :]
             else:
-                sub_cube = self[:,:,:,0][ind_min:ind_max, :, :]
+                sub_cube = self.cube[ind_min:ind_max, :, :]
         else:  # assuming array-like for wv_input
             wv_inds = self.find_wv_inds(wv_input)
             if stat:
-                sub_cube = self[:,:,:,1][wv_inds, :, :]
+                sub_cube = self.stat[wv_inds, :, :]
             else:
-                sub_cube = self[:,:,:,0][wv_inds, :, :]
+                sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
     def get_filtered_image(self, _filter='r', save=True, n_figure=5):
@@ -1385,7 +1363,7 @@ class MuseCube():
         filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
         condition = np.where(filter_curve > 0)[0]
         fitsname = 'new_image_' + _filter + '_filter.fits'
-        sub_cube = self[:,:,:,0][condition]
+        sub_cube = self.cube[condition]
         filter_curve_final = filter_curve[condition]
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
         new_shape = filter_curve_final.shape + (1,) * extra_dims
@@ -1763,16 +1741,16 @@ class MuseCube():
         fl = np.zeros(n)
         sig = np.zeros(n)
         new_3dmask = self.get_new_3dmask(region_string)
-        self[:,:,:,0].mask = new_3dmask
+        self.cube.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             weights.mask = mask
             # n_spaxels = np.sum(mask)
             weights = weights / np.sum(weights)
-            fl[wv_ii] = np.sum(self[:,:,:,0][wv_ii] * weights)  # * n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self[:,:,:,1][wv_ii] * (weights ** 2)))  # * n_spaxels
+            fl[wv_ii] = np.sum(self.cube[wv_ii] * weights)  # * n_spaxels
+            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
         # reset mask
-        self[:,:,:,0].mask = self[:,:,:,1].mask
+        self.cube.mask = self.mask_init
 
         # renormalize
         fl_sum = spec_sum.flux.value
