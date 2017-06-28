@@ -893,7 +893,7 @@ class MuseCube:
 
 
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
-                              id_start=1,coord_name=False):
+                              id_start=1,coord_name=False, debug=False):
         """
         Function used to save a set of spectra given by a DS9 regionfile "regfile"
         :param regfile: str. Name of the DS9 region file
@@ -931,7 +931,11 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = str_id + '_' + name_from_coord(coord)
             if redmonster_format:
-                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=['mag_r','-'])
+                if debug:
+                    mag_tuple=['mag_r','-']
+                else:
+                    mag_tuple=None
+                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=mag_tuple)
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
             print 'ID = ' + str_id + ' Ready!!'
