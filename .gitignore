@@ -2,9 +2,3 @@
 *.pyc
 *.gz
 *.zip
-.DS_Store
-.ipynb_checkpoints
-Untitled.ipynb
-build
-dist
-muse.egg-info
