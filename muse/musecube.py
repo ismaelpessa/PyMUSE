@@ -1,25 +1,26 @@
 import copy
 import gc
 import glob
-import math as m
 import os
 import warnings
-from astropy.modeling import models, fitting
+
 import aplpy
-import muse.utils as mcu
+import linetools.utils as ltu
 import numpy as np
 import numpy.ma as ma
 import pyregion
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
+from astropy.modeling import models, fitting
 from astropy.utils import isiterable
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
-import linetools.utils as ltu
+
+import muse.utils as mcu
 
 
 # spec = XSpectrum1D.from
@@ -51,8 +52,8 @@ class MuseCube:
         """
 
         # init
-        self.color=False
-        self.cmap=""
+        self.color = False
+        self.cmap = ""
         self.vmin = vmin
         self.vmax = vmax
         self.flux_units = flux_units
@@ -64,7 +65,7 @@ class MuseCube:
         self.load_data()
         if not filename_white:
             w_data = copy.deepcopy(self.create_white(save=False).data)
-            
+
             w_header_0 = copy.deepcopy(self.header_0)
             w_header_1 = copy.deepcopy(self.header_1)
             for i in w_header_0.keys():
@@ -74,15 +75,15 @@ class MuseCube:
                 if '3' in i:
                     del w_header_1[i]
 
-            #Con estos 'for' se elimina la tercera dimension de los datos.
+            # Con estos 'for' se elimina la tercera dimension de los datos.
             hdu = fits.HDUList()
 
             hdu_0 = fits.PrimaryHDU(header=self.header_1)
-            hdu_1 = fits.ImageHDU(data=w_data,header=self.header_0)
+            hdu_1 = fits.ImageHDU(data=w_data, header=self.header_0)
 
             hdu.append(hdu_0)
             hdu.append(hdu_1)
-            hdu.writeto('new_white.fits',clobber=True)
+            hdu.writeto('new_white.fits', clobber=True)
             self.filename_white = 'new_white.fits'
 
         self.white_data = fits.open(self.filename_white)[1].data
@@ -112,22 +113,23 @@ class MuseCube:
         # for ivar weighting ; consider creating it in init ; takes long
         # self.flux_over_ivar = self.cube / self.stat
 
-        self.header_1 = hdulist[1].header # Necesito el header para crear una buena copia del white.
+        self.header_1 = hdulist[1].header  # Necesito el header para crear una buena copia del white.
         self.header_0 = hdulist[0].header
 
-    def color_gui(self,cmap):
+    def color_gui(self, cmap):
         """
         Function to change the cmap of the canvas
         :param cmap: string. matplotlib's color map. cmap = 'none' to gray scale again
         :return:
         """
-        if cmap=='none':
-            self.color=False
-            self.cmap=""
+        if cmap == 'none':
+            self.color = False
+            self.cmap = ""
         else:
-            self.color=True
-            self.cmap=cmap
+            self.color = True
+            self.cmap = cmap
         self.clean_canvas()
+
     def get_smoothed_white(self, npix=2, save=True, **kwargs):
         """Gets an smoothed version (Gaussian of sig=npix)
         of the white image. If save is True, it writes a file
@@ -233,14 +235,14 @@ class MuseCube:
                 image[j2][i2] = data_white[j][i]
         return image
 
-    def get_weighted_spec_circular_aperture(self, x_c, y_c, radius, nsig=4):
+    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4):
         """
         Function to extract the spectrum of a circular aperture defined by x_c, y_c and radius in spaxel space.
         The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = nsig
         :param x_c: x coordinate of the center of the aperture (spaxel)
         :param y_c: y coordiante of the center of the aperture (spaxel)
         :param radius: radius of the circular aperture
-        :param nsig: standard deviation of the gaussian
+        :param seeing: standard deviation of the gaussian in spaxels
         :return: XSpectrum1D object
         """
         import scipy.ndimage.filters as fi
@@ -254,7 +256,7 @@ class MuseCube:
             mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
             center[y_c][x_c] = 1
-            weigths = ma.MaskedArray(fi.gaussian_filter(center, nsig))
+            weigths = ma.MaskedArray(fi.gaussian_filter(center, seeing))
             weigths.mask = mask
             weigths = weigths / np.sum(weigths)
             fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
@@ -335,7 +337,7 @@ class MuseCube:
         :return: spec: XSpectrum1D object
         """
         if mode == 'gaussian':
-            spec = self.get_weighted_spec(x_c=x_c, y_c=y_c, params=params)
+            spec = self.get_gaussian_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
             new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
@@ -475,7 +477,7 @@ class MuseCube:
 
         """
         if mode == 'gaussian':
-            spec = self.get_weighted_spec(region_string_=region_string)
+            spec = self.get_gaussian_weighted_spec(region_string_=region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
@@ -549,8 +551,8 @@ class MuseCube:
             if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
             elif mode == 'wfrac':
-                mask2d=new_3dmask[0]
-                self.wfrac_show_spaxels(frac=frac,mask2d=mask2d,smoothed_white=smoothed_white)
+                mask2d = new_3dmask[0]
+                self.wfrac_show_spaxels(frac=frac, mask2d=mask2d, smoothed_white=smoothed_white)
         warn = False
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
@@ -656,8 +658,8 @@ class MuseCube:
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
-    def get_spec_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.1,
-                       save=False, empirical_std=False):
+    def get_spec_and_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.1,
+                           save=False, empirical_std=False):
 
         """
         Function to Get a spectrum and an image of the selected source.
@@ -756,14 +758,15 @@ class MuseCube:
         complete_mask_new = np.where(complete_mask_new != 0, True, False)
         mask3d = complete_mask_new
         return mask3d
-    def compute_kinematics(self,x_c,y_c,params,wv_line_vac,wv_range_size=35,type='abs',test=False,z=0):
+
+    def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0):
         ##Get the integrated spec fit, and estimate the 0 velocity wv from there
         wv_line = wv_line_vac * (1 + z)
         dwmax = 10
-        spec_total = self.get_spec_from_ellipse_params(x_c,y_c,params,mode='wwm')
+        spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
-        sig_t=spec_total.sig.value
+        sig_t = spec_total.sig.value
         sig_eff = sig_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
         wv_eff = wv_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
         fl_eff = fl_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
@@ -771,9 +774,9 @@ class MuseCube:
         fl_right = fl_eff[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
         if type == 'abs':
-            a_init = np.min(fl_eff)-intercept_init
+            a_init = np.min(fl_eff) - intercept_init
         if type == 'emi':
-            a_init = np.max(fl_eff)-intercept_init
+            a_init = np.max(fl_eff) - intercept_init
         slope_init = 0
         sigma_init = wv_range_size / 3.
         mean_init = wv_line
@@ -781,16 +784,16 @@ class MuseCube:
         line = models.Linear1D(slope=slope_init, intercept=intercept_init)
         model_init = gaussian + line
         fitter = fitting.LevMarLSQFitter()
-        model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
+        model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
         mean_total = model_fit[0].mean.value
         sigma_total = model_fit[0].stddev.value
         z_line = (mean_total / wv_line_vac) - 1.
 
-        region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
         mask2d = self.get_new_2dmask(region_string)
         ##Find center guessing parameters
-        spec_c = self.get_spec_spaxel(x_c,y_c)
-        fl_c=spec_c.flux.value
+        spec_c = self.get_spec_spaxel(x_c, y_c)
+        fl_c = spec_c.flux.value
         wv_c = spec_c.wavelength.value
         sig_c = spec_total.sig.value
         sig_eff = sig_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
@@ -798,15 +801,15 @@ class MuseCube:
         fl_eff = fl_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
 
         #### Define central gaussian_mean
-        wv_c_eff=wv_eff
-        fl_c_eff=fl_eff
+        wv_c_eff = wv_eff
+        fl_c_eff = fl_eff
         fl_left = fl_eff[:3]
         fl_right = fl_eff[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
         if type == 'abs':
-            a_init = np.min(fl_eff)-intercept_init
+            a_init = np.min(fl_eff) - intercept_init
         if type == 'emi':
-            a_init = np.max(fl_eff)-intercept_init
+            a_init = np.max(fl_eff) - intercept_init
         slope_init = 0
         sigma_init = sigma_total
         mean_init = wv_line
@@ -814,32 +817,31 @@ class MuseCube:
         line = models.Linear1D(slope=slope_init, intercept=intercept_init)
         model_init = gaussian + line
         fitter = fitting.LevMarLSQFitter()
-        model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
+        model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
         mean_center = model_fit[0].mean.value
-        a_center=model_fit[0].amplitude.value
-        sigma_center=model_fit[0].stddev.value
-
+        a_center = model_fit[0].amplitude.value
+        sigma_center = model_fit[0].stddev.value
 
         ##get spaxel in mask2d
-        y,x = np.where(~mask2d)
+        y, x = np.where(~mask2d)
         n = len(x)
-        output_im=np.where(self.white_data==0,np.nan,np.nan)
+        output_im = np.where(self.white_data == 0, np.nan, np.nan)
 
         for i in xrange(n):
-            spec = self.get_spec_spaxel(x[i],y[i])
+            spec = self.get_spec_spaxel(x[i], y[i])
             wv = spec.wavelength.value
             fl = spec.flux.value
             sig = spec_total.sig.value
             sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-            wv_eff=wv[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
-            fl_eff=fl[np.where(np.logical_and(wv>=wv_line-wv_range_size, wv<=wv_line+wv_range_size))]
-            fl_left=fl_eff[:3]
-            fl_right=fl_eff[-3:]
+            wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+            fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+            fl_left = fl_eff[:3]
+            fl_right = fl_eff[-3:]
             intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
             if type == 'abs':
-                a_init = np.min(fl_eff)-intercept_init
+                a_init = np.min(fl_eff) - intercept_init
             if type == 'emi':
-                a_init = np.max(fl_eff)-intercept_init
+                a_init = np.max(fl_eff) - intercept_init
             slope_init = 0
             sigma_init = sigma_center
             mean_init = mean_center
@@ -847,53 +849,47 @@ class MuseCube:
             line = models.Linear1D(slope=slope_init, intercept=intercept_init)
             model_init = gaussian + line
             fitter = fitting.LevMarLSQFitter()
-            model_fit = fitter(model_init, wv_eff, fl_eff,weights=sig_eff/np.sum(sig_eff))
+            model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
             m = fitter.fit_info['param_cov']
             residual = model_fit(wv_eff) - fl_eff
             noise = np.std(residual)
-            if test:
+            if debug:
                 plt.figure()
-                plt.plot(wv_c_eff,fl_c_eff,drawstyle = 'steps-mid',color='grey')
-                plt.plot(wv_eff,fl_eff,drawstyle = 'steps-mid')
-                plt.plot(wv_eff,model_fit(wv_eff))
+                plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey')
+                plt.plot(wv_eff, fl_eff, drawstyle='steps-mid')
+                plt.plot(wv_eff, model_fit(wv_eff))
                 plt.plot(wv_eff, residual, color='red')
                 m = fitter.fit_info['param_cov']
-                if m!=None:
+                if m != None:
                     print 'Display Cov Matrix'
                     plt.figure()
-                    plt.imshow(m,interpolation='none',vmin=0,vmax=15)
+                    plt.imshow(m, interpolation='none', vmin=0, vmax=15)
                     plt.colorbar()
                 else:
                     print 'Cov Matrix undefined'
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
 
-
-            if abs(amp) >=3*noise and (a_center*amp>0) and abs(mean_center-mean)<=dwmax:
-                if test:
+            if abs(amp) >= 3 * noise and (a_center * amp > 0) and abs(mean_center - mean) <= dwmax:
+                if debug:
                     print 'Fit Aceptado'
-                    print str(x[i])+','+str(y[i])
-                units = u.km/u.s
-                vel = ltu.dv_from_z((mean/wv_line_vac) -1,z_line).to(units).value
-                output_im[x[i]][y[i]]=vel
+                    print str(x[i]) + ',' + str(y[i])
+                units = u.km / u.s
+                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z_line).to(units).value
+                output_im[x[i]][y[i]] = vel
             else:
-                if test:
+                if debug:
                     print 'Fit Negado'
                     print str(x[i]) + ',' + str(y[i])
-            if test:
+            if debug:
                 print 'value of wv_dif = ' + str(mean_center - mean)
-                print 'amplitude = '+str(amp)
-                print 'noise = '+str(noise)
+                print 'amplitude = ' + str(amp)
+                print 'noise = ' + str(noise)
                 raw_input('Enter to continue...')
         return output_im
 
-
-
-
-
-
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
-                              id_start=1,coord_name=False, debug=False):
+                              id_start=1, coord_name=False, debug=False):
         """
         Function used to save a set of spectra given by a DS9 regionfile "regfile"
         :param regfile: str. Name of the DS9 region file
@@ -932,10 +928,10 @@ class MuseCube:
                 spec_fits_name = str_id + '_' + name_from_coord(coord)
             if redmonster_format:
                 if debug:
-                    mag_tuple=['mag_r','-']
+                    mag_tuple = ['mag_r', '-']
                 else:
-                    mag_tuple=None
-                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_,mag=mag_tuple)
+                    mag_tuple = None
+                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_, mag=mag_tuple)
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
             print 'ID = ' + str_id + ' Ready!!'
@@ -986,6 +982,7 @@ class MuseCube:
         plt.xlabel('Angstroms')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         return spec
+
     @property
     def wavelength(self):
         """
@@ -1153,16 +1150,15 @@ class MuseCube:
                                                                                radius[2], color)
         return region_string
 
-    def wfrac_show_spaxels(self,frac,mask2d,smoothed_white):
-        y,x = np.where(~mask2d)
+    def wfrac_show_spaxels(self, frac, mask2d, smoothed_white):
+        y, x = np.where(~mask2d)
         n = len(x)
         im_white = smoothed_white[~mask2d]
         fl_limit = np.percentile(im_white, (1. - frac) * 100.)
         for i in xrange(n):
-            if smoothed_white[y[i]][x[i]]>=fl_limit:
+            if smoothed_white[y[i]][x[i]] >= fl_limit:
                 plt.figure(self.n)
-                plt.plot(x[i],y[i],'o',color='Blue')
-
+                plt.plot(x[i], y[i], 'o', color='Blue')
 
     def _test_3dmask(self, region_string, alpha=0.8, slice=0):
         complete_mask = self.get_new_3dmask(region_string)
@@ -1417,7 +1413,7 @@ class MuseCube:
                  n             : The number of element in the wavelength space inside the ranges
         """
         wv_inds = self.find_wv_inds(range)
-        n = len(wv_inds)
+        n = wv_inds[1] - wv_inds[0]
         wv_inds_sup = wv_inds + n
         wv_inds_inf = wv_inds - n
         cont_range_inf = (wv_inds_inf[0], wv_inds_inf[n - 1])
@@ -1645,7 +1641,7 @@ class MuseCube:
         plt.clf()
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         if self.color:
-            self.gc2.show_colorscale(cmap=self.cmap,vmin=self.vmin,vmax=self.vmax)
+            self.gc2.show_colorscale(cmap=self.cmap, vmin=self.vmin, vmax=self.vmax)
         else:
             self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         plt.show()
@@ -1677,7 +1673,7 @@ class MuseCube:
         data = table[keyword]
         return data
 
-    def get_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None, coord_system='pix'):
+    def get_gaussian_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None, coord_system='pix'):
         """
         Function that extract the spectrum from an aperture defined either by elliptical parameters or  by an elliptical region defined by region_string in ds9 format
         :param x_c: x_coordinate of the center of the aperture
@@ -1712,7 +1708,6 @@ class MuseCube:
 
         new_mask = self.get_mini_cube_mask_from_ellipse_params(x_center, y_center, params)
         spec_sum = self.spec_from_minicube_mask(new_mask, mode='sum')
-
 
         halfsize = [a, b]
         if region_string_ == None:
@@ -1875,6 +1870,7 @@ class MuseCube:
         y_center_pix = y_center
         radius_pix = radius
         return x_center_pix, y_center_pix, radius_pix
+
     @property
     def shape(self):
         """
@@ -1882,6 +1878,7 @@ class MuseCube:
         :return:
         """
         return self.cube.data.shape
+
     def substring(self, string, i, j):
         """
         Obtain a the substring of string, from index i to index j, both included
@@ -1914,7 +1911,7 @@ class MuseCube:
         OII = 3728.483
         wave = self.wavelength
         n = len(wave)
-        w_max = wave[n - 1]
+        w_max = wave[n - 1 - 20]
         max_z_allowed = (w_max / OII) - 1.
         if z_fin > max_z_allowed:
             print 'maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
@@ -1926,7 +1923,7 @@ class MuseCube:
         for z in z_array:
             print 'z = ' + str(z)
             ranges = self.create_ranges(z)
-            filename = 'emission_linea_image_redshif_' + str(z) + '_'
+            filename = 'emission_line_image_redshif_' + str(z) + '_'
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
@@ -1959,11 +1956,11 @@ class MuseCube:
         """
         raise NotImplementedError()
 
-    def create_ranges(self, z, width=5.):
+    def create_ranges(self, z, width=10.):
         """
         Function used to create the wavelength ranges around strong emission lines at a given redshift
         :param z: redshift
-        :param width: width  in pixels of the emission lines
+        :param width: width  in Angstroms of the emission lines
         :return:
         """
         wave = self.wavelength
@@ -1987,7 +1984,7 @@ class MuseCube:
             z_ranges.append(range * (1 + z))
         output_ranges = []
         for range in z_ranges:
-            if range[0] >= w_min and range[1] <= w_max:
+            if range[0] - width >= w_min and range[1] + width <= w_max:
                 output_ranges.append(range)
         return output_ranges
 
