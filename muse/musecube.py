@@ -908,7 +908,6 @@ class MuseCube:
         :param id_start: int. Default = 1
                 Initial id assigned to diferent spectra
         """
-        bla=10
         r = pyregion.open(regfile)
         n = len(r)
         self.clean_canvas()
