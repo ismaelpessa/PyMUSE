@@ -12,6 +12,7 @@ import pyregion
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
+from astropy.io.ascii.sextractor import SExtractor
 from astropy.modeling import models, fitting
 from astropy.utils import isiterable
 from linetools.spectra.xspectrum1d import XSpectrum1D
@@ -1281,6 +1282,7 @@ class MuseCube:
         """
         wave = self.wavelength
         n = len(wave)
+        w_max = w[n - 1] - width - 1
         if initial_wavelength < wave[0]:
             print str(
                 initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(
@@ -1288,18 +1290,18 @@ class MuseCube:
             initial_wavelength = wave[0]
         if final_wavelength > wave[n - 1]:
             print str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(
-                wave[n - 1])
-            final_wavelength = wave[n - 1]
+                w_max)
+            final_wavelength = w_max
 
         images_names = []
         fitsnames = []
         for i in xrange(initial_wavelength, final_wavelength):
             wavelength_range = (i, i + width)
             filename = 'colapsed_image_' + str(i) + '_'
-            im = self.get_image(wv_inpu=wavelength_range, fitsname=filename + '.fits', type='sum', save='True')
+            im = self.get_image(wv_inpu=[wavelength_range], fitsname=filename + '.fits', type='sum', save='True')
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale(vmin=self.vmin, vmax=self.vmax)
+            image.show_grayscale()
             image.save(filename=filename + '.png')
             fitsnames.append(filename + '.fits')
             images_names.append(filename + '.png')
@@ -1333,7 +1335,7 @@ class MuseCube:
         :param wv_input: tuple or np.array
         :return: XXXX
         """
-        if isinstance(wv_input, tuple):
+        if isinstance(wv_input[0], (tuple, list, np.ndarray)):
             if len(wv_input) != 2:
                 raise ValueError(
                     "If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
@@ -1341,9 +1343,9 @@ class MuseCube:
             ind_min = np.min(wv_inds)
             ind_max = np.max(wv_inds)
             if stat:
-                sub_cube = self.stat[ind_min:ind_max, :, :]
+                sub_cube = self.stat[ind_min:ind_max + 1, :, :]
             else:
-                sub_cube = self.cube[ind_min:ind_max, :, :]
+                sub_cube = self.cube[ind_min:ind_max + 1, :, :]
         else:  # assuming array-like for wv_input
             wv_inds = self.find_wv_inds(wv_input)
             if stat:
@@ -1416,23 +1418,23 @@ class MuseCube:
         n = wv_inds[1] - wv_inds[0]
         wv_inds_sup = wv_inds + n
         wv_inds_inf = wv_inds - n
-        cont_range_inf = (wv_inds_inf[0], wv_inds_inf[n - 1])
-        cont_range_sup = (wv_inds_sup[0], wv_inds_sup[n - 1])
+        cont_range_inf = self.wavelength[wv_inds_inf]
+        cont_range_sup = self.wavelength[wv_inds_sup]
         return cont_range_inf, cont_range_sup, n
 
     def get_image_wv_ranges(self, wv_ranges, substract_cont=True, fitsname='new_collapsed_cube.fits', save=False,
                             n_figure=3):
         image_stacker = np.zeros_like(self.white_data)
         for r in wv_ranges:
-            image = self.get_image(r)
+            image = self.get_image([r])
             cont_range_inf, cont_range_sup, n = self.get_continuum_range(r)
-            cont_inf_image = self.get_image(cont_range_inf, type='median')
-            cont_sup_image = self.get_image(cont_range_sup, type='median')
+            cont_inf_image = self.get_image([cont_range_inf], type='median')
+            cont_sup_image = self.get_image([cont_range_sup], type='median')
             cont_image = n * (cont_inf_image + cont_sup_image) / 2.
             if substract_cont:
                 image = image - cont_image
             image_stacker = image_stacker + image.data
-
+        image_stacker = np.where(image_stacker < 0, 0, image_stacker)
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
@@ -1445,7 +1447,7 @@ class MuseCube:
         """
         wave = self.wavelength
         n = len(wave)
-        white_image = self.get_image((wave[0], wave[n - 1]), fitsname=new_white_fitsname, stat=stat, save=save)
+        white_image = self.get_image(([wave[0], wave[n - 1]]), fitsname=new_white_fitsname, stat=stat, save=save)
         return white_image
 
     def calculate_mag(self, wavelength, flux, _filter, zeropoint_flux=9.275222661263278e-07):
@@ -1646,18 +1648,6 @@ class MuseCube:
             self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
         plt.show()
 
-    def create_table(self, input_file):
-        """
-        Create a table from a SExtractor output file
-        :param input_file: string
-                           name of the SExtractor output file
-        :return: table
-        """
-        from astropy.io.ascii.sextractor import SExtractor
-        sex = SExtractor()
-        table = sex.read(input_file)
-        return table
-
     def get_from_table(self, input_file, keyword):
         """
         Get a columns that correspond to a given keyword from a SExtractor outputfile
@@ -1669,7 +1659,8 @@ class MuseCube:
         :return: data
                  the column associated to the keyword
         """
-        table = self.create_table(input_file)
+        sex = SExtractor()
+        table = sex.read(input_file)
         data = table[keyword]
         return data
 
@@ -1879,32 +1870,15 @@ class MuseCube:
         """
         return self.cube.data.shape
 
-    def substring(self, string, i, j):
-        """
-        Obtain a the substring of string, from index i to index j, both included
-
-        :param self:
-        :param string: string
-                       input string
-        :param i: int
-                  initial index
-        :param j: int
-                  final index
-        :return: out: string
-                      output substring
-        """
-        out = ''
-        for k in xrange(i, j + 1):
-            out = out + string[k]
-        return out
-
-    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, outvid='emission_lines_video.avi', erase=True):
+    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=20, outvid='emission_lines_video.avi',
+                                    erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
         :param z_ini: initial redshift
         :param z_fin: final redshift
         :param dz: delta redshift
         :param outvid: name of the final video
+        :param width: width of the lines that will be collapsed, in Angstroms
         :param erase: If true, the individual frames to make the video will be erased after the video is produced
         :return:
         """
@@ -1922,12 +1896,12 @@ class MuseCube:
         fitsnames = []
         for z in z_array:
             print 'z = ' + str(z)
-            ranges = self.create_ranges(z)
+            ranges = self.create_ranges(z, width=width)
             filename = 'emission_line_image_redshif_' + str(z) + '_'
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
-            image.show_grayscale(vmin=self.vmin, vmax=self.vmax)
+            image.show_grayscale()
             plt.title('Emission lines image at z = ' + str(z))
             image.save(filename=filename + '.png')
             images_names.append(filename + '.png')
@@ -1956,7 +1930,7 @@ class MuseCube:
         """
         raise NotImplementedError()
 
-    def create_ranges(self, z, width=10.):
+    def create_ranges(self, z, width=20.):
         """
         Function used to create the wavelength ranges around strong emission lines at a given redshift
         :param z: redshift
@@ -1973,17 +1947,16 @@ class MuseCube:
         Ha = 6564.613
         OIII_4959 = 4960.295
         OIII_5007 = 5008.239
-        range_OII = np.array([OII - half, OII + half])
-        range_Hb = np.array([Hb - half, Hb + half])
-        range_Ha = np.array([Ha - half, Ha + half])
-        range_OIII_4959 = np.array([OIII_4959 - half, OIII_4959 + half])
-        range_OIII_5007 = np.array([OIII_5007 - half, OIII_5007 + half])
+        lines_wvs = {'OII': OII * (1. + z), 'Hb': Hb * (1. + z), 'OIII_4959': OIII_4959 * (1. + z),
+                     'OIII_5007': OIII_5007 * (1. + z), 'Ha': Ha * (1. + z)}
+        range_OII = np.array([lines_wvs['OII'] - half, lines_wvs['OII'] + half])
+        range_Hb = np.array([lines_wvs['Hb'] - half, lines_wvs['Hb'] + half])
+        range_Ha = np.array([lines_wvs['Ha'] - half, lines_wvs['Ha'] + half])
+        range_OIII_4959 = np.array([lines_wvs['OIII_4959'] - half, lines_wvs['OIII_4959'] + half])
+        range_OIII_5007 = np.array([lines_wvs['OIII_5007'] - half, lines_wvs['OIII_5007'] + half])
         ranges = [range_Ha, range_Hb, range_OII, range_OIII_4959, range_OIII_5007]
-        z_ranges = []
-        for range in ranges:
-            z_ranges.append(range * (1 + z))
         output_ranges = []
-        for range in z_ranges:
+        for range in ranges:
             if range[0] - width >= w_min and range[1] + width <= w_max:
                 output_ranges.append(range)
         return output_ranges
