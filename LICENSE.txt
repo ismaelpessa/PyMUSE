@@ -1,6 +1,6 @@
 
 
-Copyright (c) 2015, Ismael Pessa, Nicolas Tejos, Cristobal Moya and contributors.
+Copyright (c) 2017, Ismael Pessa, Nicolas Tejos, Cristobal Moya and contributors.
 
 All rights reserved.
 
