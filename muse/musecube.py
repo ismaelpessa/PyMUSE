@@ -338,7 +338,7 @@ class MuseCube:
         :return: spec: XSpectrum1D object
         """
         if mode == 'gaussian':
-            spec = self.get_gaussian_weighted_spec(x_c=x_c, y_c=y_c, params=params)
+            spec = self.get_gaussian_profile_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
             new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
@@ -478,7 +478,7 @@ class MuseCube:
 
         """
         if mode == 'gaussian':
-            spec = self.get_gaussian_weighted_spec(region_string_=region_string)
+            spec = self.get_gaussian_profile_weighted_spec(region_string_=region_string)
         else:
             new_mask = self.get_mini_cube_mask_from_region_string(region_string)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
@@ -1282,7 +1282,7 @@ class MuseCube:
         """
         wave = self.wavelength
         n = len(wave)
-        w_max = w[n - 1] - width - 1
+        w_max = wave[n - 1] - width - 1
         if initial_wavelength < wave[0]:
             print str(
                 initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(
@@ -1664,7 +1664,7 @@ class MuseCube:
         data = table[keyword]
         return data
 
-    def get_gaussian_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None, coord_system='pix'):
+    def get_gaussian_profile_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None, coord_system='pix'):
         """
         Function that extract the spectrum from an aperture defined either by elliptical parameters or  by an elliptical region defined by region_string in ds9 format
         :param x_c: x_coordinate of the center of the aperture
