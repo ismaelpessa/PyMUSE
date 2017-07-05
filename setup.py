@@ -2,11 +2,11 @@ from setuptools import setup
 #from Cython.Build import cythonize
 
 setup(
-    name="muse",
+    name="Pymuse",
     version="0.1",
     description="Python software for handling VLT/MUSE data.",
     author="I. Pessa",
     license="BSD",
     author_email="ismael.pessa@gmail.com",
     url="https://github.com/ismaelpessa/Muse_Cube",
-    packages=['muse'])
+    packages=['Pymuse'])
