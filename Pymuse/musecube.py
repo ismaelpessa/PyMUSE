@@ -3,7 +3,6 @@ import gc
 import glob
 import os
 import warnings
-
 import aplpy
 import linetools.utils as ltu
 import numpy as np
@@ -20,12 +19,7 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
-
 import muse.utils as mcu
-
-
-# spec = XSpectrum1D.from
-
 
 class MuseCube:
     """
