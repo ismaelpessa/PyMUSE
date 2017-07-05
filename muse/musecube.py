@@ -239,7 +239,7 @@ class MuseCube:
     def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4):
         """
         Function to extract the spectrum of a circular aperture defined by x_c, y_c and radius in spaxel space.
-        The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = nsig
+        The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = seeing in spaxels
         :param x_c: x coordinate of the center of the aperture (spaxel)
         :param y_c: y coordiante of the center of the aperture (spaxel)
         :param radius: radius of the circular aperture
@@ -456,7 +456,7 @@ class MuseCube:
             Mode for combining spaxels:
               * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
               * `sum` - Sum of total flux
-              * `gaussian` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile
+              * `gaussian` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile (for elliptical regions only)
               * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
               * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
               * `mean`  -  Mean of the total flux
