@@ -3,8 +3,10 @@ import gc
 import glob
 import os
 import warnings
+
 import aplpy
 import linetools.utils as ltu
+import muse.utils as mcu
 import numpy as np
 import numpy.ma as ma
 import pyregion
@@ -19,7 +21,7 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
-import muse.utils as mcu
+
 
 class MuseCube:
     """
@@ -1658,7 +1660,8 @@ class MuseCube:
         data = table[keyword]
         return data
 
-    def get_gaussian_profile_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None, coord_system='pix'):
+    def get_gaussian_profile_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None,
+                                           coord_system='pix'):
         """
         Function that extract the spectrum from an aperture defined either by elliptical parameters or  by an elliptical region defined by region_string in ds9 format
         :param x_c: x_coordinate of the center of the aperture
