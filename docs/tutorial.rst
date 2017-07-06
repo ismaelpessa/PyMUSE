@@ -153,10 +153,12 @@ Save a set of spectra defined by a multi regionfile DS9 .reg file
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 You can save all the spectra of regions defined by a DS9 region file to the hard disk. Just use::
 
-    cube.save_ds9regfile_specs(regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,redmonster_format=True,id_start=1)
+    cube.save_ds9regfile_specs(regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,redmonster_format=True,id_start=1, coord_name = False)
 
 Again, you can select between all available modes (except gaussian). The different spectra in the file will be identified by an id,
-starting from id_start (default = 1).
+starting from id_start (default = 1). The coord_name variable will determine how the different spectra are named. If is False, The spectra will be named as
+ID_regfile.fits. If True, The name will depend of the first (X,Y) pair of each region. This is particularly good for ellipses and circles, but not as exact in polygons.
+
 
 
 Saving a single spectrum to the hard disk

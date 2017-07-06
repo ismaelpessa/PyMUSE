@@ -898,6 +898,9 @@ class MuseCube:
         :param empirical_std: boolean. Default = False.
             If True, the errors of the spectrum will be determined empirically
         :param redmonster_format: If True, the specta will be saved in a redeable format for redmonster software
+        :param coord_name: Boolean. Default = False.
+            If True, The name of each spectrum will be computed from the coordinates of the first (X,Y) pair in the region
+            string. Otherwhise, the spectra will be named with and ID and the name of the region file.
         :param id_start: int. Default = 1
                 Initial id assigned to diferent spectra
         """
