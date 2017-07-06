@@ -3,7 +3,6 @@ import gc
 import glob
 import os
 import warnings
-
 import aplpy
 import linetools.utils as ltu
 import muse.utils as mcu
