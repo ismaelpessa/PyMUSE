@@ -5,7 +5,7 @@ import os
 import warnings
 import aplpy
 import linetools.utils as ltu
-import muse.utils as mcu
+import PyMUSE.utils as mcu
 import numpy as np
 import numpy.ma as ma
 import pyregion
@@ -1626,7 +1626,7 @@ class MuseCube:
         w_min = wave_filter[0]
         w_max = wave_filter[n - 1]
         w_spec_overlap = []
-        if wave_filter[1]<wavelength_spec[0] or wavelength_spec[n-2]>wavelength_spec[len(wavelength_spec)-1]:
+        if wave_filter[1]<wavelength_spec[0] or wave_filter[n-2]>wavelength_spec[len(wavelength_spec)-1]:
             raise ValueError('Filter wavelength range is wider that spectrum range and convolution is not valid')
 
         for w in wavelength_spec:
