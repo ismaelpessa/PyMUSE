@@ -449,6 +449,7 @@ class MuseCube:
         Obtains a combined spectrum of spaxels within geametrical region defined by the region _string, interpretated by ds9
         :param region_string: str
             Region defined by a string, using ds9 format (ellipse only in gaussian method)
+            example: region_string = 'physical;ellipse(100,120,10,5,35) # color = green'
         :param mode: str
             Mode for combining spaxels:
               * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
@@ -462,7 +463,7 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
-        :param frac. FLoat, default = 0.1
+        :param frac. Float, default = 0.1
                      Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
@@ -472,8 +473,8 @@ class MuseCube:
         :param save: boolean. Default = False
             If True, the spectrum will be saved in hard_disk
         :return: spec: XSpectrum1D object
-
         """
+
         if mode == 'gaussian':
             spec = self.get_gaussian_profile_weighted_spec(region_string_=region_string)
         else:
