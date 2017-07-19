@@ -1926,11 +1926,13 @@ class MuseCube:
 
     def collapse_highSN(self, sn_min=3, fitsname='colapsed_emission_image.fits',save=True):
         """
-        Function used to sum only voxels in which the signal to noise is greater that nsig value. This will create a new image
-        :param nsigma: float
+        Function used to sum only voxels in which the signal to noise is greater that sn_min value. This will create a new image
+        :param sn_min: float
                        threshold to signal to noise
         :param fitsname: string
                          name of the new image
+        :param save: Boolean
+                     If True, the new image is saved to the hard disk.
         :return:
         """
         count_voxel_cube= np.where(self.cube>(self.stat**0.5) * sn_min,1.,0.)
