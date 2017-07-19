@@ -1924,17 +1924,28 @@ class MuseCube:
                 os.system(command_png)
         return video
 
-    def colapse_emission_lines_image(self, nsigma=2, fitsname='colapsed_emission_image.fits'):
+    def collapse_highSN(self, sn_min=3, fitsname='colapsed_emission_image.fits',save=True):
         """
-        Function used to colapse only wavelength bins in which the signal to noise is greater that nsigma value. This will create a new white image
+        Function used to sum only voxels in which the signal to noise is greater that nsig value. This will create a new image
         :param nsigma: float
                        threshold to signal to noise
         :param fitsname: string
                          name of the new image
         :return:
         """
-        raise NotImplementedError()
-
+        count_voxel_cube= np.where(self.cube>(self.stat**0.5) * sn_min,1.,0.)
+        count_voxel_im = np.sum(count_voxel_cube,axis=0)
+        del count_voxel_cube
+        valid_voxel_cube=np.where(self.cube>(self.stat**0.5) * sn_min,self.cube,0.)
+        valid_voxel_im=np.sum(valid_voxel_cube,axis=0)
+        del valid_voxel_cube
+        normalized_im = valid_voxel_im/count_voxel_im
+        normalized_im=np.where(np.isnan(normalized_im),0,normalized_im)
+        if save:
+            hdulist = fits.open(self.filename_white)
+            hdulist[1].data=normalized_im
+            hdulist.writeto(fitsname,clobber=True)
+        return normalized_im
     def create_ranges(self, z, width=20.):
         """
         Function used to create the wavelength ranges around strong emission lines at a given redshift
