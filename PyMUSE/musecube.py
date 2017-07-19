@@ -653,7 +653,7 @@ class MuseCube:
                     "Normalization factor is Negative!! (This probably means that you are extracting the spectrum where flux<0)")
             fl = fl * norm
             er = er * abs(norm)
-            print 'normalization factor relative to total flux = ' + str(norm)
+            print('normalization factor relative to total flux = ' + str(norm))
 
         return XSpectrum1D.from_tuple((self.wavelength, fl, er))
 
@@ -860,30 +860,30 @@ class MuseCube:
                 plt.plot(wv_eff, residual, color='red')
                 m = fitter.fit_info['param_cov']
                 if m != None:
-                    print 'Display Cov Matrix'
+                    print('Display Cov Matrix')
                     plt.figure()
                     plt.imshow(m, interpolation='none', vmin=0, vmax=15)
                     plt.colorbar()
                 else:
-                    print 'Cov Matrix undefined'
+                    print('Cov Matrix undefined')
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
 
             if abs(amp) >= 3 * noise and (a_center * amp > 0) and abs(mean_center - mean) <= dwmax:
                 if debug:
-                    print 'Fit Aceptado'
-                    print str(x[i]) + ',' + str(y[i])
+                    print('Fit Aceptado')
+                    print(str(x[i]) + ',' + str(y[i]))
                 units = u.km / u.s
                 vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z_line).to(units).value
                 output_im[x[i]][y[i]] = vel
             else:
                 if debug:
-                    print 'Fit Negado'
-                    print str(x[i]) + ',' + str(y[i])
+                    print('Fit Negado')
+                    print(str(x[i]) + ',' + str(y[i]))
             if debug:
-                print 'value of wv_dif = ' + str(mean_center - mean)
-                print 'amplitude = ' + str(amp)
-                print 'noise = ' + str(noise)
+                print('value of wv_dif = ' + str(mean_center - mean))
+                print('amplitude = ' + str(amp))
+                print('noise = ' + str(noise))
                 raw_input('Enter to continue...')
         return output_im
 
@@ -936,7 +936,7 @@ class MuseCube:
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_, mag=mag_tuple)
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
-            print 'ID = ' + str_id + ' Ready!!'
+            print('ID = ' + str_id + ' Ready!!')
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, n_figure=2,
                                  save=False):
@@ -999,7 +999,7 @@ class MuseCube:
         w_fin = w_ini + (N - 1) * dw
         # w_aux = w_ini + dw*np.arange(0, N) #todo: check whether w_aux and w are the same
         w = np.linspace(w_ini, w_fin, N)
-        # print 'wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw)
+        # print('wavelength in range ' + str(w[0]) + ' to ' + str(w[len(w) - 1]) + ' and dw = ' + str(dw))
         return w
 
     def __edit_header(self, hdulist, values_list,
@@ -1263,7 +1263,7 @@ class MuseCube:
                     hdulist = fits.open(spec_fits_name + '.fits')
                     hdulist[0].header[mag_kwrd] = mag[i]
                     hdulist.writeto(spec_fits_name + '.fits', clobber=True)
-                print 'ID = ' + str_id + ' Ready!!'
+                print('ID = ' + str_id + ' Ready!!')
 
     def __read_files(self, input):
         path = input
@@ -1285,13 +1285,13 @@ class MuseCube:
         n = len(wave)
         w_max = wave[n - 1] - width - 1
         if initial_wavelength < wave[0]:
-            print str(
+            print(str(
                 initial_wavelength) + ' es menor al limite inferior minimo permitido, se usara en su lugar ' + str(
-                wave[0])
+                wave[0]))
             initial_wavelength = wave[0]
         if final_wavelength > wave[n - 1]:
-            print str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(
-                w_max)
+            print(str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(
+                w_max))
             final_wavelength = w_max
 
         images_names = []
@@ -1795,8 +1795,8 @@ class MuseCube:
             raise ValueError('Cannot trust the model, please try other imput parameters.')
 
         seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
-        print 'FWHM={:.2f} (arcsecs)'.format(seeing)
-        print 'stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec'))
+        print('FWHM={:.2f} (arcsecs)'.format(seeing))
+        print('stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec')))
         return seeing
 
     def w2p(self, xw, yw):
@@ -1893,14 +1893,14 @@ class MuseCube:
         w_max = wave[n - 1 - 20]
         max_z_allowed = (w_max / OII) - 1.
         if z_fin > max_z_allowed:
-            print 'maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
-                z_fin)
+            print('maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
+                z_fin))
             z_fin = max_z_allowed
         z_array = np.arange(z_ini, z_fin, dz)
         images_names = []
         fitsnames = []
         for z in z_array:
-            print 'z = ' + str(z)
+            print('z = ' + str(z))
             ranges = self.create_ranges(z, width=width)
             filename = 'emission_line_image_redshif_' + str(z) + '_'
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True)
