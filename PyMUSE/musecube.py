@@ -132,7 +132,7 @@ class MuseCube:
         else:
             self.color = True
             self.cmap = cmap
-        self.clean_canvas()
+        self.reload_canvas()
 
     def get_smoothed_white(self, npix=2, save=True, **kwargs):
         """Gets an smoothed version (Gaussian of sig=npix)
@@ -407,7 +407,7 @@ class MuseCube:
         complete_mask = self.mask_init + mask_inv
         new_3dmask = np.where(complete_mask == 0, False, True)
         spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix, frac=frac)
-        self.clean_canvas()
+        self.reload_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
@@ -914,7 +914,7 @@ class MuseCube:
         """
         r = pyregion.open(regfile)
         n = len(r)
-        self.clean_canvas()
+        self.reload_canvas()
         for i in xrange(n):
             id_ = id_start + i
             r_i = pyregion.ShapeList([r[i]])
@@ -1212,7 +1212,7 @@ class MuseCube:
         return complete_mask_new
 
     def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, n_id=None):
-        self.clean_canvas()
+        self.reload_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
         a = np.array(self.get_from_table(sextractor_filename, 'A_IMAGE'))
@@ -1249,7 +1249,7 @@ class MuseCube:
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
             flag_threshold=flag_threshold)
-        self.clean_canvas()
+        self.reload_canvas()
         n = len(x_pix)
         for i in xrange(n):
             if flags[i] <= flag_threshold:
@@ -1643,14 +1643,19 @@ class MuseCube:
                 w_spec_overlap.append(w)
         return np.array(w_spec_overlap)
 
-    def clean_canvas(self):
+    def reload_canvas(self, vmin=None, vmax=None):
         """
         Clean everything from the canvas with the white image
         :param self:
         :return:
         """
+
         plt.figure(self.n)
         plt.clf()
+        if vmin is not None:
+            self.vmin=vmin
+        if vmax is not None:
+            self.vmax=vmax
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         if self.color:
             self.gc2.show_colorscale(cmap=self.cmap, vmin=self.vmin, vmax=self.vmax)
