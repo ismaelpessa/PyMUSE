@@ -56,42 +56,22 @@ class MuseCube:
         self.vmax = vmax
         self.flux_units = flux_units
         self.n = n_fig
-        self.wave_cal = wave_cal
         plt.close(self.n)
+        self.wave_cal = wave_cal
+
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
-        if not filename_white:
-            w_data = copy.deepcopy(self.create_white(save=False).data)
-
-            w_header_0 = copy.deepcopy(self.header_0)
-            w_header_1 = copy.deepcopy(self.header_1)
-            for i in w_header_0.keys():
-                if '3' in i:
-                    del w_header_0[i]
-            for i in w_header_1.keys():
-                if '3' in i:
-                    del w_header_1[i]
-
-            # Con estos 'for' se elimina la tercera dimension de los datos.
-            hdu = fits.HDUList()
-
-            hdu_0 = fits.PrimaryHDU(header=self.header_1)
-            hdu_1 = fits.ImageHDU(data=w_data, header=self.header_0)
-
-            hdu.append(hdu_0)
-            hdu.append(hdu_1)
-            hdu.writeto('new_white.fits', clobber=True)
-            self.filename_white = 'new_white.fits'
 
         self.white_data = fits.open(self.filename_white)[1].data
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
-        self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
+
+        # self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
         gc.enable()
-        plt.close(20)
+        # plt.close(20)
         print("MuseCube: Ready!")
 
     def load_data(self):
@@ -113,6 +93,32 @@ class MuseCube:
 
         self.header_1 = hdulist[1].header  # Necesito el header para crear una buena copia del white.
         self.header_0 = hdulist[0].header
+
+
+        if self.filename_white is None:
+            print("MuseCube: No white image given, creating one.")
+
+            w_data = copy.deepcopy(self.create_white(save=False).data)
+
+            w_header_0 = copy.deepcopy(self.header_0)
+            w_header_1 = copy.deepcopy(self.header_1)
+            for i in w_header_0.keys():
+                if '3' in i:
+                    del w_header_0[i]
+            for i in w_header_1.keys():
+                if '3' in i:
+                    del w_header_1[i]
+            # Con estos 'for' se elimina la tercera dimension de los datos.
+
+            # prepare the header
+            hdu = fits.HDUList()
+            hdu_0 = fits.PrimaryHDU(header=self.header_1)
+            hdu_1 = fits.ImageHDU(data=w_data, header=self.header_0)
+            hdu.append(hdu_0)
+            hdu.append(hdu_1)
+            hdu.writeto('new_white.fits', clobber=True)
+            self.filename_white = 'new_white.fits'
+            print("MuseCube: `new_white.fits` image saved to disk.")
 
     def color_gui(self, cmap):
         """
@@ -1818,7 +1824,7 @@ class MuseCube:
                  ypix: float
                        y coordinate in pixels
         """
-        xpix, ypix = self.gc.world2pixel(xw, yw)
+        xpix, ypix = self.gc2.world2pixel(xw, yw)
         if xpix < 0:
             xpix = 0
         if ypix < 0:
@@ -1839,7 +1845,7 @@ class MuseCube:
                  yw: float
                      y coordinate in wcs
         """
-        xw, yw = self.gc.pixel2world(xp, yp)
+        xw, yw = self.gc2.pixel2world(xp, yp)
         return xw, yw
 
     def xyr_to_pixel(self, x_center, y_center, radius):
