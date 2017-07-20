@@ -1637,16 +1637,19 @@ class MuseCube:
                 w_spec_overlap.append(w)
         return np.array(w_spec_overlap)
 
-    def reload_canvas(self, vmin=self.vmin, vmax=self.vmax):
+    def reload_canvas(self, vmin=None, vmax=None):
         """
         Clean everything from the canvas with the white image
         :param self:
         :return:
         """
+
         plt.figure(self.n)
         plt.clf()
-        self.vmin=vmin
-        self.vmax=vmax
+        if vmin is not None:
+            self.vmin=vmin
+        if vmax is not None:
+            self.vmax=vmax
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         if self.color:
             self.gc2.show_colorscale(cmap=self.cmap, vmin=self.vmin, vmax=self.vmax)
