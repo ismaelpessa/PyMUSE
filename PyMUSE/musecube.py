@@ -112,8 +112,8 @@ class MuseCube:
 
             # prepare the header
             hdu = fits.HDUList()
-            hdu_0 = fits.PrimaryHDU(header=self.header_1)
-            hdu_1 = fits.ImageHDU(data=w_data, header=self.header_0)
+            hdu_0 = fits.PrimaryHDU(header=self.header_0)
+            hdu_1 = fits.ImageHDU(data=w_data, header=self.header_1)
             hdu.append(hdu_0)
             hdu.append(hdu_1)
             hdu.writeto('new_white.fits', clobber=True)
