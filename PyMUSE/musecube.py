@@ -102,18 +102,22 @@ class MuseCube:
 
             w_header_0 = copy.deepcopy(self.header_0)
             w_header_1 = copy.deepcopy(self.header_1)
+
+            # These loops remove the third dimension from the header's keywords. This is neccesary in order to
+            # create the white image and preserve the cube astrometry
             for i in w_header_0.keys():
                 if '3' in i:
                     del w_header_0[i]
             for i in w_header_1.keys():
                 if '3' in i:
                     del w_header_1[i]
-            # Con estos 'for' se elimina la tercera dimension de los datos.
+
+
 
             # prepare the header
             hdu = fits.HDUList()
-            hdu_0 = fits.PrimaryHDU(header=self.header_1)
-            hdu_1 = fits.ImageHDU(data=w_data, header=self.header_0)
+            hdu_0 = fits.PrimaryHDU(header=w_header_0)
+            hdu_1 = fits.ImageHDU(data=w_data, header=w_header_1)
             hdu.append(hdu_0)
             hdu.append(hdu_1)
             hdu.writeto('new_white.fits', clobber=True)
