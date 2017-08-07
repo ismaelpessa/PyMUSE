@@ -3,10 +3,10 @@ from setuptools import setup
 
 setup(
     name="PyMUSE",
-    version="0.1",
+    version="0.1.1",
     description="Python software for handling VLT/MUSE data.",
     author="I. Pessa",
-    license="BSD",
+    license="MIT",
     author_email="ismael.pessa@gmail.com",
     url="https://github.com/ismaelpessa/Muse_Cube",
     packages=['PyMUSE'])
