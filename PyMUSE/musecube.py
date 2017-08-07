@@ -1303,13 +1303,15 @@ class MuseCube:
             print(str(final_wavelength) + ' es mayor al limite superior maximo permitido, se usara en su lugar ' + str(
                 w_max))
             final_wavelength = w_max
+        if final_wavelength<=wave[0] or initial_wavelength>=wave[n-1]:
+            raise ValueError('Input wavelength is not in valid range')
 
         images_names = []
         fitsnames = []
         for i in xrange(initial_wavelength, final_wavelength):
             wavelength_range = (i, i + width)
             filename = 'colapsed_image_' + str(i) + '_'
-            im = self.get_image(wv_inpu=[wavelength_range], fitsname=filename + '.fits', type='sum', save='True')
+            im = self.get_image(wv_input=[wavelength_range], fitsname=filename + '.fits', type='sum', save='True')
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
@@ -1347,10 +1349,10 @@ class MuseCube:
         :return: XXXX
         """
         if isinstance(wv_input[0], (tuple, list, np.ndarray)):
-            if len(wv_input) != 2:
+            if len(wv_input[0]) != 2:
                 raise ValueError(
                     "If wv_input is given as tuple, it must be of lenght = 2, interpreted as (wv_min, wv_max)")
-            wv_inds = self.find_wv_inds(wv_input)
+            wv_inds = self.find_wv_inds(wv_input[0])
             ind_min = np.min(wv_inds)
             ind_max = np.max(wv_inds)
             if stat:
