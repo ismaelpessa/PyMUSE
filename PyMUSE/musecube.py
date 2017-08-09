@@ -64,6 +64,7 @@ class MuseCube:
         self.load_data()
 
         self.white_data = fits.open(self.filename_white)[1].data
+        self.hdulist_white = fits.open(self.filename_white)
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
@@ -144,7 +145,7 @@ class MuseCube:
         to disk called `smoothed_white.fits`.
         **kwargs are passed down to scipy.ndimage.gaussian_filter()
         """
-        hdulist = fits.open(self.filename_white)
+        hdulist = self.hdulist_white
         im = self.white_data
         if npix > 0:
             smooth_im = ndimage.gaussian_filter(im, sigma=npix, **kwargs)
@@ -505,13 +506,28 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
+    def draw_ellipse_params(self,xc,yc,params,color='green'):
+        """
+        Function to draw in the interface the contour of the elliptical region defined by (xc,yc,params)
+        :param xc: x coordinate of the center of the ellipse
+        :param yc: y coordinate of the center of the ellipse
+        :param params: either a single radius or [a,b,theta] iterable
+        :param color: color to draw
+        :return:
+        """
+        if isinstance(params,(float,int)):
+            params=[params,params,0]
+        region_string=self.ellipse_param_to_ds9reg_string(xc,yc,params[0],params[1],params[2],color=color)
+        self.draw_pyregion(region_string)
+
+
     def draw_pyregion(self, region_string):
         """
         Function used to draw in the interface the contour of the region defined by region_string
         :param region_string: str. Region defined by a string using ds9 format
         :return: None
         """
-        hdulist = fits.open(self.filename_white)
+        hdulist = self.hdulist_white
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
@@ -834,9 +850,10 @@ class MuseCube:
         ##get spaxel in mask2d
         y, x = np.where(~mask2d)
         n = len(x)
-        output_im = np.where(self.white_data == 0, np.nan, np.nan)
+        kine_im = np.where(self.white_data == 0, np.nan, np.nan)
 
         for i in xrange(n):
+            print str(i+1)+'/'+str(n)
             spec = self.get_spec_spaxel(x[i], y[i])
             wv = spec.wavelength.value
             fl = spec.flux.value
@@ -868,6 +885,7 @@ class MuseCube:
                 plt.plot(wv_eff, fl_eff, drawstyle='steps-mid')
                 plt.plot(wv_eff, model_fit(wv_eff))
                 plt.plot(wv_eff, residual, color='red')
+                plt.plot(wv_eff,sig_eff,color='yellow',drawstyle='steps-mid')
                 m = fitter.fit_info['param_cov']
                 if m != None:
                     print('Display Cov Matrix')
@@ -879,13 +897,13 @@ class MuseCube:
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
 
-            if abs(amp) >= 3 * noise and (a_center * amp > 0) and abs(mean_center - mean) <= dwmax:
+            if abs(amp) >= 2. * noise and (a_center * amp > 0) and abs(mean_center - mean) <= dwmax:
                 if debug:
                     print('Fit Aceptado')
                     print(str(x[i]) + ',' + str(y[i]))
                 units = u.km / u.s
                 vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z_line).to(units).value
-                output_im[x[i]][y[i]] = vel
+                kine_im[y[i]][x[i]] = vel
             else:
                 if debug:
                     print('Fit Negado')
@@ -895,7 +913,22 @@ class MuseCube:
                 print('amplitude = ' + str(amp))
                 print('noise = ' + str(noise))
                 raw_input('Enter to continue...')
-        return output_im
+
+        hdulist=self.hdulist_white
+        hdulist[1].data=kine_im
+        hdulist.writeto('kinematics.fits',clobber=True)
+        fig=aplpy.FITSFigure('kinematics.fits', figure=plt.figure())
+        fig.show_colorscale(cmap='seismic')
+        fig.add_colorbar()
+        fig.colorbar.set_axis_label_text('V (km s$^{-1}$)')
+        xw,yw=self.p2w(x_c,y_c)
+        if isinstance(params,(int,float)):
+            r=params*self.pixelsize
+        else:
+            r=params[0]*self.pixelsize
+        r=r.to(u.deg)
+        fig.recenter(xw,yw,r.value)
+        return kine_im
 
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
                               id_start=1, coord_name=False, debug=False):
@@ -1280,7 +1313,7 @@ class MuseCube:
         files = glob.glob(path)
         return files
 
-    def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='image_video.avi',
+    def create_movie_wavelength_range(self, initial_wavelength, final_wavelength, width=5., outvid='wave_video.avi',
                                       erase=True):
         """
         Function to create a film over a wavelength range of the cube
@@ -1443,7 +1476,7 @@ class MuseCube:
             cont_range_inf, cont_range_sup, n = self.get_continuum_range(r)
             cont_inf_image = self.get_image([cont_range_inf], type='median')
             cont_sup_image = self.get_image([cont_range_sup], type='median')
-            cont_image = n * (cont_inf_image + cont_sup_image) / 2.
+            cont_image = (n+1) * (cont_inf_image + cont_sup_image) / 2.
             if substract_cont:
                 image = image - cont_image
             image_stacker = image_stacker + image.data
@@ -1460,7 +1493,8 @@ class MuseCube:
         """
         wave = self.wavelength
         n = len(wave)
-        white_image = self.get_image(([wave[0], wave[n - 1]]), fitsname=new_white_fitsname, stat=stat, save=save)
+        wv_input=[[wave[0], wave[n - 1]]]
+        white_image = self.get_image(wv_input, fitsname=new_white_fitsname, stat=stat, save=save)
         return white_image
 
     def calculate_mag(self, wavelength, flux, _filter, zeropoint_flux=9.275222661263278e-07):
@@ -1783,7 +1817,7 @@ class MuseCube:
         :return: seeing: float
                          the observational seeing of the image defined as the FWHM of the gaussian
         """
-        hdulist = fits.open(self.filename_white)
+        hdulist = self.hdulist_white
         data = hdulist[1].data
         w, h = 2 * halfsize + 1, 2 * halfsize + 1
         matrix_data = [[0 for x in range(w)] for y in range(h)]
@@ -1892,7 +1926,7 @@ class MuseCube:
         """
         return self.cube.data.shape
 
-    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=20, outvid='emission_lines_video.avi',
+    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=10, outvid='emission_lines_video.avi',
                                     erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
@@ -1961,11 +1995,11 @@ class MuseCube:
         normalized_im = valid_voxel_im/count_voxel_im
         normalized_im=np.where(np.isnan(normalized_im),0,normalized_im)
         if save:
-            hdulist = fits.open(self.filename_white)
+            hdulist = self.hdulist_white
             hdulist[1].data=normalized_im
             hdulist.writeto(fitsname,clobber=True)
         return normalized_im
-    def create_ranges(self, z, width=20.):
+    def create_ranges(self, z, width=10.):
         """
         Function used to create the wavelength ranges around strong emission lines at a given redshift
         :param z: redshift
