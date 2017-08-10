@@ -7,6 +7,8 @@ Python package to handle VLT/MUSE data. To install simply type:
 
 Usage and methods:
 ------------------
+Read Tutorial_
+
 .. _Tutorial: https://github.com/ismaelpessa/Muse_Cube/blob/master/docs/tutorial.rst
 
 
