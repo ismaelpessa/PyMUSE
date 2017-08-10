@@ -7,7 +7,7 @@ Inicializar cube
 Initializing is easy:
 You must be in "ipython --pylab" enviroment::
 
-    from muse.musecube import MuseCube
+    from PyMUSE.musecube import MuseCube
     cube = MuseCube(filename_cube, filename_white)
 
 
@@ -183,7 +183,7 @@ The method::
 
     cube.determinate_seeing_from_white(x_center,y_center,halfsize)
 Will allow  you to estimate the seeing using the white image. The user must insert as the input the xy coordinates in spaxel space
-of a nearly puntual source expanded by the seeing. The method will fit a 2D gaussian to the bright profile and will associate
+of a nearly point source expanded by the seeing. The method will fit a 2D gaussian to the bright profile and will associate
 the FWHM of the profile with the seeing. The halfsize parameter  indicates the radius size in spaxels of the source that will be fited.
 
 
@@ -197,7 +197,24 @@ and compose a new filtered image. To do this, you can use the method::
 
 _filter can be any of ugriz. This method will write a new filtered image that will be usefull to photometry analysis
 
+Compute kinematics
+++++++++++++++++++
 
+An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::
+
+    cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type='abs', z=0)
+
+estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
+the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required paramters are:
+    * x_c
+    * y_c
+    * params
+That define the elliptical region.
+    * wv_line_vac: wavelength of the transition in vacuum.
+    * wv_range_size: Angstroms. Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines
+    * type: 'abs' or 'emi'. Type of transition to fit. 'abs' for absorption and 'emi' for emission.
+    * z: redshift of the galaxy.
+This function returns the kinematic image of the region, and saves the image in a .fits file.
 Create Videos
 +++++++++++++
 

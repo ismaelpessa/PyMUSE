@@ -813,6 +813,8 @@ class MuseCube:
         mean_total = model_fit[0].mean.value
         sigma_total = model_fit[0].stddev.value
         z_line = (mean_total / wv_line_vac) - 1.
+        if isinstance(params,(int,float)):
+            params=[params,params,0]
 
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
         mask2d = self.get_new_2dmask(region_string)
@@ -851,6 +853,7 @@ class MuseCube:
         y, x = np.where(~mask2d)
         n = len(x)
         kine_im = np.where(self.white_data == 0, np.nan, np.nan)
+        sigma_im=np.where(self.white_data == 0, np.nan, np.nan)
 
         for i in xrange(n):
             print str(i+1)+'/'+str(n)
@@ -896,7 +899,6 @@ class MuseCube:
                     print('Cov Matrix undefined')
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
-
             if abs(amp) >= 2. * noise and (a_center * amp > 0) and abs(mean_center - mean) <= dwmax:
                 if debug:
                     print('Fit Aceptado')
