@@ -215,6 +215,7 @@ That define the elliptical region.
     * type: 'abs' or 'emi'. Type of transition to fit. 'abs' for absorption and 'emi' for emission.
     * z: redshift of the galaxy.
 This function returns the kinematic image of the region, and saves the image in a .fits file.
+IMPORTANT: Select strong lines that be spatially.
 Create Videos
 +++++++++++++
 
