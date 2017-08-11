@@ -98,7 +98,7 @@ Also, all the `get_spec_` function have the keyword arguments `npix` , `empirica
 Some modes of extraction require a npix value (default = 0). This value correspond to the sigma of the gaussian function
 that will smooth the white image, where the bright profile will be obtained. If npix = 0, no smooth is done.
 
-The parameter `frac` (default = 0.1) will be used in mode = `wfrac`, and it defined the fraction of brightest pixels that will be considered in the sum of the flux.
+The parameter `frac` (default = 0.1) will be used in mode = `wfrac`, and it defines the fraction of brightest spaxels that will be considered in the sum of the flux.
 
 If `empirical_std = True` (default = False) the uncertainties of the spectrum will be calculated empirically
 
@@ -110,7 +110,7 @@ if `save` = True (default = False) The new spectrum extracted will be saved to t
 Use a SExtractor output file as an input
 ++++++++++++++++++++++++++++++++++++++++
 
-The software allows the extraction and save of a serie of sources detected in a SExtractor output file.
+The software allows the extraction and save of a set of sources detected in a SExtractor output file.
 To do this, you should have at least the next parameters in the SExtractor output file:
     * X_IMAGE.
     * Y_IMAGE.
@@ -121,6 +121,7 @@ To do this, you should have at least the next parameters in the SExtractor outpu
     * NUMBER.
     * MAG_AUTO
 
+(Assuming that you ran SExtractor in the white image or any image with the same dimensions and astrometry of the cube)
 First, to plot your regions, you can use::
 
     cube.plot_sextractor_regions('sextractor_filename', flag_threshold=32, a_min=3.5)
@@ -128,26 +129,44 @@ First, to plot your regions, you can use::
 Where sextractor_filename is the name of the SExtractor's output. Every source with a SExtractor flag higher
 than flag_threshold will be marked in red.
 
-The a_min value correspond to the minimum number of pixels that will have the semimajor axis of a region.
+The a_min value correspond to the minimum number of spaxels that will have the semimajor axis of a region.
 The original (a/b) ratio will be constant, but this set a minimum size for the elliptical apertures.
 
 Once you are satisfied with the regions that will be extracted, you can run::
 
     cube.save_sextractor_spec('sextractor_filename', flag_threshold=32, redmonster_format=True, a_min=3.5, n_figure=2,
-                              mode='wwm', mag_kwrd='mag_r', npix=0)
+                              mode='wwm', mag_kwrd='mag_r', npix=0, frac = 0.1)
 This will save in the hard disk the spectra of all the sources defined in the sextractor_filename which flags be lower or
 equal than flag_threshold using the specified mode.
 
 If `redmonster_format = True`, the spectra will be saved in a format redeable for redmonster software (http://www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/).
 
-You can  acces to the data of a file writen in this format doing the next::
+You can access to the data of a file writen in this format doing the next::
 
-    import muse.utils as mcu
+    import PyMUSE.utils as mcu
     wv,fl,er = mcu.get_rm_spec(rm_spec_name)
 where rm_spec_name is the name of the fits file.
 
 Also, you can set the parameter ``mag_kwrd`` which by default is ``'mag_r'`` to the keyword in the new fits_image that will
 contain the SExtractor's MAG_AUTO value
+
+It is possible the usage of a different image as an input for SExtractor. If this is the case, you should not use the
+X_IMAGE, Y_IMAGE, A_IMAGE, B_IMAGE given by SExtractor (although they still must be included in the parameters list), because the spaxel-wcs conversion in the
+image given to SExtractor will be probably different to the conversion in the MUSE cube.  You may want to include the parameters:
+    * X_WORLD.
+    * Y_WORLD
+    * A_WORLD
+    * B_WORLD
+You also may want to be sure that the astrometry between the 2 images in consistent (on the other hand, the regions defined by SExtractor in the image will be shifted in the cube)
+Once you included them in the parameters list, you should set the parameter `wcs_coords = True` in both functions::
+
+    cube.plot_sextractor_regions('sextractor_filename', flag_threshold=32, a_min=3.5, wcs_coords=True)
+
+to plot the regions and::
+
+    cube.save_sextractor_spec('sextractor_filename', flag_threshold=32, redmonster_format=True, a_min=3.5, n_figure=2,
+                              mode='wwm', mag_kwrd='mag_r', npix=0, frac = 0.1, wcs_coords = True)
+to save them.
 
 Save a set of spectra defined by a multi regionfile DS9 .reg file
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

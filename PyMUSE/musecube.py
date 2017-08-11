@@ -1127,7 +1127,7 @@ class MuseCube:
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
-    def ellipse_params_to_pixel(self, xc, yc, radius):
+    def ellipse_params_to_pixel(self, xc, yc, params):
         """
         Function to transform the parameters of an ellipse from degrees to pixels
         :param xc:
@@ -1135,12 +1135,12 @@ class MuseCube:
         :param radius:
         :return:
         """
-        a = radius[0]
-        b = radius[1]
+        a = params[0]
+        b = params[1]
         xaux, yaux, a2 = self.xyr_to_pixel(xc, yc, a)
         xc2, yc2, b2 = self.xyr_to_pixel(xc, yc, b)
-        radius2 = [a2, b2, radius[2]]
-        return xc2, yc2, radius2
+        params2 = [a2, b2, params[2]]
+        return xc2, yc2, params2
 
     def get_mini_cube_mask_from_region_string(self, region_string):
         """
@@ -1250,7 +1250,7 @@ class MuseCube:
         self.draw_pyregion(region_string)
         return complete_mask_new
 
-    def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, n_id=None):
+    def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None):
         self.reload_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
@@ -1267,6 +1267,27 @@ class MuseCube:
         id = self.get_from_table(sextractor_filename, 'NUMBER').data
         mag = self.get_from_table(sextractor_filename, 'MAG_AUTO').data
         n = len(x_pix)
+        if wcs_coords:
+            x_world = np.array(self.get_from_table(sextractor_filename, 'X_WORLD'))
+            y_world = np.array(self.get_from_table(sextractor_filename, 'Y_WORLD'))
+            a_world = np.array(self.get_from_table(sextractor_filename, 'A_WORLD'))
+            b_world = np.array(self.get_from_table(sextractor_filename, 'B_WORLD'))
+            a_min_wcs=a_min*self.pixelsize
+            a_min_wcs=a_min_wcs.to(u.deg).value
+            a_world_new = np.where(a_world<a_min_wcs,a_min_wcs,a_world)
+            ratios_wcs = a_world/b_world
+            b_world_new = a_world_new/ratios_wcs
+            b_world_new=np.where(b_world_new<self.pixelsize.to(u.deg).value,self.pixelsize.to(u.deg).value,b_world_new)
+            a_world=a_world_new
+            b_world=b_world_new
+            for i in xrange(n):
+                params_wcs=[a_world[i],b_world[i],theta[i]]
+                x_pix[i],y_pix[i],params=self.ellipse_params_to_pixel(x_world[i],y_world[i],params=params_wcs)
+                a[i]=params[0]
+                b[i]=params[1]
+
+
+
         if n_id != None:
             j = np.where(id == n_id)[0][0]
             region_string = self.ellipse_param_to_ds9reg_string(x_pix[j], y_pix[j], a[j], b[j], theta[j], color='Green')
@@ -1283,11 +1304,11 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
-                              n_figure=2,
+                              n_figure=2, wcs_coords=False,
                               mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
-            flag_threshold=flag_threshold)
+            flag_threshold=flag_threshold, wcs_coords=wcs_coords)
         self.reload_canvas()
         n = len(x_pix)
         for i in xrange(n):
