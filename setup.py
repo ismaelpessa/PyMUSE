@@ -16,9 +16,9 @@ setup(
         'matplotlib',
         'aplpy',
         'h5py',
-        'PyQT5'
         'pyregion',
-        'linetools==0.2',
-        'numpy'],
-    dependenciy_links=[
-        'https://github.com/linetools/linetools/tarball/master/#egg=linetools-0.2'])
+        'numpy',
+        'linetools'
+        ],
+    dependency_links=[
+        'https://github.com/linetools/linetools/tarball/master#egg=linetools'])
