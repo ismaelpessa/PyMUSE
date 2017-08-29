@@ -9,4 +9,16 @@ setup(
     license="MIT",
     author_email="ismael.pessa@gmail.com",
     url="https://github.com/ismaelpessa/Muse_Cube",
-    packages=['PyMUSE'])
+    packages=['PyMUSE'],
+    install_requires=[
+        'astropy',
+        'scipy',
+        'matplotlib',
+        'aplpy',
+        'h5py',
+        'PyQT5'
+        'pyregion',
+        'linetools==0.2',
+        'numpy'],
+    dependenciy_links=[
+        'https://github.com/linetools/linetools/tarball/master/#egg=linetools-0.2'])
