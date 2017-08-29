@@ -205,6 +205,37 @@ Will allow  you to estimate the seeing using the white image. The user must inse
 of a nearly point source expanded by the seeing. The method will fit a 2D gaussian to the bright profile and will associate
 the FWHM of the profile with the seeing. The halfsize parameter  indicates the radius size in spaxels of the source that will be fited.
 
+Image creation
+--------------
+
+Create image collapsing the Cube
++++++++++++++++++++++++++++++++++
+
+You can create a 2D image by collapsing some wavelength slices of the cube using the method::
+
+    cube.get_image(wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False)
+
+IMPORTANT!!: wv_input must be list. The list can contain either individual wavelength values (e.g [5000,5005,5010]) or
+a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 5000 and 6000 angstroms).
+If save is True, the new image will be saved to the hard disk as ``fitsname``. The ``type`` of collapse can be either 'sum'
+or 'median'. n_figure is the figure's number  to display the image if ``save`` = True. Finally, if stat = True, the collapse will
+be done in the stat extension of the MUSE cube.
+
+Maybe yo want to collapse more than just one wavelength range (for example, the range of several emission lines)
+To do that, you may want to use the method::
+
+    cube.get_image_wv_ranges(wv_ranges, substract_cont=True, fitsname='new_collapsed_cube.fits', save=False, n_figure=3)
+
+wv_ranges must be a list of ranges (for example [[4000,4100],[5000,5100],[5200,5300]]). You can use the method::
+
+    cube.create_ranges(z,width=10)
+
+To define the ranges that correspond to the [OII, Hb, OIII 4959,OIII 5007, Ha].  This method will return the list of the range
+of these transitions at redshift z, and the width given (in angstroms). The method will only return those ranges that
+remains inside the MUSE wavelength range.
+Finally, if ``substract_cont`` is True, the flux level around the ranges given by wv_ranges will be substracted from the image.
+
+
 
 Compose a filtered image
 ++++++++++++++++++++++++
@@ -215,7 +246,7 @@ and compose a new filtered image. To do this, you can use the method::
     cube.get_filtered_image(_filter = 'r')
 
 _filter can be any of ugriz. This method will write a new filtered image that will be usefull to photometry analysis
-
+Available filters: u,g,r,i,z,V,R (The Johnson filters V and R have been slightly reduced  in order to fit the MUSE spectral range)
 Compute kinematics
 ++++++++++++++++++
 
