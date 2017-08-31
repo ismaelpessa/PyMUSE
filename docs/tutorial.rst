@@ -10,6 +10,32 @@ You must be in "ipython --pylab" enviroment::
     from PyMUSE.musecube import MuseCube
     cube = MuseCube(filename_cube, filename_white)
 
+If for any reason you do not have the white image, you can still initialize the cube just typing::
+
+    cube = MuseCube(filename_cube)
+
+This will create and save to the hard disk a the new white image. You may need to change the default visualization parameters if you do this.
+
+Visualization
++++++++++++++
+
+In any moment, you can clean the primary canvas by using::
+
+    cube.reload_canvas()
+
+You can update the vmin and vmax parameters of the dynamical range of the visualization by setting::
+
+    cube.reload_canvas(vmin=10,vmax=200)
+for example.
+
+If you want to use an alternative matplotlib color map for the visualization, just use::
+
+    cube.color_gui(cmap='BuPu')
+
+where cmap can be any of the matplotlib color maps.
+
+
+
 
 Get a spectrum
 ++++++++++++++
@@ -41,7 +67,7 @@ Another extra feature is given by the  function::
 This code will, in addition of extract the spectrum given by center = (x,y) and halfsize either the radius of a circular
 region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot.
 
-If you want to insert the input positions in wcs space, you can set the coord_system parameter to wcs by adding
+If you want to insert the input positions and semi-axes in degrees, you can set the coord_system parameter to wcs by adding
 
 ``coord_system = 'wcs'``
 
@@ -62,7 +88,7 @@ This feature allows the user to interactively define a region in the canvas as a
     spectrum=cube.get_spec_from_interactive_polygon_region(mode='wwm')
 
 This will turn interactive the canvas. To select the spaxel that will be the vertices of the region, just press left click on them.
-When you have finished, just press right click and then enter to continue. The las vertex that you selected will link the first one to define the contour of the region.
+When you have finished, just press right click and then enter to continue. The last vertex that you selected will link the first one to define the contour of the region.
 
 
 
@@ -235,12 +261,23 @@ of these transitions at redshift z, and the width given (in angstroms). The meth
 remains inside the MUSE wavelength range.
 Finally, if ``substract_cont`` is True, the flux level around the ranges given by wv_ranges will be substracted from the image.
 
+Create a smoothed white image
+++++++++++++++++++++++++++++++
+
+The method::
+
+    cube.get_smoothed_white(npix=2, save=True, **kwargs)
+
+returns a smoothed version of the white image. ``npix`` defines the sigma of the gaussian filter. **kwargs are passed to
+scipy.ndimage.gaussian_filter(). The method ``cube.spatial_smooth(npix, output="smoothed.fits", **kwargs)`` do the same for the whole cube, and saves
+the new MUSE Cube under the name given by ``output`` (The STAT extension is not touched)
+
 
 
 Compose a filtered image
 ++++++++++++++++++++++++
 
-If you want to do a photometric analysis from the Muse Cube, you would need to convolute your data with a sdss photometric filter
+If you want to do a photometric analysis from the Muse Cube, you would need to convolve your data with a photometric filter
 and compose a new filtered image. To do this, you can use the method::
 
     cube.get_filtered_image(_filter = 'r')
