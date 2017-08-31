@@ -268,6 +268,8 @@ That define the elliptical region.
     * z: redshift of the galaxy.
 This function returns the kinematic image of the region, and saves the image in a .fits file.
 IMPORTANT: Select strong lines that be spatially extended.
+
+
 Create Videos
 +++++++++++++
 
