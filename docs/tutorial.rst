@@ -247,6 +247,8 @@ and compose a new filtered image. To do this, you can use the method::
 
 This method will write a new filtered image that will be useful to photometry analysis
 Available filters: u,g,r,i,z,V,R (The Johnson filters V and R have been slightly reduced  in order to fit the MUSE spectral range)
+
+
 Compute kinematics
 ++++++++++++++++++++++++++
 
