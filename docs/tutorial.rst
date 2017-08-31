@@ -245,10 +245,10 @@ and compose a new filtered image. To do this, you can use the method::
 
     cube.get_filtered_image(_filter = 'r')
 
-_filter can be any of ugriz. This method will write a new filtered image that will be usefull to photometry analysis
+This method will write a new filtered image that will be useful to photometry analysis
 Available filters: u,g,r,i,z,V,R (The Johnson filters V and R have been slightly reduced  in order to fit the MUSE spectral range)
 Compute kinematics
-++++++++++++++++++
+++++++++++++++++++++++++++
 
 An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::
 
@@ -265,7 +265,7 @@ That define the elliptical region.
     * type: 'abs' or 'emi'. Type of transition to fit. 'abs' for absorption and 'emi' for emission.
     * z: redshift of the galaxy.
 This function returns the kinematic image of the region, and saves the image in a .fits file.
-IMPORTANT: Select strong lines that be spatially.
+IMPORTANT: Select strong lines that be spatially extended.
 Create Videos
 +++++++++++++
 
