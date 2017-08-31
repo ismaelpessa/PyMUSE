@@ -1,7 +1,7 @@
 Getting started
 ---------------
 
-Inicializar cube
+Initialize the cube
 ++++++++++++++++
 
 Initializing is easy:

@@ -451,7 +451,7 @@ class MuseCube:
                 x_world = r[0].coord_list[0]
                 y_world = r[0].coord_list[1]
                 par = r[0].coord_list[2:5]
-                x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, par)
+                x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, params=par)
             return x_c - 1, y_c - 1, params
 
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
@@ -725,7 +725,7 @@ class MuseCube:
         if isinstance(halfsize, (int, float)):
             halfsize = [halfsize, halfsize, 0]
         if coord_system == 'wcs':
-            x_c, y_c, halfsize = self.ellipse_params_to_pixel(center[0], center[1], radius=halfsize)
+            x_c, y_c, halfsize = self.ellipse_params_to_pixel(center[0], center[1], params=halfsize)
             center_ = (x_c, y_c)
         else:
             center_ = center
@@ -1189,7 +1189,7 @@ class MuseCube:
         parameters using the DS9 convention.
         """
         if coord_system == 'wcs':
-            x_center, y_center, radius = self.ellipse_params_to_pixel(xc, yc, radius=[a, b, theta])
+            x_center, y_center, radius = self.ellipse_params_to_pixel(xc, yc, params=[a, b, theta])
         else:  # already in pixels
             x_center, y_center, radius = xc, yc, [a, b, theta]
         region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center + 1, y_center + 1, radius[0],
@@ -2373,7 +2373,7 @@ class MuseCube:
         else:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
         if coord_system == 'wcs':
-            x_center, y_center, params = self.ellipse_params_to_pixel(x_c, y_c, radius=[a, b, theta])
+            x_center, y_center, params = self.ellipse_params_to_pixel(x_c, y_c, params=[a, b, theta])
         else:  # already in pixels
             x_center, y_center, params = x_c, y_c, [a, b, theta]
         xc = x_center
