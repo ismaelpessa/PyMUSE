@@ -16,6 +16,19 @@ If for any reason you do not have the white image, you can still initialize the 
 
 This will create and save to the hard disk a the new white image. You may need to change the default visualization parameters if you do this.
 
+Other initialization parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+            * ``pixelsize``: Default = 0.2 * u.arcsec.
+            * ``n_fig`` Default = 1. Figure to display the GUI.
+            * ``flux_units`` Default = 1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom.
+            * ``vmin`` Default = 0.
+            * ``vmax`` Default = 1.
+            * ``wave_cal`` Default = 'air'. Possible values: 'air','vac'. If 'air', all spectra obtained will be automatically calibrated to vacuum.
+
+
+
+
 Visualization
 +++++++++++++
 
@@ -131,6 +144,18 @@ If `empirical_std = True` (default = False) the uncertainties of the spectrum wi
 `n_figure` is the number of the figure that will display the new_spectrum
 
 if `save` = True (default = False) The new spectrum extracted will be saved to the hard disk
+
+Read a spectrum saved by get_spec_methods
++++++++++++++++++++++++++++++++++++++++++
+
+If you used the ``save``= True option, you saved the spectrum to the hard-disk as a fits file. To access the data you can use::
+
+    from linetools.spectra.io import readspec
+    spectrum = readspec('spectrum_fitsname')
+
+This will create a ``XSpectrum1D`` object from the fits file. You can access to the spectrum wavelength, flux and sigma
+typing spectrum.wavelength, spectrum.flux and spectrum.sig. Additional information on the ``XSpectrum1D`` Class can be found in: https://github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py
+
 
 
 Use a SExtractor output file as an input
