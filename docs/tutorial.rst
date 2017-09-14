@@ -23,7 +23,7 @@ Other initialization parameters
             * ``n_fig`` Default = 1. Figure to display the GUI.
             * ``flux_units`` Default = 1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom.
             * ``vmin`` Default = 0.
-            * ``vmax`` Default = 1.
+            * ``vmax`` Default = 5.
             * ``wave_cal`` Default = 'air'. Possible values: 'air','vac'. If 'air', all spectra obtained will be automatically calibrated to vacuum.
 
 
