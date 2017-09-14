@@ -691,7 +691,7 @@ class MuseCube:
 
         :param center: Tuple. Contain the coordinates of the source.
         :param halfsize: flot or list. If int, is the halfsize of the image box and the radius of a circular aperture to get the spectrum
-                                      If list, contain the [a,b,alpha] parameter for an eliptical aperture. The box will be a square with the major semiaxis
+                                      If list, contain the [a,b,theta] parameter for an eliptical aperture. The box will be a square with the major semiaxis
         :param n_fig: Figure number to display the spectrum and the image
         :param mode: str
             Mode for combining spaxels:
