@@ -75,7 +75,7 @@ In both of the get_spec() functions you can set ``save = True`` to save the spec
 
 Another extra feature is given by the  function::
 
-    spectrum = cube.get_spec_image(center,halfsize,mode='wwm')
+    spectrum = cube.get_spec_and_image(center,halfsize,mode='wwm')
 
 This code will, in addition of extract the spectrum given by center = (x,y) and halfsize either the radius of a circular
 region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot.
