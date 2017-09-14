@@ -237,11 +237,11 @@ class MuseCube:
         data_white = fits.open(self.filename_white)[1].data
         center_x = center[0]
         center_y = center[1]
-        for i in xrange(center_x - halfsize, center_x + halfsize + 1):
-            for j in xrange(center_y - halfsize, center_y + halfsize + 1):
+        for i in xrange(center_x - halfsize-1, center_x + halfsize):
+            for j in xrange(center_y - halfsize-1, center_y + halfsize):
                 i2 = i - (center_x - halfsize)
                 j2 = j - (center_y - halfsize)
-                image[j2][i2] = data_white[j][i]
+                image[j2][i2] = data_white[j-1][i-1]
         return image
 
     def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4):
@@ -706,7 +706,7 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
-        :param frac. FLoat, default = 0.1
+        :param frac. Float, default = 0.1
                      Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)m
@@ -784,7 +784,7 @@ class MuseCube:
         mask3d = complete_mask_new
         return mask3d
 
-    def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0):
+    def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,cmap='seismic'):
         ##Get the integrated spec fit, and estimate the 0 velocity wv from there
         wv_line = wv_line_vac * (1 + z)
         dwmax = 10
@@ -920,7 +920,7 @@ class MuseCube:
         hdulist[1].data=kine_im
         hdulist.writeto('kinematics.fits',clobber=True)
         fig=aplpy.FITSFigure('kinematics.fits', figure=plt.figure())
-        fig.show_colorscale(cmap='seismic')
+        fig.show_colorscale(cmap=cmap)
         fig.add_colorbar()
         fig.colorbar.set_axis_label_text('V (km s$^{-1}$)')
         xw,yw=self.p2w(x_c,y_c)
@@ -1464,6 +1464,8 @@ class MuseCube:
         sub_cube = self.sub_cube(wv_input, stat=stat)
         if type == 'sum':
             matrix_flat = np.sum(sub_cube, axis=0)
+            if stat:
+                matrix_flat=np.sqrt(matrix_flat)
         elif type == 'median':
             matrix_flat = np.median(sub_cube, axis=0)
         else:
@@ -2410,7 +2412,7 @@ class MuseCube:
         g = fit_g(g_init, matrix_x, matrix_y, masked_white)
         weights = ma.MaskedArray(g(matrix_x, matrix_y))
         if (g.y_stddev < 0) or (g.x_stddev < 0):
-            raise ValueError('Cannot trust the model, please try other imput parameters.')
+            raise ValueError('Cannot trust the model, please try other input parameters.')
         w = self.wavelength
         n = len(w)
         fl = np.zeros(n)
@@ -2445,17 +2447,10 @@ class MuseCube:
         """
         hdulist = self.hdulist_white
         data = hdulist[1].data
-        w, h = 2 * halfsize + 1, 2 * halfsize + 1
-        matrix_data = [[0 for x in range(w)] for y in range(h)]
-        matrix_x = [[0 for x in range(w)] for y in range(h)]
-        matrix_y = [[0 for x in range(w)] for y in range(h)]
-        for i in xrange(xc - halfsize, xc + halfsize + 1):
-            for j in xrange(yc - halfsize, yc + halfsize + 1):
-                i2 = i - (xc - halfsize)
-                j2 = j - (yc - halfsize)
-                matrix_data[j2][i2] = data[j][i]
-                matrix_x[j2][i2] = i2
-                matrix_y[j2][i2] = j2
+        matrix_data=np.array(self.get_mini_image([xc,yc],halfsize=halfsize))
+        x=np.arange(0,matrix_data.shape[0],1)
+        y = np.arange(0, matrix_data.shape[1], 1)
+        matrix_x,matrix_y=np.meshgrid(x,y)
         amp_init = np.matrix(matrix_data).max()
         stdev_init = 0.33 * halfsize
 
@@ -2472,8 +2467,8 @@ class MuseCube:
             raise ValueError('Cannot trust the model, please try other imput parameters.')
 
         seeing = 2.355 * g.y_stddev * self.pixelsize.to('arcsec')  # in arcsecs
-        print('FWHM={:.2f} (arcsecs)'.format(seeing))
-        print('stddev from the 2D gaussian = {:.3f} (arcsecs)'.format(g.y_stddev * self.pixelsize.to('arcsec')))
+        print('FWHM={:.2f}'.format(seeing))
+        print('stddev from the 2D gaussian = {:.3f}'.format(g.y_stddev * self.pixelsize.to('arcsec')))
         return seeing
 
     def w2p(self, xw, yw):

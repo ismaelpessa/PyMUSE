@@ -271,6 +271,12 @@ a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 
 If save is True, the new image will be saved to the hard disk as ``fitsname``. The ``type`` of collapse can be either 'sum'
 or 'median'. n_figure is the figure's number  to display the image if ``save`` = True. Finally, if stat = True, the collapse will
 be done in the stat extension of the MUSE cube.
+If you want to directly create a new "white" just use::
+
+    cube.create_white(new_white_fitsname='white_from_colapse.fits', stat=False, save=True)
+
+This will sum all wavelengths and the new image will be saved in a fits file named by ``new_white_fitsname``. If ``stat``=True, the new
+image will be created from the stat extension, as the root of the sum of the variances along the wavelength range.
 
 Maybe yo want to collapse more than just one wavelength range (for example, the range of several emission lines)
 To do that, you may want to use the method::
