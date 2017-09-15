@@ -1464,8 +1464,6 @@ class MuseCube:
         sub_cube = self.sub_cube(wv_input, stat=stat)
         if type == 'sum':
             matrix_flat = np.sum(sub_cube, axis=0)
-            if stat:
-                matrix_flat=np.sqrt(matrix_flat)
         elif type == 'median':
             matrix_flat = np.median(sub_cube, axis=0)
         else:
