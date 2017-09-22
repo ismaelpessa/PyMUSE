@@ -2545,7 +2545,7 @@ class MuseCube:
         """
         return self.cube.data.shape
 
-    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=10, outvid='emission_lines_video.avi',
+    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=30, outvid='emission_lines_video.avi',
                                     erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
@@ -2594,7 +2594,7 @@ class MuseCube:
                 os.system(command_png)
         return video
 
-    def collapse_highSN(self, sn_min=3, fitsname='colapsed_emission_image.fits',save=True):
+    def collapse_highSN(self, sn_min=5, fitsname='collapsed_emission_image.fits',save=True):
         """
         Function used to sum only voxels in which the signal to noise is greater that sn_min value. This will create a new image
         :param sn_min: float
@@ -2606,7 +2606,7 @@ class MuseCube:
         :return:
         """
         count_voxel_cube= np.where(self.cube>(self.stat**0.5) * sn_min,1.,0.)
-        count_voxel_im = np.sum(count_voxel_cube,axis=0)
+        count_voxel_im = np.sum(count_voxel_cube,axis=0)+1
         del count_voxel_cube
         valid_voxel_cube=np.where(self.cube>(self.stat**0.5) * sn_min,self.cube,0.)
         valid_voxel_im=np.sum(valid_voxel_cube,axis=0)
@@ -2618,7 +2618,7 @@ class MuseCube:
             hdulist[1].data=normalized_im
             hdulist.writeto(fitsname,clobber=True)
         return normalized_im
-    def create_ranges(self, z, width=10.):
+    def create_ranges(self, z, width=30.):
         """
         Function used to create the wavelength ranges around strong emission lines at a given redshift
         :param z: redshift
