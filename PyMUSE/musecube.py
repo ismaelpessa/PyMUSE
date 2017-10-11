@@ -983,7 +983,7 @@ class MuseCube:
                 spec.write_to_fits(spec_fits_name + '.fits')
             print('ID = ' + str_id + ' Ready!!')
 
-    def get_spec_from_ds9regfile(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, n_figure=2,
+    def get_spec_from_ds9regfile(self, regfile, mode='wwm', i=0, frac=0.1, npix=0, empirical_std=False, n_figure=2,
                                  save=False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
@@ -1001,7 +1001,9 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
-        :param frac. FLoat, default = 0.1
+        :param i: int, default = 0
+                  Index of the region in the region file. i = 0 corresponds to the first region listed.
+        :param frac: Float, default = 0.1
                      Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
@@ -1011,6 +1013,7 @@ class MuseCube:
         :return: spec: XSpectrum1D object
         """
         r = pyregion.open(regfile)
+        r = pyregion.ShapeList([r[i]])
 
         self.draw_region(r)
 
