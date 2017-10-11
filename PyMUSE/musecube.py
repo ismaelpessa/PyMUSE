@@ -493,6 +493,7 @@ class MuseCube:
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
+        self.draw_pyregion(region_string)
         spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
@@ -531,7 +532,7 @@ class MuseCube:
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts()
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)
         patch = patch_list[0]
         ax.add_patch(patch)
 
@@ -764,15 +765,18 @@ class MuseCube:
     def draw_region(self, r):
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts()
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)
         patch = patch_list[0]
         ax.add_patch(patch)
 
     def region_2dmask(self, r):
+        from pyregion.region_to_filter import as_region_filter
         im_aux = np.ones_like(self.white_data)
         hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
-        mask_new = r.get_mask(hdu=hdu_aux)
+        shape = hdu_aux.data.shape
+        region_filter = as_region_filter(r, origin=0)
+        mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
         mask2d = mask_new_inverse
         return mask2d
@@ -1220,11 +1224,16 @@ class MuseCube:
     def get_new_2dmask(self, region_string):
         """Creates a 2D mask for the white image that mask out spaxel that are outside
         the region defined by region_string"""
+
+        from pyregion.region_to_filter import as_region_filter
         im_aux = np.ones_like(self.white_data)
         hdu_aux = fits.open(self.filename_white)[1]
         hdu_aux.data = im_aux
-        r = pyregion.parse(region_string)
-        mask_new = r.get_mask(hdu=hdu_aux)
+        hdulist = self.hdulist_white
+        r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
+        shape = hdu_aux.data.shape
+        region_filter = as_region_filter(r, origin=0)
+        mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
         return mask_new_inverse
 
