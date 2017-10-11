@@ -1199,7 +1199,7 @@ class MuseCube:
             x_center, y_center, radius = self.ellipse_params_to_pixel(xc, yc, params=[a, b, theta])
         else:  # already in pixels
             x_center, y_center, radius = xc, yc, [a, b, theta]
-        region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center + 1, y_center + 1, radius[0],
+        region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center, y_center, radius[0],
                                                                                radius[1],
                                                                                radius[2], color)
         return region_string
