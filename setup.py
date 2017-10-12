@@ -8,7 +8,7 @@ setup(
     author="I. Pessa",
     license="MIT",
     author_email="ismael.pessa@gmail.com",
-    url="https://github.com/ismaelpessa/Muse_Cube",
+    url="https://github.com/ismaelpessa/PyMUSE",
     packages=['PyMUSE'],
     install_requires=[
         'astropy',
