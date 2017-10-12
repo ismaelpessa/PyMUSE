@@ -1439,7 +1439,7 @@ class MuseCube:
         """
         Function used to produce a filtered image from the cube
         :param _filter: string, default = r
-                        possible values: u,g,r,i,z , sdss filter to get the new image
+                        possible values: u,g,r,i,z , sdss filter or Johnson V,r to get the new image
         :param save: Boolean, default = True
                      If True, the image will be saved
         :return:
