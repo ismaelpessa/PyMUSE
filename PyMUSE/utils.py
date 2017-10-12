@@ -170,7 +170,7 @@ def calculate_empirical_rms(spec, test=False):
         plt.plot(wv, fl_mid, color='black', label='flux_mid')
 
         # sigmas
-        plt.plot(wv, sigma, marker='o-', color='pink', label='Empirical sigma')
+        plt.plot(wv, sigma, 'o', color='pink', label='Empirical sigma')
         plt.plot(wv, spec.sig.value, color='yellow', label='Original sigma')
         plt.legend()
         plt.show()
