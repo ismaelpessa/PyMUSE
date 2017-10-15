@@ -20,7 +20,7 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
-
+from astropy import wcs
 import PyMUSE.utils as mcu
 
 
@@ -30,8 +30,7 @@ class MuseCube:
 
     """
 
-    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air'):
+    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, vmin=0, vmax=5, wave_cal='air'):
         """
         Parameters
         ----------
@@ -50,50 +49,46 @@ class MuseCube:
         """
 
         # init
-        self.color = False
-        self.cmap = ""
         self.vmin = vmin
         self.vmax = vmax
-        self.flux_units = flux_units
-        self.n = n_fig
-        plt.close(self.n)
-        self.wave_cal = wave_cal
+
+       #Should be a property.
+       #self.wave_cal = wave_cal
 
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
 
-        self.white_data = fits.open(self.filename_white)[1].data
-        self.hdulist_white = fits.open(self.filename_white)
-        self.white_data = np.where(self.white_data < 0, 0, self.white_data)
-        self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
+       #self.white_data = fits.open(self.filename_white)[1].data
+       #self.hdulist_white = fits.open(self.filename_white)
+    #   self.white_data = np.where(self.white_data < 0, 0, self.white_data)
+   #    self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
+    #   self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
 
         # self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-        gc.enable()
+       # gc.enable()
         # plt.close(20)
-        print("MuseCube: Ready!")
+       # print("MuseCube: Ready!")
 
     def load_data(self):
-        hdulist = fits.open(self.filename)
         print("MuseCube: Loading the cube fluxes and variances...")
-
+        import spectral_cube as sc 
         # import pdb; pdb.set_trace()
-        self.cube = ma.MaskedArray(hdulist[1].data)
-        self.stat = ma.MaskedArray(hdulist[2].data)
+        self.wcs = wcs.WCS(header=fits.getheader(self.filename,ext=1)) 
+        self.cube = sc.SpectralCube.read(self.filename,hdu=1)
+        self.stat = sc.SpectralCube.read(self.filename,hdu=2)
+        self.mask = ~sc.masks.LazyMask(np.isnan,cube=self.cube) | ~sc.masks.LazyMask(np.isnan,cube=self.stat)
+
 
         print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
         # masking
-        self.mask_init = np.isnan(self.cube) | np.isnan(self.stat)
-        self.cube.mask = self.mask_init
-        self.stat.mask = self.mask_init
 
         # for ivar weighting ; consider creating it in init ; takes long
         # self.flux_over_ivar = self.cube / self.stat
 
-        self.header_1 = hdulist[1].header  # Necesito el header para crear una buena copia del white.
-        self.header_0 = hdulist[0].header
+        #self.header_1 = hdulist[1].header  # Necesito el header para crear una buena copia del white.
+        #self.header_0 = hdulist[0].header
 
 
         if self.filename_white is None:
@@ -124,6 +119,14 @@ class MuseCube:
             hdu.writeto('new_white.fits', clobber=True)
             self.filename_white = 'new_white.fits'
             print("MuseCube: `new_white.fits` image saved to disk.")
+    
+    @property
+    def data(self):
+        return self.cube.with_mask(self.mask)[:]
+    @property
+    def weights(self):
+        return fits.getdata(self.filename,ext=2)
+
 
     def color_gui(self, cmap):
         """
