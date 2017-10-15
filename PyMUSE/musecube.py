@@ -22,9 +22,10 @@ from scipy import interpolate
 from scipy import ndimage
 from astropy import wcs
 import PyMUSE.utils as mcu
+import spectral_cube as sc
 
 
-class MuseCube:
+class CubeClass:
     """
     Class to handle VLT/MUSE data
 
@@ -49,43 +50,28 @@ class MuseCube:
         """
 
         # init
+        self.filename = filename_cube
+        self.wcs = wcs.WCS(header=fits.getheader(self.filename,ext=1)) 
+        self._data = sc.SpectralCube.read(self.filename,hdu=1)
+        self._stat = sc.SpectralCube.read(self.filename,hdu=2)
+        self.mask = ~sc.masks.LazyMask(np.isnan,cube=self._data) | ~sc.masks.LazyMask(np.isnan,cube=self._stat)
+
+
         self.vmin = vmin
         self.vmax = vmax
 
-       #Should be a property.
-       #self.wave_cal = wave_cal
+        self.wave_cal = wave_cal
 
-        self.filename = filename_cube
         self.filename_white = filename_white
-        self.load_data()
 
-       #self.white_data = fits.open(self.filename_white)[1].data
-       #self.hdulist_white = fits.open(self.filename_white)
-    #   self.white_data = np.where(self.white_data < 0, 0, self.white_data)
-   #    self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-    #   self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
 
-        # self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-       # gc.enable()
-        # plt.close(20)
-       # print("MuseCube: Ready!")
 
-    def load_data(self):
-        print("MuseCube: Loading the cube fluxes and variances...")
-        import spectral_cube as sc 
-        # import pdb; pdb.set_trace()
-        self.wcs = wcs.WCS(header=fits.getheader(self.filename,ext=1)) 
-        self.cube = sc.SpectralCube.read(self.filename,hdu=1)
-        self.stat = sc.SpectralCube.read(self.filename,hdu=2)
-        self.mask = ~sc.masks.LazyMask(np.isnan,cube=self.cube) | ~sc.masks.LazyMask(np.isnan,cube=self.stat)
-
-
-        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
+   
         # masking
 
         # for ivar weighting ; consider creating it in init ; takes long
-        # self.flux_over_ivar = self.cube / self.stat
+        # self.flux_over_ivar = self.data / self.stat
 
         #self.header_1 = hdulist[1].header  # Necesito el header para crear una buena copia del white.
         #self.header_0 = hdulist[0].header
@@ -120,12 +106,14 @@ class MuseCube:
             self.filename_white = 'new_white.fits'
             print("MuseCube: `new_white.fits` image saved to disk.")
     
+    
+    
     @property
     def data(self):
-        return self.cube.with_mask(self.mask)[:]
+        return self._data.with_mask(self.mask)[:]
     @property
-    def weights(self):
-        return fits.getdata(self.filename,ext=2)
+    def stat(self):
+        return self._stat.with_mask(self.mask)[:]
 
 
     def color_gui(self, cmap):
@@ -196,11 +184,11 @@ class MuseCube:
         if not isinstance(npix, int):
             raise ValueError("npix must be integer.")
 
-        cube_new = copy.deepcopy(self.cube)
-        ntot = len(self.cube)
+        cube_new = copy.deepcopy(self.data)
+        ntot = len(self.data)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii + 1, ntot))
-            image_aux = self.cube[wv_ii, :, :]
+            image_aux = self.data[wv_ii, :, :]
             smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
@@ -263,7 +251,7 @@ class MuseCube:
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        self.cube.mask = new_3dmask
+        self.data.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
@@ -271,9 +259,9 @@ class MuseCube:
             weigths = ma.MaskedArray(fi.gaussian_filter(center, seeing))
             weigths.mask = mask
             weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
+            fl[wv_ii] = np.sum(self.data[wv_ii] * weigths)
             sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))
-        self.cube.mask = self.mask_init
+        self.data.mask = self.mask_init
         return XSpectrum1D.from_tuple((w, fl, sig))
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
@@ -297,7 +285,7 @@ class MuseCube:
         spec = np.zeros(n)
         sigma = np.zeros(n)
         for wv_ii in range(n):
-            spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
+            spec[wv_ii] = self.data.data[wv_ii][int(y_c)][int(x_c)]
             sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
         spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
         if empirical_std:
@@ -545,7 +533,7 @@ class MuseCube:
 
         Parameters
         ----------
-        new_3dmask : np.array of same shape as self.cube
+        new_3dmask : np.array of same shape as self.data
             The 3D mask
         mode : str
             Mode for combining spaxels:
@@ -566,7 +554,7 @@ class MuseCube:
         """
         if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
-        if np.shape(new_3dmask) != np.shape(self.cube.mask):
+        if np.shape(new_3dmask) != np.shape(self.data.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
 
         n = len(self.wavelength)
@@ -585,7 +573,7 @@ class MuseCube:
         warn = False
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
-            im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
+            im_fl = self.data[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
             if len(im_fl) == 0:
@@ -1429,13 +1417,13 @@ class MuseCube:
             if stat:
                 sub_cube = self.stat[ind_min:ind_max + 1, :, :]
             else:
-                sub_cube = self.cube[ind_min:ind_max + 1, :, :]
+                sub_cube = self.data[ind_min:ind_max + 1, :, :]
         else:  # assuming array-like for wv_input
             wv_inds = self.find_wv_inds(wv_input)
             if stat:
                 sub_cube = self.stat[wv_inds, :, :]
             else:
-                sub_cube = self.cube[wv_inds, :, :]
+                sub_cube = self.data[wv_inds, :, :]
         return sub_cube
 
     def get_filtered_image(self, _filter='r', save=True, n_figure=5):
@@ -1452,7 +1440,7 @@ class MuseCube:
         filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
         condition = np.where(filter_curve > 0)[0]
         fitsname = 'new_image_' + _filter + '_filter.fits'
-        sub_cube = self.cube[condition]
+        sub_cube = self.data[condition]
         filter_curve_final = filter_curve[condition]
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
         new_shape = filter_curve_final.shape + (1,) * extra_dims
@@ -2274,16 +2262,16 @@ class MuseCube:
         fl = np.zeros(n)
         sig = np.zeros(n)
         new_3dmask = self.get_new_3dmask(region_string)
-        self.cube.mask = new_3dmask
+        self.data.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             weights.mask = mask
             # n_spaxels = np.sum(mask)
             weights = weights / np.sum(weights)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weights)  # * n_spaxels
+            fl[wv_ii] = np.sum(self.data[wv_ii] * weights)  # * n_spaxels
             sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
         # reset mask
-        self.cube.mask = self.mask_init
+        self.data.mask = self.mask_init
 
         # renormalize
         fl_sum = spec_sum.flux.value
@@ -2401,7 +2389,7 @@ class MuseCube:
         :param self:
         :return:
         """
-        return self.cube.data.shape
+        return self.data.data.shape
 
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=30, outvid='emission_lines_video.avi',
                                     erase=True):
@@ -2463,10 +2451,10 @@ class MuseCube:
                      If True, the new image is saved to the hard disk.
         :return:
         """
-        count_voxel_cube= np.where(self.cube>(self.stat**0.5) * sn_min,1.,0.)
+        count_voxel_cube= np.where(self.data>(self.stat**0.5) * sn_min,1.,0.)
         count_voxel_im = np.sum(count_voxel_cube,axis=0)+1
         del count_voxel_cube
-        valid_voxel_cube=np.where(self.cube>(self.stat**0.5) * sn_min,self.cube,0.)
+        valid_voxel_cube=np.where(self.data>(self.stat**0.5) * sn_min,self.data,0.)
         valid_voxel_im=np.sum(valid_voxel_cube,axis=0)
         del valid_voxel_cube
         normalized_im = valid_voxel_im/count_voxel_im
