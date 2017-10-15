@@ -20,18 +20,18 @@ from linetools.utils import name_from_coord
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
-
+from astropy import wcs
 import PyMUSE.utils as mcu
+import spectral_cube as sc
 
 
-class MuseCube:
+class CubeClass:
     """
     Class to handle VLT/MUSE data
 
     """
 
-    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air'):
+    def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, vmin=0, vmax=5, wave_cal='air'):
         """
         Parameters
         ----------
@@ -50,50 +50,31 @@ class MuseCube:
         """
 
         # init
-        self.color = False
-        self.cmap = ""
+        self.filename = filename_cube
+        self.wcs = wcs.WCS(header=fits.getheader(self.filename,ext=1)) 
+        self._data = sc.SpectralCube.read(self.filename,hdu=1)
+        self._stat = sc.SpectralCube.read(self.filename,hdu=2)
+        self.mask = ~sc.masks.LazyMask(np.isnan,cube=self._data) | ~sc.masks.LazyMask(np.isnan,cube=self._stat)
+
+
         self.vmin = vmin
         self.vmax = vmax
-        self.flux_units = flux_units
-        self.n = n_fig
-        plt.close(self.n)
+
         self.wave_cal = wave_cal
 
-        self.filename = filename_cube
         self.filename_white = filename_white
-        self.load_data()
 
-        self.white_data = fits.open(self.filename_white)[1].data
-        self.hdulist_white = fits.open(self.filename_white)
-        self.white_data = np.where(self.white_data < 0, 0, self.white_data)
-        self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
-        self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
 
-        # self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
-        gc.enable()
-        # plt.close(20)
-        print("MuseCube: Ready!")
 
-    def load_data(self):
-        hdulist = fits.open(self.filename)
-        print("MuseCube: Loading the cube fluxes and variances...")
-
-        # import pdb; pdb.set_trace()
-        self.cube = ma.MaskedArray(hdulist[1].data)
-        self.stat = ma.MaskedArray(hdulist[2].data)
-
-        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
+   
         # masking
-        self.mask_init = np.isnan(self.cube) | np.isnan(self.stat)
-        self.cube.mask = self.mask_init
-        self.stat.mask = self.mask_init
 
         # for ivar weighting ; consider creating it in init ; takes long
-        # self.flux_over_ivar = self.cube / self.stat
+        # self.flux_over_ivar = self.data / self.stat
 
-        self.header_1 = hdulist[1].header  # Necesito el header para crear una buena copia del white.
-        self.header_0 = hdulist[0].header
+        #self.header_1 = hdulist[1].header  # Necesito el header para crear una buena copia del white.
+        #self.header_0 = hdulist[0].header
 
 
         if self.filename_white is None:
@@ -124,6 +105,16 @@ class MuseCube:
             hdu.writeto('new_white.fits', clobber=True)
             self.filename_white = 'new_white.fits'
             print("MuseCube: `new_white.fits` image saved to disk.")
+    
+    
+    
+    @property
+    def data(self):
+        return self._data.with_mask(self.mask)[:]
+    @property
+    def stat(self):
+        return self._stat.with_mask(self.mask)[:]
+
 
     def color_gui(self, cmap):
         """
@@ -193,11 +184,11 @@ class MuseCube:
         if not isinstance(npix, int):
             raise ValueError("npix must be integer.")
 
-        cube_new = copy.deepcopy(self.cube)
-        ntot = len(self.cube)
+        cube_new = copy.deepcopy(self.data)
+        ntot = len(self.data)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii + 1, ntot))
-            image_aux = self.cube[wv_ii, :, :]
+            image_aux = self.data[wv_ii, :, :]
             smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
@@ -260,7 +251,7 @@ class MuseCube:
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        self.cube.mask = new_3dmask
+        self.data.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
@@ -268,9 +259,9 @@ class MuseCube:
             weigths = ma.MaskedArray(fi.gaussian_filter(center, seeing))
             weigths.mask = mask
             weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
+            fl[wv_ii] = np.sum(self.data[wv_ii] * weigths)
             sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))
-        self.cube.mask = self.mask_init
+        self.data.mask = self.mask_init
         return XSpectrum1D.from_tuple((w, fl, sig))
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
@@ -294,7 +285,7 @@ class MuseCube:
         spec = np.zeros(n)
         sigma = np.zeros(n)
         for wv_ii in range(n):
-            spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
+            spec[wv_ii] = self.data.data[wv_ii][int(y_c)][int(x_c)]
             sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
         spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
         if empirical_std:
@@ -542,7 +533,7 @@ class MuseCube:
 
         Parameters
         ----------
-        new_3dmask : np.array of same shape as self.cube
+        new_3dmask : np.array of same shape as self.data
             The 3D mask
         mode : str
             Mode for combining spaxels:
@@ -563,7 +554,7 @@ class MuseCube:
         """
         if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
-        if np.shape(new_3dmask) != np.shape(self.cube.mask):
+        if np.shape(new_3dmask) != np.shape(self.data.mask):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
 
         n = len(self.wavelength)
@@ -582,7 +573,7 @@ class MuseCube:
         warn = False
         for wv_ii in xrange(n):
             mask = new_3dmask[wv_ii]  # 2-D mask
-            im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
+            im_fl = self.data[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
             if len(im_fl) == 0:
@@ -860,7 +851,7 @@ class MuseCube:
         sigma_im=np.where(self.white_data == 0, np.nan, np.nan)
 
         for i in xrange(n):
-            print str(i+1)+'/'+str(n)
+            print(str(i+1)+'/'+str(n))
             spec = self.get_spec_spaxel(x[i], y[i])
             wv = spec.wavelength.value
             fl = spec.flux.value
@@ -1426,13 +1417,13 @@ class MuseCube:
             if stat:
                 sub_cube = self.stat[ind_min:ind_max + 1, :, :]
             else:
-                sub_cube = self.cube[ind_min:ind_max + 1, :, :]
+                sub_cube = self.data[ind_min:ind_max + 1, :, :]
         else:  # assuming array-like for wv_input
             wv_inds = self.find_wv_inds(wv_input)
             if stat:
                 sub_cube = self.stat[wv_inds, :, :]
             else:
-                sub_cube = self.cube[wv_inds, :, :]
+                sub_cube = self.data[wv_inds, :, :]
         return sub_cube
 
     def get_filtered_image(self, _filter='r', save=True, n_figure=5):
@@ -1449,7 +1440,7 @@ class MuseCube:
         filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
         condition = np.where(filter_curve > 0)[0]
         fitsname = 'new_image_' + _filter + '_filter.fits'
-        sub_cube = self.cube[condition]
+        sub_cube = self.data[condition]
         filter_curve_final = filter_curve[condition]
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
         new_shape = filter_curve_final.shape + (1,) * extra_dims
@@ -1550,170 +1541,13 @@ class MuseCube:
         wave_i = np.arange(6430, 8655, 25)
 
         wave_z = np.arange(7730, 11255, 25)
+        
+        wave_R = np.arange(5445,9345,5)
 
-        wave_R=np.array([ 5445.,  5450.,  5455.,  5460.,  5465.,  5470.,  5475.,  5480.,
-                          5485.,  5490.,  5495.,  5500.,  5505.,  5510.,  5515.,  5520.,
-                          5525.,  5530.,  5535.,  5540.,  5545.,  5550.,  5555.,  5560.,
-                          5565.,  5570.,  5575.,  5580.,  5585.,  5590.,  5595.,  5600.,
-                          5605.,  5610.,  5615.,  5620.,  5625.,  5630.,  5635.,  5640.,
-                          5645.,  5650.,  5655.,  5660.,  5665.,  5670.,  5675.,  5680.,
-                          5685.,  5690.,  5695.,  5700.,  5705.,  5710.,  5715.,  5720.,
-                          5725.,  5730.,  5735.,  5740.,  5745.,  5750.,  5755.,  5760.,
-                          5765.,  5770.,  5775.,  5780.,  5785.,  5790.,  5795.,  5800.,
-                          5805.,  5810.,  5815.,  5820.,  5825.,  5830.,  5835.,  5840.,
-                          5845.,  5850.,  5855.,  5860.,  5865.,  5870.,  5875.,  5880.,
-                          5885.,  5890.,  5895.,  5900.,  5905.,  5910.,  5915.,  5920.,
-                          5925.,  5930.,  5935.,  5940.,  5945.,  5950.,  5955.,  5960.,
-                          5965.,  5970.,  5975.,  5980.,  5985.,  5990.,  5995.,  6000.,
-                          6005.,  6010.,  6015.,  6020.,  6025.,  6030.,  6035.,  6040.,
-                          6045.,  6050.,  6055.,  6060.,  6065.,  6070.,  6075.,  6080.,
-                          6085.,  6090.,  6095.,  6100.,  6105.,  6110.,  6115.,  6120.,
-                          6125.,  6130.,  6135.,  6140.,  6145.,  6150.,  6155.,  6160.,
-                          6165.,  6170.,  6175.,  6180.,  6185.,  6190.,  6195.,  6200.,
-                          6205.,  6210.,  6215.,  6220.,  6225.,  6230.,  6235.,  6240.,
-                          6245.,  6250.,  6255.,  6260.,  6265.,  6270.,  6275.,  6280.,
-                          6285.,  6290.,  6295.,  6300.,  6305.,  6310.,  6315.,  6320.,
-                          6325.,  6330.,  6335.,  6340.,  6345.,  6350.,  6355.,  6360.,
-                          6365.,  6370.,  6375.,  6380.,  6385.,  6390.,  6395.,  6400.,
-                          6405.,  6410.,  6415.,  6420.,  6425.,  6430.,  6435.,  6440.,
-                          6445.,  6450.,  6455.,  6460.,  6465.,  6470.,  6475.,  6480.,
-                          6485.,  6490.,  6495.,  6500.,  6505.,  6510.,  6515.,  6520.,
-                          6525.,  6530.,  6535.,  6540.,  6545.,  6550.,  6555.,  6560.,
-                          6565.,  6570.,  6575.,  6580.,  6585.,  6590.,  6595.,  6600.,
-                          6605.,  6610.,  6615.,  6620.,  6625.,  6630.,  6635.,  6640.,
-                          6645.,  6650.,  6655.,  6660.,  6665.,  6670.,  6675.,  6680.,
-                          6685.,  6690.,  6695.,  6700.,  6705.,  6710.,  6715.,  6720.,
-                          6725.,  6730.,  6735.,  6740.,  6745.,  6750.,  6755.,  6760.,
-                          6765.,  6770.,  6775.,  6780.,  6785.,  6790.,  6795.,  6800.,
-                          6805.,  6810.,  6815.,  6820.,  6825.,  6830.,  6835.,  6840.,
-                          6845.,  6850.,  6855.,  6860.,  6865.,  6870.,  6875.,  6880.,
-                          6885.,  6890.,  6895.,  6900.,  6905.,  6910.,  6915.,  6920.,
-                          6925.,  6930.,  6935.,  6940.,  6945.,  6950.,  6955.,  6960.,
-                          6965.,  6970.,  6975.,  6980.,  6985.,  6990.,  6995.,  7000.,
-                          7005.,  7010.,  7015.,  7020.,  7025.,  7030.,  7035.,  7040.,
-                          7045.,  7050.,  7055.,  7060.,  7065.,  7070.,  7075.,  7080.,
-                          7085.,  7090.,  7095.,  7100.,  7105.,  7110.,  7115.,  7120.,
-                          7125.,  7130.,  7135.,  7140.,  7145.,  7150.,  7155.,  7160.,
-                          7165.,  7170.,  7175.,  7180.,  7185.,  7190.,  7195.,  7200.,
-                          7205.,  7210.,  7215.,  7220.,  7225.,  7230.,  7235.,  7240.,
-                          7245.,  7250.,  7255.,  7260.,  7265.,  7270.,  7275.,  7280.,
-                          7285.,  7290.,  7295.,  7300.,  7305.,  7310.,  7315.,  7320.,
-                          7325.,  7330.,  7335.,  7340.,  7345.,  7350.,  7355.,  7360.,
-                          7365.,  7370.,  7375.,  7380.,  7385.,  7390.,  7395.,  7400.,
-                          7405.,  7410.,  7415.,  7420.,  7425.,  7430.,  7435.,  7440.,
-                          7445.,  7450.,  7455.,  7460.,  7465.,  7470.,  7475.,  7480.,
-                          7485.,  7490.,  7495.,  7500.,  7505.,  7510.,  7515.,  7520.,
-                          7525.,  7530.,  7535.,  7540.,  7545.,  7550.,  7555.,  7560.,
-                          7565.,  7570.,  7575.,  7580.,  7585.,  7590.,  7595.,  7600.,
-                          7605.,  7610.,  7615.,  7620.,  7625.,  7630.,  7635.,  7640.,
-                          7645.,  7650.,  7655.,  7660.,  7665.,  7670.,  7675.,  7680.,
-                          7685.,  7690.,  7695.,  7700.,  7705.,  7710.,  7715.,  7720.,
-                          7725.,  7730.,  7735.,  7740.,  7745.,  7750.,  7755.,  7760.,
-                          7765.,  7770.,  7775.,  7780.,  7785.,  7790.,  7795.,  7800.,
-                          7805.,  7810.,  7815.,  7820.,  7825.,  7830.,  7835.,  7840.,
-                          7845.,  7850.,  7855.,  7860.,  7865.,  7870.,  7875.,  7880.,
-                          7885.,  7890.,  7895.,  7900.,  7905.,  7910.,  7915.,  7920.,
-                          7925.,  7930.,  7935.,  7940.,  7945.,  7950.,  7955.,  7960.,
-                          7965.,  7970.,  7975.,  7980.,  7985.,  7990.,  7995.,  8000.,
-                          8005.,  8010.,  8015.,  8020.,  8025.,  8030.,  8035.,  8040.,
-                          8045.,  8050.,  8055.,  8060.,  8065.,  8070.,  8075.,  8080.,
-                          8085.,  8090.,  8095.,  8100.,  8105.,  8110.,  8115.,  8120.,
-                          8125.,  8130.,  8135.,  8140.,  8145.,  8150.,  8155.,  8160.,
-                          8165.,  8170.,  8175.,  8180.,  8185.,  8190.,  8195.,  8200.,
-                          8205.,  8210.,  8215.,  8220.,  8225.,  8230.,  8235.,  8240.,
-                          8245.,  8250.,  8255.,  8260.,  8265.,  8270.,  8275.,  8280.,
-                          8285.,  8290.,  8295.,  8300.,  8305.,  8310.,  8315.,  8320.,
-                          8325.,  8330.,  8335.,  8340.,  8345.,  8350.,  8355.,  8360.,
-                          8365.,  8370.,  8375.,  8380.,  8385.,  8390.,  8395.,  8400.,
-                          8405.,  8410.,  8415.,  8420.,  8425.,  8430.,  8435.,  8440.,
-                          8445.,  8450.,  8455.,  8460.,  8465.,  8470.,  8475.,  8480.,
-                          8485.,  8490.,  8495.,  8500.,  8505.,  8510.,  8515.,  8520.,
-                          8525.,  8530.,  8535.,  8540.,  8545.,  8550.,  8555.,  8560.,
-                          8565.,  8570.,  8575.,  8580.,  8585.,  8590.,  8595.,  8600.,
-                          8605.,  8610.,  8615.,  8620.,  8625.,  8630.,  8635.,  8640.,
-                          8645.,  8650.,  8655.,  8660.,  8665.,  8670.,  8675.,  8680.,
-                          8685.,  8690.,  8695.,  8700.,  8705.,  8710.,  8715.,  8720.,
-                          8725.,  8730.,  8735.,  8740.,  8745.,  8750.,  8755.,  8760.,
-                          8765.,  8770.,  8775.,  8780.,  8785.,  8790.,  8795.,  8800.,
-                          8805.,  8810.,  8815.,  8820.,  8825.,  8830.,  8835.,  8840.,
-                          8845.,  8850.,  8855.,  8860.,  8865.,  8870.,  8875.,  8880.,
-                          8885.,  8890.,  8895.,  8900.,  8905.,  8910.,  8915.,  8920.,
-                          8925.,  8930.,  8935.,  8940.,  8945.,  8950.,  8955.,  8960.,
-                          8965.,  8970.,  8975.,  8980.,  8985.,  8990.,  8995.,  9000.,
-                          9005.,  9010.,  9015.,  9020.,  9025.,  9030.,  9035.,  9040.,
-                          9045.,  9050.,  9055.,  9060.,  9065.,  9070.,  9075.,  9080.,
-                          9085.,  9090.,  9095.,  9100.,  9105.,  9110.,  9115.,  9120.,
-                          9125.,  9130.,  9135.,  9140.,  9145.,  9150.,  9155.,  9160.,
-                          9165.,  9170.,  9175.,  9180.,  9185.,  9190.,  9195.,  9200.,
-                          9205.,  9210.,  9215.,  9220.,  9225.,  9230.,  9235.,  9240.,
-                          9245.,  9250.,  9255.,  9260.,  9265.,  9270.,  9275.,  9280.,
-                          9285.,  9290.,  9295.,  9300.,  9305.,  9310.,  9315.,  9320.,
-                          9325.,  9330.,  9335.,  9340.])
-
-        wave_V=np.array([ 4760.,  4765.,  4770.,  4775.,  4780.,  4785.,  4790.,  4795.,
-        4800.,  4805.,  4810.,  4815.,  4820.,  4825.,  4830.,  4835.,
-        4840.,  4845.,  4850.,  4855.,  4860.,  4865.,  4870.,  4875.,
-        4880.,  4885.,  4890.,  4895.,  4900.,  4905.,  4910.,  4915.,
-        4920.,  4925.,  4930.,  4935.,  4940.,  4945.,  4950.,  4955.,
-        4960.,  4965.,  4970.,  4975.,  4980.,  4985.,  4990.,  4995.,
-        5000.,  5005.,  5010.,  5015.,  5020.,  5025.,  5030.,  5035.,
-        5040.,  5045.,  5050.,  5055.,  5060.,  5065.,  5070.,  5075.,
-        5080.,  5085.,  5090.,  5095.,  5100.,  5105.,  5110.,  5115.,
-        5120.,  5125.,  5130.,  5135.,  5140.,  5145.,  5150.,  5155.,
-        5160.,  5165.,  5170.,  5175.,  5180.,  5185.,  5190.,  5195.,
-        5200.,  5205.,  5210.,  5215.,  5220.,  5225.,  5230.,  5235.,
-        5240.,  5245.,  5250.,  5255.,  5260.,  5265.,  5270.,  5275.,
-        5280.,  5285.,  5290.,  5295.,  5300.,  5305.,  5310.,  5315.,
-        5320.,  5325.,  5330.,  5335.,  5340.,  5345.,  5350.,  5355.,
-        5360.,  5365.,  5370.,  5375.,  5380.,  5385.,  5390.,  5395.,
-        5400.,  5405.,  5410.,  5415.,  5420.,  5425.,  5430.,  5435.,
-        5440.,  5445.,  5450.,  5455.,  5460.,  5465.,  5470.,  5475.,
-        5480.,  5485.,  5490.,  5495.,  5500.,  5505.,  5510.,  5515.,
-        5520.,  5525.,  5530.,  5535.,  5540.,  5545.,  5550.,  5555.,
-        5560.,  5565.,  5570.,  5575.,  5580.,  5585.,  5590.,  5595.,
-        5600.,  5605.,  5610.,  5615.,  5620.,  5625.,  5630.,  5635.,
-        5640.,  5645.,  5650.,  5655.,  5660.,  5665.,  5670.,  5675.,
-        5680.,  5685.,  5690.,  5695.,  5700.,  5705.,  5710.,  5715.,
-        5720.,  5725.,  5730.,  5735.,  5740.,  5745.,  5750.,  5755.,
-        5760.,  5765.,  5770.,  5775.,  5780.,  5785.,  5790.,  5795.,
-        5800.,  5805.,  5810.,  5815.,  5820.,  5825.,  5830.,  5835.,
-        5840.,  5845.,  5850.,  5855.,  5860.,  5865.,  5870.,  5875.,
-        5880.,  5885.,  5890.,  5895.,  5900.,  5905.,  5910.,  5915.,
-        5920.,  5925.,  5930.,  5935.,  5940.,  5945.,  5950.,  5955.,
-        5960.,  5965.,  5970.,  5975.,  5980.,  5985.,  5990.,  5995.,
-        6000.,  6005.,  6010.,  6015.,  6020.,  6025.,  6030.,  6035.,
-        6040.,  6045.,  6050.,  6055.,  6060.,  6065.,  6070.,  6075.,
-        6080.,  6085.,  6090.,  6095.,  6100.,  6105.,  6110.,  6115.,
-        6120.,  6125.,  6130.,  6135.,  6140.,  6145.,  6150.,  6155.,
-        6160.,  6165.,  6170.,  6175.,  6180.,  6185.,  6190.,  6195.,
-        6200.,  6205.,  6210.,  6215.,  6220.,  6225.,  6230.,  6235.,
-        6240.,  6245.,  6250.,  6255.,  6260.,  6265.,  6270.,  6275.,
-        6280.,  6285.,  6290.,  6295.,  6300.,  6305.,  6310.,  6315.,
-        6320.,  6325.,  6330.,  6335.,  6340.,  6345.,  6350.,  6355.,
-        6360.,  6365.,  6370.,  6375.,  6380.,  6385.,  6390.,  6395.,
-        6400.,  6405.,  6410.,  6415.,  6420.,  6425.,  6430.,  6435.,
-        6440.,  6445.,  6450.,  6455.,  6460.,  6465.,  6470.,  6475.,
-        6480.,  6485.,  6490.,  6495.,  6500.,  6505.,  6510.,  6515.,
-        6520.,  6525.,  6530.,  6535.,  6540.,  6545.,  6550.,  6555.,
-        6560.,  6565.,  6570.,  6575.,  6580.,  6585.,  6590.,  6595.,
-        6600.,  6605.,  6610.,  6615.,  6620.,  6625.,  6630.,  6635.,
-        6640.,  6645.,  6650.,  6655.,  6660.,  6665.,  6670.,  6675.,
-        6680.,  6685.,  6690.,  6695.,  6700.,  6705.,  6710.,  6715.,
-        6720.,  6725.,  6730.,  6735.,  6740.,  6745.,  6750.,  6755.,
-        6760.,  6765.,  6770.,  6775.,  6780.,  6785.,  6790.,  6795.,
-        6800.,  6805.,  6810.,  6815.,  6820.,  6825.,  6830.,  6835.,
-        6840.,  6845.,  6850.,  6855.,  6860.,  6865.,  6870.,  6875.,
-        6880.,  6885.,  6890.,  6895.,  6900.,  6905.,  6910.,  6915.,
-        6920.,  6925.,  6930.,  6935.,  6940.,  6945.,  6950.,  6955.,
-        6960.,  6965.,  6970.,  6975.,  6980.,  6985.,  6990.,  6995.,
-        7000.,  7005.,  7010.,  7015.,  7020.,  7025.,  7030.,  7035.,
-        7040.,  7045.,  7050.,  7055.,  7060.,  7065.,  7070.,  7075.,
-        7080.,  7085.,  7090.,  7095.,  7100.,  7105.,  7110.,  7115.,
-        7120.,  7125.,  7130.,  7135.,  7140.,  7145.,  7150.,  7155.,
-        7160.,  7165.,  7170.,  7175.,  7180.,  7185.,  7190.,  7195.,
-        7200.,  7205.,  7210.,  7215.,  7220.,  7225.,  7230.,  7235.,
-        7240.,  7245.,  7250.,  7255.,  7260.,  7265.,  7270.,  7280.])
-
+        wave_V = np.arange(4760,7285,5)
+        
+        
+        
         flux_V=np.array([  9.64320839e-03,   1.17108273e-02,   1.43528032e-02,
          1.75631618e-02,   2.11335897e-02,   2.55253673e-02,
          3.07395792e-02,   3.66303658e-02,   4.38177156e-02,
@@ -2428,16 +2262,16 @@ class MuseCube:
         fl = np.zeros(n)
         sig = np.zeros(n)
         new_3dmask = self.get_new_3dmask(region_string)
-        self.cube.mask = new_3dmask
+        self.data.mask = new_3dmask
         for wv_ii in range(n):
             mask = new_3dmask[wv_ii]
             weights.mask = mask
             # n_spaxels = np.sum(mask)
             weights = weights / np.sum(weights)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weights)  # * n_spaxels
+            fl[wv_ii] = np.sum(self.data[wv_ii] * weights)  # * n_spaxels
             sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
         # reset mask
-        self.cube.mask = self.mask_init
+        self.data.mask = self.mask_init
 
         # renormalize
         fl_sum = spec_sum.flux.value
@@ -2555,7 +2389,7 @@ class MuseCube:
         :param self:
         :return:
         """
-        return self.cube.data.shape
+        return self.data.data.shape
 
     def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=30, outvid='emission_lines_video.avi',
                                     erase=True):
@@ -2617,10 +2451,10 @@ class MuseCube:
                      If True, the new image is saved to the hard disk.
         :return:
         """
-        count_voxel_cube= np.where(self.cube>(self.stat**0.5) * sn_min,1.,0.)
+        count_voxel_cube= np.where(self.data>(self.stat**0.5) * sn_min,1.,0.)
         count_voxel_im = np.sum(count_voxel_cube,axis=0)+1
         del count_voxel_cube
-        valid_voxel_cube=np.where(self.cube>(self.stat**0.5) * sn_min,self.cube,0.)
+        valid_voxel_cube=np.where(self.data>(self.stat**0.5) * sn_min,self.data,0.)
         valid_voxel_im=np.sum(valid_voxel_cube,axis=0)
         del valid_voxel_cube
         normalized_im = valid_voxel_im/count_voxel_im
