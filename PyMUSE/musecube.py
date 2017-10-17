@@ -1212,7 +1212,7 @@ class MuseCube:
         for i in xrange(n):
             if smoothed_white[y[i]][x[i]] >= fl_limit:
                 plt.figure(self.n)
-                plt.plot(x[i], y[i], 'o', color='Blue')
+                plt.plot(x[i]+1, y[i]+1, 'o', color='Blue')
 
     def _test_3dmask(self, region_string, alpha=0.8, slice=0):
         complete_mask = self.get_new_3dmask(region_string)
@@ -1435,18 +1435,29 @@ class MuseCube:
                 sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self, _filter='r', save=True, n_figure=5):
+    def get_filtered_image(self, _filter='r', save=True, n_figure=5, custom_filter=None):
         """
         Function used to produce a filtered image from the cube
         :param _filter: string, default = r
                         possible values: u,g,r,i,z , sdss filter or Johnson V,r to get the new image
         :param save: Boolean, default = True
                      If True, the image will be saved
+        :param custom_filter: Default = None.
+                              If not, can be a customized filter created by the user formated as [wc,fc],
+                              where the first element is the wavelength array of the filter and the second is the
+                              corresponding transmission curve.
         :return:
         """
 
+
         w = self.wavelength
-        filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
+        if not custom_filter:
+            filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
+        else:
+            wave_filter = custom_filter[0]
+            flux_filter = custom_filter[1]
+            filter_curve=self.filter_to_MUSE_wavelength(wave_filter,flux_filter,wavelength_spec=w)
+
         condition = np.where(filter_curve > 0)[0]
         fitsname = 'new_image_' + _filter + '_filter.fits'
         sub_cube = self.cube[condition]
@@ -1460,7 +1471,7 @@ class MuseCube:
             self.__save2fits(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
         return new_filtered_image
 
-    def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False):
+    def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False,maskfile=None,inverse_mask=True):
         """
         Function used to colapse a determined wavelength range in a sum or a median type
         :param wv_input: tuple or list
@@ -1473,6 +1484,19 @@ class MuseCube:
                          Figure to display the new image if it is saved
         :return:
         """
+        if maskfile:
+            r = pyregion.open(maskfile)
+            n=len(r)
+            masks=[]
+            for i in xrange(n):
+                masks.append(self.region_2dmask(pyregion.ShapeList([r[i]])))
+
+            mask_final=masks[0]
+            for i in xrange(n):
+                mask_final = np.logical_and(mask_final,masks[i])
+            if inverse_mask:
+                mask_final= np.where(~mask_final, True, False)
+
         sub_cube = self.sub_cube(wv_input, stat=stat)
         if type == 'sum':
             matrix_flat = np.sum(sub_cube, axis=0)
@@ -1480,9 +1504,15 @@ class MuseCube:
             matrix_flat = np.median(sub_cube, axis=0)
         else:
             raise ValueError('Unknown type, please chose sum or median')
+        if maskfile:
+            matrix_flat=np.where(mask_final==1,matrix_flat,np.nan)
+            if save:
+                self.__save2fits(fitsname, matrix_flat, type='white', n_figure=n_figure)
 
-        if save:
-            self.__save2fits(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+        else:
+            if save:
+                self.__save2fits(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+
         return matrix_flat
 
     def get_continuum_range(self, range):
@@ -2294,10 +2324,13 @@ class MuseCube:
             raise ValueError('not implemented transmission curve')
             # filter es una built-in the python, creo que es mejor cambiarlo a ese nombre para evitar confusiones.
 
+        final_flux_filter = self.filter_to_MUSE_wavelength(wave_filter,flux_filter,wavelength_spec)
+        return final_flux_filter
+
+    def filter_to_MUSE_wavelength(self,wave_filter,flux_filter,wavelength_spec):
         new_filter_wavelength = self.overlap_filter(wave_filter, wavelength_spec)
         interpolator = interpolate.interp1d(wave_filter, flux_filter)
         new_filter_flux = interpolator(new_filter_wavelength)
-
         final_flux_filter = []
 
         for j, w in enumerate(wavelength_spec):
@@ -2307,6 +2340,7 @@ class MuseCube:
             else:
                 final_flux_filter.append(0.)
         return np.array(final_flux_filter)
+
 
     def overlap_filter(self, wave_filter, wavelength_spec):
         n = len(wave_filter)
