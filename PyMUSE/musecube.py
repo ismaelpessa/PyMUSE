@@ -936,6 +936,21 @@ class MuseCube:
 
     def save_muselet_specs(self, filename, mode='wwm', params=4, frac=0.1, npix=0, empirical_std=False,
                            redmonster_format=True, ids='all'):
+        """
+
+        :param filename: string, Name of the MUSELET output fits table
+        :param mode: string, mode of extractor for the spectra
+        :param params: int or iterable. Default = 4. Elliptical parameters for the extraction of the spectra in spaxel units
+        :param frac: float. Default = 0.1. Extraction parameter used in 'wfrac' mode.
+        :param npix: int. Default = 0. Extraction parameter used in several modes. stddev of the Gaussian kernel to smooth
+                     the white image. If npix = 0, no smooth is done.
+        :param empirical_std: float, Default = False. If True, the stddev of the spectra will be empirically estimated.
+        :param redmonster_format: float. Default = True. If True, the spectra will be saved in a rdeable format for Redmonster software.
+        :param ids: string or iterable. Default = 'all'. Id ids = 'all', all the spectra in the MUSELET table will be extracted.
+                    if ids is iterable, it must contain the ids in the MUSELET table of the sources to extract (e.g. ids = [1,15,23] will
+                    extract only the sources with the ids 1, 15 and 23)
+        :return:
+        """
 
         fits_table = Table.read(fits.open(filename)[1])
         ID = fits_table['ID'].data.data
