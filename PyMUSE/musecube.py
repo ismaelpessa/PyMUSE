@@ -934,7 +934,7 @@ class MuseCube:
         fig.recenter(xw, yw, r.value)
         return kine_im
 
-    def save_muselet_specs(self, filename, mode='wwm', params=4, frac=0.1, npix=0, empirical_std=False,
+    def save_muselet_specs(self, filename, mode='sum', params=4, frac=0.1, npix=0, empirical_std=False,
                            redmonster_format=True, ids='all'):
         """
 
