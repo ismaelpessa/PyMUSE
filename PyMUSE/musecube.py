@@ -946,7 +946,7 @@ class MuseCube:
                      the white image. If npix = 0, no smooth is done.
         :param empirical_std: float, Default = False. If True, the stddev of the spectra will be empirically estimated.
         :param redmonster_format: float. Default = True. If True, the spectra will be saved in a rdeable format for Redmonster software.
-        :param ids: string or iterable. Default = 'all'. Id ids = 'all', all the spectra in the MUSELET table will be extracted.
+        :param ids: string or iterable. Default = 'all'. If ids = 'all', all the spectra in the MUSELET table will be extracted.
                     if ids is iterable, it must contain the ids in the MUSELET table of the sources to extract (e.g. ids = [1,15,23] will
                     extract only the sources with the ids 1, 15 and 23)
         :return:
