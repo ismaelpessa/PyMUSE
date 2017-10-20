@@ -9,7 +9,7 @@ Usage and methods:
 ------------------
 Read Tutorial_
 
-.. _Tutorial: https://github.com/ismaelpessa/PyMUSE/blob/master/docs/source/README.rst
+.. _Tutorial: https://github.com/ismaelpessa/Muse_Cube/blob/master/docs/tutorial.rst
 
 
 
