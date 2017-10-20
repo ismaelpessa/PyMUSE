@@ -1,3 +1,10 @@
+.. PyMUSE documentation master file, created by
+   sphinx-quickstart on Fri Oct 20 14:51:19 2017.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to PyMUSE's documentation!
+==================================
 Getting started
 ---------------
 
@@ -229,16 +236,7 @@ Again, you can select between all available modes (except gaussian). The differe
 starting from id_start (default = 1). The coord_name variable will determine how the different spectra are named. If is False, The spectra will be named as
 ID_regfile.fits. If True, The name will depend of the first (X,Y) pair of each region. This is particularly good for ellipses and circles, but not as exact in polygons.
 
-Save a set of spectra defined by a MUSELET output fits table
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-MUSELET (for MUSE Line Emission Tracker)  is an emission line galaxy detection tool based on SExtractor from MPDAF (MUSE Python Data Analysis Framework) Python package (http://mpdaf.readthedocs.io/en/latest/muselet.html)
-PyMUSE allow the user te extraction of a set spectra given a MUSELET output fits table. The method::
 
-    cube.save_muselet_specs(self, filename, mode='wwm', params=4, frac=0.1, npix=0, empirical_std=False, redmonster_format=True, ids='all')
-
-Will do it easily. Most of the keyword parameters are related to the extraction modes. The important parameters are ``params`` and ``ids``:
-``params`` by default is set to 4 and correspond to the elliptical parameter of the extraction for ALL the sources in the catalog. It can be either a int or a iterable [a,b, theta] (in spaxel units)
-``ids`` by default is set to 'all'. This means that ``save_muselet_specs()`` will extract all the sources in the MUSELET catalog. If you set ids = [1,5,23] for example, the function will extract only the sources with that IDs in the MUSELET catalog.
 
 Saving a single spectrum to the hard disk
 +++++++++++++++++++++++++++++++++++++++++
@@ -371,3 +369,16 @@ Will create a movie that goes from wavelength = w_ini suming a number of wavelen
 
 
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Welcome:
+   checkouts/readthedocs.org/user_builds/pymuse/checkouts/latest/docs/README.rst
+
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
