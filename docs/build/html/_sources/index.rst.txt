@@ -9,7 +9,7 @@ Guide
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 100
 
    readme
 
