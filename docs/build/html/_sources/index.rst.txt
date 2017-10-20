@@ -5,11 +5,12 @@
 
 Welcome to PyMUSE's documentation!
 ==================================
-holi::
-        import PyMUSE as muse
+Holi.::
 
+        >> import PyMUSE as muse
+        
 Guide
-+++++
+^^^^^
 
 
 .. toctree::
