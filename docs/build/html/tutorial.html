@@ -1,0 +1,300 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>1. Tutorial &#8212; PyMUSE 1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="1. MIT License" href="license.html" />
+    <link rel="prev" title="Welcome to PyMUSE’s documentation!" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="license.html" title="1. MIT License"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to PyMUSE’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="tutorial">
+<h1>1. Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="initializing">
+<h2>1.1. Initializing<a class="headerlink" href="#initializing" title="Permalink to this headline">¶</a></h2>
+<p>Initializing is easy You must be in &#8220;ipython &#8211;pylab&#8221; enviroment.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PyMUSE.musecube</span> <span class="k">import</span> <span class="n">MuseCube</span><span class="p">)</span>
+<span class="n">cube</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="n">filename_cube</span><span class="p">,</span> <span class="n">filename_white</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If for any reason you do not have the white image, you can still initialize the cube just typing:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="n">filename_cube</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="get-a-spectrum">
+<h2>1.2. Get a spectrum<a class="headerlink" href="#get-a-spectrum" title="Permalink to this headline">¶</a></h2>
+<p>You can get an spectrum of a geometrical region by using:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ellipse_params</span><span class="p">(</span><span class="mi">134</span><span class="p">,</span> <span class="mi">219</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This <code class="docutils literal"><span class="pre">spectrum</span></code> is an <code class="docutils literal"><span class="pre">XSpectrum1D</span></code> object of the spaxels within a circle of radius 5 at position <code class="docutils literal"><span class="pre">x,y=(134,</span> <span class="pre">219)</span></code></p>
+<p>You can also define an elliptical aperture by using instead:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ellipse_params</span><span class="p">(</span><span class="mi">134</span><span class="p">,</span><span class="mi">219</span><span class="p">,[</span><span class="mi">10</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">35</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal"><span class="pre">[10,5,35]</span></code> corresponds to the semimajor axis, semiminor axis and rotation angle respectively
+You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see http//ds9.si.edu/doc/ref/region.html)
+To do this, you can use the function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_region_string</span><span class="p">(</span><span class="n">region_string</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In both of the <code class="docutils literal"><span class="pre">get_spec()</span></code> functions you can set <code class="docutils literal"><span class="pre">save</span> <span class="pre">=</span> <span class="pre">True</span></code> to save the spectrum to the hard_disk</p>
+<p>Another extra feature is given by the  function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_and_image</span><span class="p">(</span><span class="n">center</span><span class="p">,</span><span class="n">halfsize</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This code will, in addition of extract the spectrum given by <code class="docutils literal"><span class="pre">center</span> <span class="pre">=</span> <span class="pre">(x,y)</span></code> and halfsize either the radius of a circula/
+region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot/</p>
+<p>If you want to insert the input positions and semi-axes in degrees, you can set the coord_system parameter to wcs by adding:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">coord_system</span> <span class="o">=</span> <span class="s1">&#39;wcs&#39;</span>
+</pre></div>
+</div>
+<p>Finally, you are able to get the spectrum of a single spaxel of the cube by using:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_spaxel</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">coord_system</span> <span class="o">=</span><span class="s1">&#39;pix&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Again, you can set <code class="docutils literal"><span class="pre">coord_system</span> <span class="pre">=</span> <span class="pre">'wcs'</span></code> if you want to insert an xy coordinate in degrees</p>
+<div class="section" id="get-a-spectrum-interactively">
+<h3>1.2.1. Get a spectrum interactively<a class="headerlink" href="#get-a-spectrum-interactively" title="Permalink to this headline">¶</a></h3>
+<p>To use this feature, the class must have been initialized in a <code class="docutils literal"><span class="pre">ipython</span> <span class="pre">--pylab</span> <span class="pre">qt</span></code> enviroment
+It&#8217;s also needed the package roipoly. Installation instructions and LICENSE in
+https//github.com/jdoepfert/roipoly.py/</p>
+<p>This feature allows the user to interactively define a region in the canvas as a polygon. To do this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will turn interactive the canvas. To select the spaxel that will be the vertices of the region, just press left click on them/
+When you have finished, just press right click and then enter to continue. The last vertex that you selected will link the first one to define the contour of the region.</p>
+</div>
+<div class="section" id="get-the-spectrum-of-a-region-defined-in-a-ds9-reg-file">
+<h3>1.2.2. Get the spectrum of a region defined in a DS9 .reg file<a class="headerlink" href="#get-the-spectrum-of-a-region-defined-in-a-ds9-reg-file" title="Permalink to this headline">¶</a></h3>
+<p>You also can define a region in a ds9 .reg file
+The only thing needed is that the .reg file MUST be saved in physical coordinates. Once this is done, you can get the spectrum:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ds9regfile</span><span class="p">(</span><span class="n">regfile</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="modes-of-spectrum-extraction">
+<h2>1.3. Modes of spectrum extraction<a class="headerlink" href="#modes-of-spectrum-extraction" title="Permalink to this headline">¶</a></h2>
+<p>As you have noted, all the diferent <cite>get_spec_</cite> functions have the keyword argument &#8220;mode&#8221;. The mode availables to combine the spectrum of the diferent spaxels in a region ar/</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal"><span class="pre">ivar</span></code> - Inverse variance weighting, variance is taken only spatially, from a &#8220;white variance images.</li>
+<li><code class="docutils literal"><span class="pre">sum</span></code> - Sum of total flux.</li>
+<li><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profil/</li>
+<li><code class="docutils literal"><span class="pre">wwm</span></code> - &#8216;White Weighted Mean&#8217;. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done</li>
+<li><code class="docutils literal"><span class="pre">ivarwv</span></code> - Weighted mean, the weight of every pixel is given by the inverse of it&#8217;s variance.</li>
+<li><code class="docutils literal"><span class="pre">mean</span></code>  -  Mean of the total flux</li>
+<li><code class="docutils literal"><span class="pre">median</span></code> - Median of the total flux</li>
+<li><code class="docutils literal"><span class="pre">wwm_ivarwv</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">ivarwv</span></code> and <code class="docutils literal"><span class="pre">wwm</span></code></li>
+<li><code class="docutils literal"><span class="pre">wwm_ivar</span></code> - Weghts given by both, <code class="docutils literal"><span class="pre">wwm</span></code> and <code class="docutils literal"><span class="pre">ivar</span></code></li>
+<li><dl class="first docutils">
+<dt><code class="docutils literal"><span class="pre">wfrac</span></code> - It only takes the fraction <code class="docutils literal"><span class="pre">frac</span></code> of brightest spaxels (white) in the region.</dt>
+<dd>(e.g. frac=0.1 means 10% brightest) with equal weights.</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<p>Note The gaussian method is not available in <code class="docutils literal"><span class="pre">get_spec_from_ds9regfile()</span></code> nor <code class="docutils literal"><span class="pre">get_spec_from_interactive_polygon_region()</span></code></p>
+</div>
+<div class="section" id="other-keyword-parameter">
+<h2>1.4. Other keyword parameter<a class="headerlink" href="#other-keyword-parameter" title="Permalink to this headline">¶</a></h2>
+<p>Also, all the <code class="docutils literal"><span class="pre">get_spec_</span></code> function have the keyword arguments <code class="docutils literal"><span class="pre">npix</span></code> , <code class="docutils literal"><span class="pre">empirical_std</span></code>, <code class="docutils literal"><span class="pre">n_figure</span></code> and <code class="docutils literal"><span class="pre">save</span></code>, <code class="docutils literal"><span class="pre">frac</span></code>.</p>
+<p>Some modes of extraction require a npix value (default = 0). This value correspond to the sigma of the gaussian function
+that will smooth the white image, where the bright profile will be obtained. If npix = 0, no smooth is done.</p>
+<p>The parameter <code class="docutils literal"><span class="pre">frac</span></code> (default = 0.1) will be used in mode = <code class="docutils literal"><span class="pre">wfrac</span></code>, and it defines the fraction of brightest spaxels that will be considered in the sum of the flux.</p>
+<p>If <code class="docutils literal"><span class="pre">empirical_std</span> <span class="pre">=</span> <span class="pre">True</span></code> (default = False) the uncertainties of the spectrum will be calculated empirically</p>
+<p><code class="docutils literal"><span class="pre">n_figure</span></code> is the number of the figure that will display the new_spectrum</p>
+<p>if <code class="docutils literal"><span class="pre">save</span> <span class="pre">=</span> <span class="pre">True</span></code> (default = False) The new spectrum extracted will be saved to the hard drive.</p>
+<div class="section" id="read-a-spectrum-saved-by-get-spec-method">
+<h3>1.4.1. Read a spectrum saved by get_spec_method<a class="headerlink" href="#read-a-spectrum-saved-by-get-spec-method" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt>If you used the ::</dt>
+<dd>save = True</dd>
+</dl>
+<p>Option, you saved the spectrum to the hard-disk as a fits file. To access the data you can use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">linetools.spectra.io</span> <span class="k">import</span> <span class="n">readspec</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">readspec</span><span class="p">(</span><span class="s1">&#39;spectrum_fitsname&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will create a <code class="docutils literal"><span class="pre">XSpectrum1D</span></code> object from the fits file. You can access to the spectrum wavelength, flux and sigma by typing <code class="docutils literal"><span class="pre">spectrum.wavelength</span></code>, <code class="docutils literal"><span class="pre">spectrum.flux</span></code> and <code class="docutils literal"><span class="pre">spectrum.sig</span></code>. Additional information on the <code class="docutils literal"><span class="pre">XSpectrum1D</span></code> Class can be found in <a class="reference external" href="https//github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py">https//github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py</a></p>
+</div>
+</div>
+<div class="section" id="use-a-sextractor-output-file-as-an-input">
+<h2>1.5. Use a SExtractor output file as an input<a class="headerlink" href="#use-a-sextractor-output-file-as-an-input" title="Permalink to this headline">¶</a></h2>
+<p>The software allows the extraction and save of a set of sources detected in a SExtractor output files
+To do this, you should have at least the next parameters in the SExtractor output file:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">X_IMAGE</span>
+<span class="o">*</span> <span class="n">Y_IMAGE</span>
+<span class="o">*</span> <span class="n">A_IMAGE</span>
+<span class="o">*</span> <span class="n">B_IMAGE</span>
+<span class="o">*</span> <span class="n">THETA_IMAGE</span>
+<span class="o">*</span> <span class="n">FLAGS</span>
+<span class="o">*</span> <span class="n">NUMBER</span>
+<span class="o">*</span> <span class="n">MAG_AUTO</span>
+</pre></div>
+</div>
+<p>(Assuming that you ran SExtractor in the white image or any image with the same dimensions and astrometry of the cube/
+First, to plot your regions, you can use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">plot_sextractor_regions</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Where sextractor_filename is the name of the SExtractor&#8217;s output. Every source with a SExtractor flag higher
+than flag_threshold will be marked in red.</p>
+<p>The a_min value correspond to the minimum number of spaxels that will have the semimajor axis of a regions
+The original (a/b) ratio will be constant, but this set a minimum size for the elliptical apertures</p>
+<p>Once you are satisfied with the regions that will be extracted, you can run:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_sextractor_spec</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">redmonster_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span> <span class="n">n_figure</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                          <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">,</span> <span class="n">mag_kwrd</span><span class="o">=</span><span class="s1">&#39;mag_r&#39;</span><span class="p">,</span> <span class="n">npix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">frac</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will save in the hard disk the spectra of all the sources defined in the sextractor_filename which flags be lower or equal than flag_threshold using the specified modes.
+If <code class="docutils literal"><span class="pre">redmonster_format</span> <span class="pre">=</span> <span class="pre">True</span></code>, the spectra will be saved in a format redeable for redmonster software <a class="reference external" href="http//www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/">http//www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/</a>
+You can access to the data of a file writen in this format doing the next:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">PyMUSE.utils</span> <span class="k">as</span> <span class="nn">mc</span>
+<span class="n">wv</span><span class="p">,</span><span class="n">fl</span><span class="p">,</span><span class="n">er</span> <span class="o">=</span> <span class="n">mcu</span><span class="o">.</span><span class="n">get_rm_spec</span><span class="p">(</span><span class="n">rm_spec_name</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where rm_spec_name is the name of the fits file.
+Also, you can set the parameter <code class="docutils literal"><span class="pre">mag_kwrd</span></code> which by default is <code class="docutils literal"><span class="pre">'mag_r'</span></code> to the keyword in the new fits_image that wil/
+contain the SExtractor&#8217;s MAG_AUTO value.
+It is possible the usage of a different image as an input for SExtractor. If this is the case, you should not use the
+X_IMAGE, Y_IMAGE, A_IMAGE, B_IMAGE given by SExtractor (although they still must be included in the parameters list), because the spaxel-wcs conversion in the image given to SExtractor will be probably different to the conversion in the MUSE cube.  You may want to include the parameters:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">X_WORLD</span>
+<span class="o">*</span> <span class="n">Y_WORLD</span>
+<span class="o">*</span> <span class="n">A_WORLD</span>
+<span class="o">*</span> <span class="n">B_WORLD</span>
+</pre></div>
+</div>
+<p>You also may want to be sure that the astrometry between the 2 images in consistent (on the other hand, the regions defined by SExtractor in the image will be shifted in the cube.
+Once you included them in the parameters list, you should set the parameter <code class="docutils literal"><span class="pre">wcs_coords</span> <span class="pre">=</span> <span class="pre">True</span></code> in both functions:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">plot_sextractor_regions</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span> <span class="n">wcs_coords</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>to plot the regions and:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_sextractor_spec</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">redmonster_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span> <span class="n">n_figure</span><span class="o">=</span><span class="mi">2</span><span class="o">/</span>
+                          <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">,</span> <span class="n">mag_kwrd</span><span class="o">=</span><span class="s1">&#39;mag_r&#39;</span><span class="p">,</span> <span class="n">npix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">frac</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">wcs_coords</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>to save them.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">1. Tutorial</a><ul>
+<li><a class="reference internal" href="#initializing">1.1. Initializing</a></li>
+<li><a class="reference internal" href="#get-a-spectrum">1.2. Get a spectrum</a><ul>
+<li><a class="reference internal" href="#get-a-spectrum-interactively">1.2.1. Get a spectrum interactively</a></li>
+<li><a class="reference internal" href="#get-the-spectrum-of-a-region-defined-in-a-ds9-reg-file">1.2.2. Get the spectrum of a region defined in a DS9 .reg file</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#modes-of-spectrum-extraction">1.3. Modes of spectrum extraction</a></li>
+<li><a class="reference internal" href="#other-keyword-parameter">1.4. Other keyword parameter</a><ul>
+<li><a class="reference internal" href="#read-a-spectrum-saved-by-get-spec-method">1.4.1. Read a spectrum saved by get_spec_method</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#use-a-sextractor-output-file-as-an-input">1.5. Use a SExtractor output file as an input</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to PyMUSE&#8217;s documentation!</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="license.html"
+                        title="next chapter">1. MIT License</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/tutorial.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="license.html" title="1. MIT License"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to PyMUSE’s documentation!"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.1.
+    </div>
+  </body>
+</html>
