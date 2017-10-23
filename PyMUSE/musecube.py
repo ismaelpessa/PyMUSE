@@ -1582,7 +1582,7 @@ class MuseCube:
         return cont_range_inf, cont_range_sup, n
 
     def get_image_wv_ranges(self, wv_ranges, substract_cont=True, fitsname='new_collapsed_cube.fits', save=False,
-                            n_figure=3, show=False):
+                            n_figure=3):
         image_stacker = np.zeros_like(self.white_data)
         for r in wv_ranges:
             image = self.get_image([r])
@@ -1596,9 +1596,6 @@ class MuseCube:
         image_stacker = np.where(image_stacker < 0, 0, image_stacker)
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
-            if show:
-                fig_ = aplpy.FITSFigure(fitsname,figure=plt.figure())
-                fig_.show_grayscale()
         return image_stacker
 
     def create_white(self, new_white_fitsname='white_from_colapse.fits', stat=False, save=True):

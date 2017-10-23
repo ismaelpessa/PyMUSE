@@ -120,6 +120,35 @@ To get an smoothed image, the method::
 will create a new smoothed white image. The smooth is done by a Gaussian filter with standard deviation given by npix.
 
 
+Finally, to collapse a set of wavelength ranges::
+
+    cube.get_image_wv_ranges(wv_ranges=[[5100,5200],[5400,5500]],substract_cont=False, save=True)
+
+ This will create an image collapsing only the wavelength slices that are contained in [5100,5200] or in [5400,5500]
+
+The option substract_cont can be usefull to detect emission_line galaxies. For example if we come back to the spectrum defined above::
+
+    spec=cube.get_spec_from_ds9regfile('example.reg',i=2)
+
+It has an strong emission line between 5280 and 5300 Angstroms.
+
+If we get the image of that wavelength range::
+
+    cube.get_image_wv_ranges([[5280,5300]],save=True,substract_cont=False)
+
+The galaxy is there. However there are a lot of extra sources that may not have an emission line. If we use now::
+
+    cube.get_image_wv_ranges([[5280,5300]],save=True,substract_cont=True)
+
+There is the galaxy!
+
+In this context, the function::
+
+    ranges=cube.create_ranges(z=0,width=30)
+that defines the wavelength ranges for Ha, Hb, OII, OIII at a given redshift can be useful to search for emission-line galaxies.
+
+
+
 
 
 
