@@ -32,7 +32,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=0, vmax=5, wave_cal='air'):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=None, vmax=None, wave_cal='air'):
         """
         Parameters
         ----------
@@ -53,20 +53,27 @@ class MuseCube:
         # init
         self.color = False
         self.cmap = ""
-        self.vmin = vmin
-        self.vmax = vmax
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
         self.wave_cal = wave_cal
 
+
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
-
         self.white_data = fits.open(self.filename_white)[1].data
         self.hdulist_white = fits.open(self.filename_white)
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
+
+        if not vmin:
+            self.vmin=np.percentile(self.white_data,0.25)
+        else:
+            self.vmin = vmin
+        if not vmax:
+            self.vmax=np.percentile(self.white_data,98.)
+        else:
+            self.vmax = vmax
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
 
