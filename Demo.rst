@@ -10,7 +10,7 @@ PyMUSE provides a set of potentially useful tools focused on versatility at the 
 
 Initializing
 ------------
-Initializing is easy You must be in "ipython --pylab" enviroment.::
+Initializing is easy. You must be in "ipython --pylab" enviroment.::
 
         from PyMUSE.musecube import MuseCube
         cube = MuseCube('example_cube.fits', 'example_white.fits')
