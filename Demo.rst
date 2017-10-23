@@ -28,6 +28,9 @@ The simplest case is the extraction of an arbitrarily defined circular region::
 
     spec = cube.get_spec_from_ellipse_params(137,56,10,color='Blue')
 
+This ``spec`` are XSpectrum1D from linetools package (https://github.com/linetools/linetools). Its main attributes are
+spec.wavelength, spec.flux and spec.sig (although XSpectrum1D objects include a lot of extra features).
+
 Of course, the region can be defined by a set of elliptical parameters [a,b,theta] instead of a single radius::
 
     spec = cube.get_spec_from_ellipse_params(137,56,[10,5,45],color='green')
@@ -147,6 +150,53 @@ In this context, the function::
     ranges=cube.create_ranges(z=0,width=30)
 that defines the wavelength ranges for Ha, Hb, OII, OIII at a given redshift can be useful to search for emission-line galaxies.
 
+
+External software compatibilities
+---------------------------------
+
+To perform a systematic analysis, PyMUSE is intended to be used with external, commonly used software.
+
+SExtractor
+^^^^^^^^^^
+
+As you may know, is a program that builds a catalogue of objects from an astronomical image. The user can run SExtractor on the white image
+(or a photometric image built as explained above) to build a catalogue of sources in the field and use this catalogue as an input for PyMUSE to show and extract the corresponding spectra.
+
+if you already generated a catalogue, use::
+
+    cube.plot_sextractor_regions('example.cat')
+to plot them and::
+
+    cube.save_sextractor_specs(mode='wwm')
+
+for saving them to the hard drive.
+
+This can still be done if the user used SExtractor on a totally different image (of course the astrometry between the MUSE cube and the external image should be consistent, otherwise the regions
+defined by SExtractor will be shifted respect to the data cube)
+
+DS9 catalogue
+^^^^^^^^^^^^^
+
+Some source detection algorithms create an output catalogue defined as a DS9 region file. A DS9 catalogue can also be used
+as an input for PyMUSE to systematically extract the corresponding spectra to do this::
+
+    cube.save_ds9regfile_specs('example.reg')
+
+To name the saved spectra according to their coordinates::
+
+    cube.save_ds9regfile_specs('example.reg',coord_name=True)
+
+Redmonster
+^^^^^^^^^^
+
+As you may have noticed, all the saved spectra by default are named as "_RMF.fits". This is because they are automatically
+saved in a readable format for redmonster. The redmonster software is a sophisticated and flexible set of Python utilities for redshift measurement,
+and classification of 1-D spectra.
+
+To access them use::
+
+    import PyMUSE.utils as mcu
+    wv,fl,sig=mcu.get_rm_spec('001_example_RMF.fits')
 
 
 
