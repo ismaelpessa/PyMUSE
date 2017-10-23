@@ -17,8 +17,5 @@ setup(
         'aplpy',
         'h5py',
         'pyregion',
-        'numpy',
-        'linetools'
-        ],
-    dependency_links=[
-        'https://github.com/linetools/linetools/tarball/master#egg=linetools'])
+        'numpy'
+          ])
