@@ -310,7 +310,7 @@ class MuseCube:
         return spec
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.1,
-                                     n_figure=2, empirical_std=False, save=False):
+                                     n_figure=2, empirical_std=False, save=False, color='green'):
         """
         Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, param
@@ -346,7 +346,7 @@ class MuseCube:
         if mode == 'gaussian':
             spec = self.get_gaussian_profile_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
-            new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system)
+            new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system,color=color)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
 
         if empirical_std:
@@ -1199,7 +1199,7 @@ class MuseCube:
         complete_mask_new = self.get_new_3dmask(region_string)
         return complete_mask_new
 
-    def get_mini_cube_mask_from_ellipse_params(self, x_c, y_c, params, coord_system='pix'):
+    def get_mini_cube_mask_from_ellipse_params(self, x_c, y_c, params, coord_system='pix',color='green'):
         """
         Creates a 3D mask where all original masked voxels are masked out,
         plus all voxels associated to spaxels outside the elliptical region
@@ -1226,7 +1226,7 @@ class MuseCube:
         else:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
 
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta, coord_system=coord_system)
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta, coord_system=coord_system,color=color)
         complete_mask_new = self.get_new_3dmask(region_string)
         return complete_mask_new
 
