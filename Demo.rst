@@ -32,7 +32,7 @@ Of course, the region can be defined by a set of elliptical parameters [a,b,thet
 
     spec = cube.get_spec_from_ellipse_params(137,56,[10,5,45],color='green')
 
-And the regions can also be in degrees::
+And the regions can also be declared in degrees::
 
     spec = cube.get_spec_from_ellipse_params(212.6656,23.0744,[0.0005,0.00025,-45],coord_system='wcs',color='red')
 
@@ -77,7 +77,52 @@ wavelength bin can be done in a variety of manners:
 Imaging
 -------
 
-PyMUSE also offer to the users a set of features to produce
+PyMUSE also offer to the users a set of features to produce different types of images.
+
+Masking images is possible, just define a DS9 region file with the region that you want to mask out::
+
+    cube.get_image(wv_input=cube.wavelength,maskfile='example2.reg',save=True,inverse_mask=False)
+
+Or mask in::
+
+    cube.get_image(wv_input=cube.wavelength,maskfile='example2.reg',save=True,inverse_mask=True)
+
+
+The parameter wv_input can ve either an iterable that contains the wavelengths that you want to collapse or a wavelength range::
+
+    cube.get_image(wv_input=[[4750,6000]],maskfile='example2.reg',save=True,inverse_mask=False)
+
+Filtered images are also supported. PyMUSE has the feature of convolve the MUSE datacube with photometric filters (SDSS and Johnson filters are available)
+Given the MUSE wavelength range PyMUSE can create r,i,R,V images::
+
+    cube.get_filtered_image(_filter='r', custom_filter=None)
+
+You can also define your own filter, for example if we define a Gaussian transmission curve::
+
+    import numpy as np
+    from astropy.modeling import models
+    Gauss=models.Gaussian1D(mean=5400,stddev=200,amplitude=1)
+    w=np.arange(5000,6000,1)
+    tc=Gauss(w)
+    plt.figure()
+    plt.plot(w,tc)
+
+We can use::
+
+    cube.get_filtered_image(custom_filter=[w,tc])
+
+To create the new image.
+
+To get an smoothed image, the method::
+
+    cube.get_smoothed_white(npix=1)
+
+will create a new smoothed white image. The smooth is done by a Gaussian filter with standard deviation given by npix.
+
+
+
+
+
 
 
 
