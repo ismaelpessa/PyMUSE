@@ -144,7 +144,7 @@ class MuseCube:
             self.cmap = cmap
         self.reload_canvas()
 
-    def get_smoothed_white(self, npix=2, save=True, **kwargs):
+    def get_smoothed_white(self, npix=2, save=True, show=False, **kwargs):
         """Gets an smoothed version (Gaussian of sig=npix)
         of the white image. If save is True, it writes a file
         to disk called `smoothed_white.fits`.
@@ -163,6 +163,10 @@ class MuseCube:
             # print(comment)
             prihdr['history'] = comment
             hdulist.writeto('smoothed_white.fits', clobber=True)
+            if show:
+                fig = aplpy.FITSFigure('smoothed_white.fits', figure=plt.figure())
+                fig.show_grayscale()
+
         return smooth_im
 
     def spec_to_vacuum(self, spectrum):
