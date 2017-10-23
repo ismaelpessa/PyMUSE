@@ -1,8 +1,5 @@
-Tutorial
-========
-
 Initializing
-------------
+============
 Initializing is easy You must be in "ipython --pylab" enviroment.::
 
         from PyMUSE.musecube import MuseCube)
@@ -11,6 +8,10 @@ Initializing is easy You must be in "ipython --pylab" enviroment.::
 If for any reason you do not have the white image, you can still initialize the cube just typing::
         
         cube = MuseCube(filename_cube)
+This method will collapse the spectral dimension of the cube and save a create a file named 'new_white.fits'
+
+Spectral analysis
+=================
 
 Get a spectrum
 --------------
@@ -168,5 +169,82 @@ to plot the regions and::
     cube.save_sextractor_spec('sextractor_filename', flag_threshold=32, redmonster_format=True, a_min=3.5, n_figure=2/
                               mode='wwm', mag_kwrd='mag_r', npix=0, frac = 0.1, wcs_coords = True)
 to save them.
+Save a set of spectra defined by a multi regionfile DS9 .reg file
+-------------------------------------------------------------------
+You can save all the spectra of regions defined by a DS9 region file to the hard disk. Just use::
+
+    cube.save_ds9regfile_specs(regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,redmonster_format=True,id_start=1, coord_name = False)
+
+Again, you can select between all available modes (except gaussian). The different spectra in the file will be identified by an id/
+starting from id_start (default = 1). The coord_name variable will determine how the different spectra are named. If False, The spectra will be named as ID_regfile.fits. If True, The name will depend of the first (X,Y) pair of each region. This is particularly good for ellipses and circles, but not as exact in polygons.
+
+Save a set of spectra defined by a MUSELET output fits table.
+--------------------------------------------------------------
+MUSELET (for MUSE Line Emission Tracker)  is an emission line galaxy detection tool based on SExtractor from MPDAF (MUSE Python Data Analysis Framework) Python package `<(http//mpdaf.readthedocs.io/en/latest/muselet.html)>`
+PyMUSE allow the user te extraction of a set spectra given a MUSELET output fits table. The method::
+
+    cube.save_muselet_specs(self, filename, mode='wwm', params=4, frac=0.1, npix=0, empirical_std=False, redmonster_format=True, ids='all')
+
+Will do it easily. Most of the keyword parameters are related to the extraction modes. The important parameters are ``params`` and ``ids`/
+``params`` by default is set to 4 and correspond to the elliptical parameter of the extraction for ALL the sources in the catalog. It can be either a int or a iterable [a,b, theta] (in spaxel units)
+``ids`` by default is set to 'all'. This means that ``save_muselet_specs()`` will extract all the sources in the MUSELET catalog. If you set ids = [1,5,23] for example, the function will extract only the sources with that IDs in the MUSELET catalog.
+
+Saving a single spectrum to the hard drive
+------------------------------------------
+To do this you can use the ``XSpectrum1D`` functions::
+
+    spectrum.write_to_ascii(outfile_name)
+    spectrum.write_to_fits(outfile_name)
+You also may want to save the spectrum in a fits redeable for redmonster. In that case use the MuseCube function::
+        
+        mcu.spec_to_redmonster_format(spectrum, fitsname, n_id=None, mag=None)
+
+ If ``n_id`` is not  ``None``, the new fitsfile will contain a ID keyword with n_id in it
+If `mag` is not `None`, must be a  tuple with two elements. The first one must contain the keyword that will be in the header (example mag_r) and the second one must contain the value that will be in that keyword on the header of the new fitsfile.
+
+Imaging
+=======
+Estimate seeing
+---------------
+The method::
+
+    cube.determinate_seeing_from_white(x_center,y_center,halfsize/
+Will allow  you to estimate the seeing using the white image. The user must insert as the input the xy coordinates in spaxel space
+of a nearly point source expanded by the seeing. The method will fit a 2D gaussian to the bright profile and will associate
+the FWHM of the profile with the seeing. The halfsize parameter  indicates the radius size in spaxels of the source that will be fited.
+
+Image creation
+--------------
+Create image collapsing the Cube
+
+You can create a 2D image by collapsing some wavelength slices of the cube using the method::
+
+    cube.get_image(wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False)
+
+IMPORTANT!! wv_input must be list. The list can contain either individual wavelength values (e.g [5000,5005,5010]) o/
+a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 5000 and 6000 angstroms)/
+If save is True, the new image will be saved to the hard disk as ``fitsname``. The ``type`` of collapse can be either 'sum/
+or 'median'. n_figure is the figure's number  to display the image if ``save`` = True. Finally, if stat = True, the collapse wil/
+be done in the stat extension of the MUSE cube/
+If you want to directly create a new "white" just use::
+
+    cube.create_white(new_white_fitsname='white_from_colapse.fits', stat=False, save=True)
+
+This will sum all wavelengths and the new image will be saved in a fits file named by ``new_white_fitsname``. If stat=True, the ne/
+image will be created from the stat extension, as the sum of the variances along the wavelength range.
+
+Maybe you want to collapse more than just one wavelength range (for example, the range of several emission lines
+To do that, you may want to use the method.::
+
+    cube.get_image_wv_ranges(wv_ranges, substract_cont=True, fitsname='new_collapsed_cube.fits', save=False, n_figure=3)`
+
+wv_ranges must be a list of ranges (for example ``[[4000,4100],[5000,5100],[5200,5300]])``. You can use the method::
+
+    cube.create_ranges(z,width=10)
+
+To define the ranges that correspond to the [OII, Hb, OIII 4959,OIII 5007, Ha].  This method will return the list of the rang/
+of these transitions at redshift z, and the width given (in angstroms). The method will only return those ranges that
+remains inside the MUSE wavelength range.
+Finally, if ``substract_cont`` is True, the flux level around the ranges given by wv_ranges will be substracted from the image
 
 
