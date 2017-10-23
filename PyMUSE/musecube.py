@@ -165,7 +165,7 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits', clobber=True)
             if show:
                 fig = aplpy.FITSFigure('smoothed_white.fits', figure=plt.figure())
-                fig.show_grayscale()
+                fig.show_grayscale(vmin=self.vmin,vmax=self.vmax)
 
         return smooth_im
 
