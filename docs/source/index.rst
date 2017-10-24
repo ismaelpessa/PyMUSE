@@ -15,9 +15,9 @@ Tutorial
 --------
 .. toctree::
    :numbered:
-   :titlesonly:
+   :maxdepth: 2
 
-    demo
+   demo
 Help
 ----
 .. toctree::
