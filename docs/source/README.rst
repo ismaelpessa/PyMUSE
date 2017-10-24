@@ -212,11 +212,12 @@ To do this you can use the ``XSpectrum1D`` functions::
 
     spectrum.write_to_ascii(outfile_name/
     spectrum.write_to_fits(outfile_name/
-You also may want to save the spectrum in a fits redeable for redmonster. In that case use the MuseCube functio/
+You also may want to save the spectrum in a fits redeable for redmonster. In that case use the MuseCube function::
+        
+        mcu.spec_to_redmonster_format(spectrum, fitsname, n_id=None, mag=None)
 
-    mcu.spec_to_redmonster_format(spectrum, fitsname, n_id=None, mag=None/
-If `n_id` is not  `None`, the new fitsfile will contain a ID keyword with n_id in it/
-If `mag` is not `None`, must be a  tuple with two elements. The first one must contain the keyword that will be in the header (example mag_r) and the second one must contain the value that will be in that keyword on the header of the new fitsfil/
+ If `n_id` is not  `None`, the new fitsfile will contain a ID keyword with n_id in it
+If `mag` is not `None`, must be a  tuple with two elements. The first one must contain the keyword that will be in the header (example mag_r) and the second one must contain the value that will be in that keyword on the header of the new fitsfile.
 
 
 

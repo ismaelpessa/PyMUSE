@@ -1,15 +1,22 @@
 Welcome to PyMUSE's documentation!
 ==================================
-Holi.::
 
-        >> import PyMUSE as muse
+        ``>> import PyMUSE as muse``
         
-Guide
-^^^^^
-ayura :C
-
+Getting Started
+---------------
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
+   :numbered:
 
    tutorial
+
+Help
+----
+.. toctree::
+   :numbered:
+   :titlesonly:
+
+   license
+
 
