@@ -300,6 +300,72 @@ of these transitions at redshift z, and the width given (in angstroms). The meth
 remains inside the MUSE wavelength range.
 Finally, if <code class="docutils literal"><span class="pre">substract_cont</span></code> is True, the flux level around the ranges given by wv_ranges will be substracted from the image</p>
 </div>
+<div class="section" id="create-a-smoothed-white-image">
+<h2>3.3. Create a smoothed white image<a class="headerlink" href="#create-a-smoothed-white-image" title="Permalink to this headline">¶</a></h2>
+<p>The method:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_smoothed_white</span><span class="p">(</span><span class="n">npix</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>returns a smoothed version of the white image. <code class="docutils literal"><span class="pre">npix</span></code> defines the sigma of the gaussian filter.  kwargs are passed to
+scipy.ndimage.gaussian_filter(). The method <code class="docutils literal"><span class="pre">cube.spatial_smooth(npix,</span> <span class="pre">output=&quot;smoothed.fits&quot;,</span> <span class="pre">**kwargs)</span></code> do the same for the whole cube, and save.
+the new MUSE Cube under the name given by <code class="docutils literal"><span class="pre">output</span></code> (The STAT extension is not touched)</p>
+</div>
+<div class="section" id="compose-a-filtered-image">
+<h2>3.4. Compose a filtered image<a class="headerlink" href="#compose-a-filtered-image" title="Permalink to this headline">¶</a></h2>
+<p>If you want to do a photometric analysis from the Muse Cube, you would need to convolve your data with a photometric filter
+and compose a new filtered image. To do this, you can use the method:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_filtered_image</span><span class="p">(</span><span class="n">_filter</span> <span class="o">=</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This method will write a new filtered image that will be useful to photometry analysis
+Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly reduced  in order to fit the MUSE spectral range)</p>
+</div>
+</div>
+<div class="section" id="extra-features">
+<h1>4. Extra features<a class="headerlink" href="#extra-features" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="emission-line-kinematics">
+<h2>4.1. Emission line kinematics<a class="headerlink" href="#emission-line-kinematics" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::</dt>
+<dd>cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type=’abs’, z=0)</dd>
+</dl>
+<p>estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
+the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required paramters are:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">x_c</span>
+<span class="o">*</span> <span class="n">y_c</span>
+<span class="o">*</span> <span class="n">params</span>
+</pre></div>
+</div>
+<dl class="docutils">
+<dt>That define the elliptical region::</dt>
+<dd><ul class="first last simple">
+<li>wv_line_vac wavelength of the transition in vacuum</li>
+<li>wv_range_size Angstroms.</li>
+</ul>
+</dd>
+<dt>Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines::</dt>
+<dd><ul class="first last simple">
+<li>type ‘abs’ or ‘emi’. Type of transition to fit. ‘abs’ for absorption and ‘emi’ for emissions</li>
+<li>z redshift of the galaxy</li>
+</ul>
+</dd>
+</dl>
+<p>This function returns the kinematic image of the region, and saves the image in a .fits file
+IMPORTANT Select strong lines that be spatially extended.</p>
+</div>
+<div class="section" id="create-video">
+<h2>4.2. Create Video<a class="headerlink" href="#create-video" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>As an extra analysis to your data, the MuseCube Class allows the user to create 2 types of videos (need the cv2 package)::</dt>
+<dd>cube.create_movie_redshift_range(z_ini,z_fin_dz)</dd>
+</dl>
+<p>Will create a video which frames will be, at each redshifts, the sum of all wavelengths that would fall at strong emission lines
+(Ha,Hb,OII,OIII):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube_create_movie_wavelength_range</span><span class="p">(</span><span class="n">w_ini</span><span class="p">,</span><span class="n">w_end</span><span class="p">,</span><span class="n">width</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_en</p>
+</div>
 </div>
 
 
@@ -330,6 +396,13 @@ Finally, if <code class="docutils literal"><span class="pre">substract_cont</spa
 <li><a class="reference internal" href="#imaging">3. Imaging</a><ul>
 <li><a class="reference internal" href="#estimate-seeing">3.1. Estimate seeing</a></li>
 <li><a class="reference internal" href="#image-creation">3.2. Image creation</a></li>
+<li><a class="reference internal" href="#create-a-smoothed-white-image">3.3. Create a smoothed white image</a></li>
+<li><a class="reference internal" href="#compose-a-filtered-image">3.4. Compose a filtered image</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#extra-features">4. Extra features</a><ul>
+<li><a class="reference internal" href="#emission-line-kinematics">4.1. Emission line kinematics</a></li>
+<li><a class="reference internal" href="#create-video">4.2. Create Video</a></li>
 </ul>
 </li>
 </ul>

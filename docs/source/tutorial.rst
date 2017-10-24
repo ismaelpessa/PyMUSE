@@ -247,4 +247,58 @@ of these transitions at redshift z, and the width given (in angstroms). The meth
 remains inside the MUSE wavelength range.
 Finally, if ``substract_cont`` is True, the flux level around the ranges given by wv_ranges will be substracted from the image
 
+Create a smoothed white image
+-----------------------------
+The method::
+
+    cube.get_smoothed_white(npix=2, save=True, kwargs)
+
+returns a smoothed version of the white image. ``npix`` defines the sigma of the gaussian filter.  kwargs are passed to
+scipy.ndimage.gaussian_filter(). The method ``cube.spatial_smooth(npix, output="smoothed.fits", **kwargs)`` do the same for the whole cube, and save.
+the new MUSE Cube under the name given by ``output`` (The STAT extension is not touched)
+
+Compose a filtered image
+------------------------
+If you want to do a photometric analysis from the Muse Cube, you would need to convolve your data with a photometric filter
+and compose a new filtered image. To do this, you can use the method::
+
+    cube.get_filtered_image(_filter = 'r')
+
+This method will write a new filtered image that will be useful to photometry analysis
+Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly reduced  in order to fit the MUSE spectral range)
+
+Extra features
+==============
+Emission line kinematics
+------------------------
+An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::
+    cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type='abs', z=0)
+
+estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
+the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required paramters are::
+    * x_c
+    * y_c
+    * params
+That define the elliptical region::
+    * wv_line_vac wavelength of the transition in vacuum
+    * wv_range_size Angstroms. 
+Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines::
+    * type 'abs' or 'emi'. Type of transition to fit. 'abs' for absorption and 'emi' for emissions
+    * z redshift of the galaxy
+This function returns the kinematic image of the region, and saves the image in a .fits file
+IMPORTANT Select strong lines that be spatially extended.
+
+Create Video
+------------
+As an extra analysis to your data, the MuseCube Class allows the user to create 2 types of videos (need the cv2 package)::
+        cube.create_movie_redshift_range(z_ini,z_fin_dz)
+Will create a video which frames will be, at each redshifts, the sum of all wavelengths that would fall at strong emission lines
+(Ha,Hb,OII,OIII)::
+    cube_create_movie_wavelength_range(w_ini,w_end,width)
+Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_en
+
+
+
+
+
 
