@@ -11,6 +11,13 @@ Getting Started
 
    tutorial
 
+Tutorial
+--------
+.. toctree::
+   :numbered:
+   :titlesonly:
+
+    demo
 Help
 ----
 .. toctree::
