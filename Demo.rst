@@ -3,7 +3,7 @@ Focus demo ADASS XXVII
 
 Multi Unit Spectroscopic Explorer (MUSE) is a panoramic integral-field spectrograph composed of 24 identical IFU modules.
 It has a field of view of ~1'x1' spatially sampled at 0.2" per pixel. This implies ~90000 spectra obtained in a single exposure.
-We introduce here PyMUSE, which is a Python package designed to help the users in the task of perform a complete analysis to these giants
+We introduce here PyMUSE, which is a Python package designed to help the users in the task of perform a complete analysis to these big
 datasets.
 
 PyMUSE provides a set of potentially useful tools focused on versatility at the moment of extracting a spectrum or creating an image.
@@ -91,7 +91,7 @@ Or mask in::
     cube.get_image(wv_input=cube.wavelength,maskfile='example2.reg',save=True,inverse_mask=True)
 
 
-The parameter wv_input can ve either an iterable that contains the wavelengths that you want to collapse or a wavelength range::
+The parameter wv_input can be either an iterable that contains the wavelengths that you want to collapse or a wavelength range::
 
     cube.get_image(wv_input=[[4750,6000]],maskfile='example2.reg',save=True,inverse_mask=False)
 
@@ -118,7 +118,7 @@ To create the new image.
 
 To get an smoothed image, the method::
 
-    cube.get_smoothed_white(npix=1)
+    cube.get_smoothed_white(npix=1, show = True)
 
 will create a new smoothed white image. The smooth is done by a Gaussian filter with standard deviation given by npix.
 
@@ -129,7 +129,7 @@ Finally, to collapse a set of wavelength ranges::
 
  This will create an image collapsing only the wavelength slices that are contained in [5100,5200] or in [5400,5500]
 
-The option substract_cont can be usefull to detect emission_line galaxies. For example if we come back to the spectrum defined above::
+The option substract_cont can be useful to detect emission-line galaxies. For example if we come back to the spectrum defined above::
 
     spec=cube.get_spec_from_ds9regfile('example.reg',i=2)
 
@@ -159,8 +159,8 @@ To perform a systematic analysis, PyMUSE is intended to be used with external, c
 SExtractor
 ^^^^^^^^^^
 
-As you may know, is a program that builds a catalogue of objects from an astronomical image. The user can run SExtractor on the white image
-(or a photometric image built as explained above) to build a catalogue of sources in the field and use this catalogue as an input for PyMUSE to show and extract the corresponding spectra.
+As you may know, SExtractor is a program that builds a catalogue of objects from an astronomical image. The user can run SExtractor on the white image
+(or on a photometric image built as explained above) to build a catalogue of sources in the field and use this catalogue as an input for PyMUSE to show the regions and extract the corresponding spectra.
 
 if you already generated a catalogue, use::
 
@@ -178,7 +178,7 @@ DS9 catalogue
 ^^^^^^^^^^^^^
 
 Some source detection algorithms create an output catalogue defined as a DS9 region file. A DS9 catalogue can also be used
-as an input for PyMUSE to systematically extract the corresponding spectra to do this::
+as an input for PyMUSE to systematically extract the corresponding spectra by doing this::
 
     cube.save_ds9regfile_specs('example.reg')
 
