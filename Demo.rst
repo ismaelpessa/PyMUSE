@@ -2,8 +2,8 @@ Focus demo ADASS XXVII
 ======================
 
 Multi Unit Spectroscopic Explorer (MUSE) is the first large integral field spectrograph ever installed at an 8-meter telescope (VLT). It uses 24 spectrographs to separate
-light into its component colors to create both images and spectra of its field of view, which has a size of ~1'x1' spatially sampled at
- 0.2" per pixel. This implies ~90000 spectra obtained in a single exposure. Integral field spectroscopy has
+light into its component colors to create both images and spectra of its field of view, which has a size of ~1'x1' spatially sampled at 0.2" per pixel.
+ This implies ~90000 spectra obtained in a single exposure. Integral field spectroscopy has
  demonstrated to be a powerful tool to study the physical properties of extended astronomical
 objects (e.g. kinematics and chemical distribution) or to search for extremely faint objects
 (e.g. with low continuum level but with emission lines), among others.
@@ -71,14 +71,14 @@ wavelength bin can be done in a variety of manners:
 
               * ``ivar`` - Inverse variance weighting, variance is taken only spatially, from a "white variance" images.
               * ``sum`` - Sum of total flux.
-              * ``gaussian`` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile
+              * ``gaussian`` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile.
               * ``wwm`` - 'White Weighted Mean'. Weighted mean, weights are obtained from the white image, optionally smoothed using a gaussian filter.
               * ``ivarwv`` - Weighted mean, the weight of every pixel is given by the inverse of it's variance.
-              * ``mean``  -  Mean of the total flux
-              * ``median`` - Median of the total flux
-              * ``wwm_ivarwv`` - Weights given by both, ``ivarwv`` and ``wwm``
-              * ``wwm_ivar`` - Weights given by both, ``wwm`` and ``ivar``
-              * ``wfrac`` - It only takes the fraction ``frac`` of brightest spaxels (white) in the region.
+              * ``mean``  -  Mean of the total flux.
+              * ``median`` - Median of the total flux.
+              * ``wwm_ivarwv`` - Weights given by both, ``ivarwv`` and ``wwm``.
+              * ``wwm_ivar`` - Weights given by both, ``wwm`` and ``ivar``.
+              * ``wfrac`` - It only takes the fraction ``frac`` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weights.
 
 
