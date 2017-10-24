@@ -1,9 +1,15 @@
 Focus demo ADASS XXVII
 ======================
 
-Multi Unit Spectroscopic Explorer (MUSE) is a panoramic integral-field spectrograph composed of 24 identical IFU modules.
-It has a field of view of ~1'x1' spatially sampled at 0.2" per pixel. This implies ~90000 spectra obtained in a single exposure.
+Multi Unit Spectroscopic Explorer (MUSE) is the first large integral field spectrograph ever installed at an 8-meter telescope (VLT). It uses 24 spectrographs to separate
+light into its component colors to create both images and spectra of its field of view, which has a size of ~1'x1' spatially sampled at
+ 0.2" per pixel. This implies ~90000 spectra obtained in a single exposure. Integral field spectroscopy has
+ demonstrated to be a powerful tool to study the physical properties of extended astronomical
+objects (e.g. kinematics and chemical distribution) or to search for extremely faint objects
+(e.g. with low continuum level but with emission lines), among others.
 We introduce here PyMUSE, which is a Python package designed to help the users in the task of perform a complete analysis to these information rich dataset.
+PyMUSE is optimized to extract 1-D spectra of arbitrary spatial regions within the cube and also for producing
+images using photometric filters and customized masks.
 
 PyMUSE provides a set of potentially useful tools focused on versatility at the moment of extracting a spectrum or creating an image.
 
