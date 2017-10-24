@@ -1,0 +1,314 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>1. Focus demo ADASS XXVII &#8212; PyMUSE 1 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="1. MIT License" href="license.html" />
+    <link rel="prev" title="1. Initializing" href="tutorial.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="license.html" title="1. MIT License"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="tutorial.html" title="1. Initializing"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="focus-demo-adass-xxvii">
+<h1>1. Focus demo ADASS XXVII<a class="headerlink" href="#focus-demo-adass-xxvii" title="Permalink to this headline">¶</a></h1>
+<p>Multi Unit Spectroscopic Explorer (MUSE) is the first large integral field spectrograph ever installed at an 8-meter telescope (VLT). It uses 24 spectrographs to separate
+light into its component colors to create both images and spectra of its field of view, which has a size of ~1’x1’ spatially sampled at 0.2” per pixel. This implies ~90000 spectra obtained in a single exposure.
+Integral field spectroscopy has demonstrated to be a powerful tool to study the physical properties of extended astronomical
+objects (e.g. kinematics and chemical distribution) or to search for extremely faint objects (e.g. with low continuum level but with emission lines), among others. We introduce here PyMUSE, which is a Python package designed to help the users in the task of perform a complete analysis to these information rich dataset.
+PyMUSE is optimized to extract 1-D spectra of arbitrary spatial regions within the cube and also for producing images using photometric filters and customized masks.</p>
+<p>PyMUSE provides a set of potentially useful tools focused on versatility at the moment of extracting a spectrum or creating an image.</p>
+<div class="section" id="initializing">
+<h2>1.1. Initializing<a class="headerlink" href="#initializing" title="Permalink to this headline">¶</a></h2>
+<p>Initializing is easy. You must be in “ipython –pylab” enviroment.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PyMUSE.musecube</span> <span class="k">import</span> <span class="n">MuseCube</span>
+<span class="n">cube</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="s1">&#39;example_cube.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;example_white.fits&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If for any reason you do not have the original white image you can still initialize a MuseCube:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube_</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="s1">&#39;example_cube.fits&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will create a new white image by collapsing the wavelength axis of the cube.</p>
+</div>
+<div class="section" id="extraction-of-a-spectrum">
+<h2>1.2. Extraction of a spectrum<a class="headerlink" href="#extraction-of-a-spectrum" title="Permalink to this headline">¶</a></h2>
+<p>The simplest case is the extraction of an arbitrarily defined circular region:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ellipse_params</span><span class="p">(</span><span class="mi">137</span><span class="p">,</span><span class="mi">56</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;Blue&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This <code class="docutils literal"><span class="pre">spec</span></code> are XSpectrum1D from linetools package (<a class="reference external" href="https://github.com/linetools/linetools">https://github.com/linetools/linetools</a>). Its main attributes are
+spec.wavelength, spec.flux and spec.sig (although XSpectrum1D objects include a lot of extra features).</p>
+<p>Of course, the region can be defined by a set of elliptical parameters [a,b,theta] instead of a single radius:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ellipse_params</span><span class="p">(</span><span class="mi">137</span><span class="p">,</span><span class="mi">56</span><span class="p">,[</span><span class="mi">10</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">45</span><span class="p">],</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;green&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And the regions can also be declared in degrees:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ellipse_params</span><span class="p">(</span><span class="mf">212.6656</span><span class="p">,</span><span class="mf">23.0744</span><span class="p">,[</span><span class="mf">0.0005</span><span class="p">,</span><span class="mf">0.00025</span><span class="p">,</span><span class="o">-</span><span class="mi">45</span><span class="p">],</span><span class="n">coord_system</span><span class="o">=</span><span class="s1">&#39;wcs&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The apertures of extraction can also be defined by a DS9 region string:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_region_string</span><span class="p">(</span><span class="s1">&#39;physical;ellipse(137,56,10,5,45) # color = cyan&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And even from a DS9 region file:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ds9regfile</span><span class="p">(</span><span class="s1">&#39;example.reg&#39;</span><span class="p">,</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">spec</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ds9regfile</span><span class="p">(</span><span class="s1">&#39;example.reg&#39;</span><span class="p">,</span><span class="n">i</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">spec</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ds9regfile</span><span class="p">(</span><span class="s1">&#39;example.reg&#39;</span><span class="p">,</span><span class="n">i</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Some extra features regarding the spectrum extraction are:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span><span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_and_image</span><span class="p">((</span><span class="mi">137</span><span class="p">,</span><span class="mi">56</span><span class="p">),</span><span class="n">halfsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>That returns not only the 1-D spectrum but also the 2-D image of the selected source, and if you initialized in
+“–pylab qt enviroment” you are able to interactively define a polygonal region:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="modes-of-extraction">
+<h3>1.2.1. Modes of extraction<a class="headerlink" href="#modes-of-extraction" title="Permalink to this headline">¶</a></h3>
+<p>Once the aperture of extraction is defined, the combination of the spaxels inside it to calculate the total flux per
+wavelength bin can be done in a variety of manners:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal"><span class="pre">ivar</span></code> - Inverse variance weighting, variance is taken only spatially, from a “white variance” images.</li>
+<li><code class="docutils literal"><span class="pre">sum</span></code> - Sum of total flux.</li>
+<li><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile.</li>
+<li><code class="docutils literal"><span class="pre">wwm</span></code> - ‘White Weighted Mean’. Weighted mean, weights are obtained from the white image, optionally smoothed using a gaussian filter.</li>
+<li><code class="docutils literal"><span class="pre">ivarwv</span></code> - Weighted mean, the weight of every pixel is given by the inverse of it’s variance.</li>
+<li><code class="docutils literal"><span class="pre">mean</span></code>  -  Mean of the total flux.</li>
+<li><code class="docutils literal"><span class="pre">median</span></code> - Median of the total flux.</li>
+<li><code class="docutils literal"><span class="pre">wwm_ivarwv</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">ivarwv</span></code> and <code class="docutils literal"><span class="pre">wwm</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">wwm_ivar</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">wwm</span></code> and <code class="docutils literal"><span class="pre">ivar</span></code>.</li>
+<li><dl class="first docutils">
+<dt><code class="docutils literal"><span class="pre">wfrac</span></code> - It only takes the fraction <code class="docutils literal"><span class="pre">frac</span></code> of brightest spaxels (white) in the region</dt>
+<dd>(e.g. frac=0.1 means 10% brightest) with equal weights.</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="imaging">
+<h2>1.3. Imaging<a class="headerlink" href="#imaging" title="Permalink to this headline">¶</a></h2>
+<p>PyMUSE also offer to the users a set of features to produce different types of images.</p>
+<p>Masking images is possible, just define a DS9 region file with the region that you want to mask out:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span><span class="n">wv_input</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span><span class="n">maskfile</span><span class="o">=</span><span class="s1">&#39;example2.reg&#39;</span><span class="p">,</span><span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">inverse_mask</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or mask in:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span><span class="n">wv_input</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span><span class="n">maskfile</span><span class="o">=</span><span class="s1">&#39;example2.reg&#39;</span><span class="p">,</span><span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">inverse_mask</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The parameter wv_input can be either an iterable that contains the wavelengths that you want to collapse or a wavelength range:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span><span class="n">wv_input</span><span class="o">=</span><span class="p">[[</span><span class="mi">4750</span><span class="p">,</span><span class="mi">6000</span><span class="p">]],</span><span class="n">maskfile</span><span class="o">=</span><span class="s1">&#39;example2.reg&#39;</span><span class="p">,</span><span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">inverse_mask</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Filtered images are also supported. PyMUSE has the feature of convolve the MUSE datacube with photometric filters (SDSS and Johnson filters are available)
+Given the MUSE wavelength range PyMUSE can create r,i,R,V images:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_filtered_image</span><span class="p">(</span><span class="n">_filter</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">custom_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can also define your own filter, for example if we define a Gaussian transmission curve:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy.modeling</span> <span class="k">import</span> <span class="n">models</span>
+<span class="n">Gauss</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">Gaussian1D</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mi">5400</span><span class="p">,</span><span class="n">stddev</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span><span class="n">amplitude</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">w</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span><span class="mi">6000</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">tc</span><span class="o">=</span><span class="n">Gauss</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">w</span><span class="p">,</span><span class="n">tc</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_filtered_image</span><span class="p">(</span><span class="n">custom_filter</span><span class="o">=</span><span class="p">[</span><span class="n">w</span><span class="p">,</span><span class="n">tc</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>To create the new image.</p>
+<p>To get an smoothed image, the method:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_smoothed_white</span><span class="p">(</span><span class="n">npix</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">show</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>will create a new smoothed white image. The smooth is done by a Gaussian filter with standard deviation given by npix.</p>
+<p>Finally, to collapse a set of wavelength ranges:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>   <span class="n">cube</span><span class="o">.</span><span class="n">get_image_wv_ranges</span><span class="p">(</span><span class="n">wv_ranges</span><span class="o">=</span><span class="p">[[</span><span class="mi">5100</span><span class="p">,</span><span class="mi">5200</span><span class="p">],[</span><span class="mi">5400</span><span class="p">,</span><span class="mi">5500</span><span class="p">]],</span><span class="n">substract_cont</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">This</span> <span class="n">will</span> <span class="n">create</span> <span class="n">an</span> <span class="n">image</span> <span class="n">collapsing</span> <span class="n">only</span> <span class="n">the</span> <span class="n">wavelength</span> <span class="n">slices</span> <span class="n">that</span> <span class="n">are</span> <span class="n">contained</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">5100</span><span class="p">,</span><span class="mi">5200</span><span class="p">]</span> <span class="ow">or</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">5400</span><span class="p">,</span><span class="mi">5500</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The option substract_cont can be useful to detect emission-line galaxies. For example if we come back to the spectrum defined above:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ds9regfile</span><span class="p">(</span><span class="s1">&#39;example.reg&#39;</span><span class="p">,</span><span class="n">i</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It has an strong emission line between 5280 and 5300 Angstroms.</p>
+<p>If we get the image of that wavelength range:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_image_wv_ranges</span><span class="p">([[</span><span class="mi">5280</span><span class="p">,</span><span class="mi">5300</span><span class="p">]],</span><span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">substract_cont</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The galaxy is there. However there are a lot of extra sources that may not have an emission line. If we use now:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_image_wv_ranges</span><span class="p">([[</span><span class="mi">5280</span><span class="p">,</span><span class="mi">5300</span><span class="p">]],</span><span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">substract_cont</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There is the galaxy!</p>
+<p>In this context, the function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">ranges</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">create_ranges</span><span class="p">(</span><span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">width</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>that defines the wavelength ranges for Ha, Hb, OII, OIII at a given redshift can be useful to search for emission-line galaxies.</p>
+</div>
+<div class="section" id="external-software-compatibilities">
+<h2>1.4. External software compatibilities<a class="headerlink" href="#external-software-compatibilities" title="Permalink to this headline">¶</a></h2>
+<p>To perform a systematic analysis, PyMUSE is intended to be used with external, commonly used software.</p>
+<div class="section" id="sextractor">
+<h3>1.4.1. SExtractor<a class="headerlink" href="#sextractor" title="Permalink to this headline">¶</a></h3>
+<p>As you may know, SExtractor is a program that builds a catalogue of objects from an astronomical image. The user can run SExtractor on the white image
+(or on a photometric image built as explained above) to build a catalogue of sources in the field and use this catalogue as an input for PyMUSE to show the regions and extract the corresponding spectra.</p>
+<p>if you already generated a catalogue, use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">plot_sextractor_regions</span><span class="p">(</span><span class="s1">&#39;example.cat&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>to plot them and:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_sextractor_specs</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>for saving them to the hard drive.</p>
+<p>This can still be done if the user used SExtractor on a totally different image (of course the astrometry between the MUSE cube and the external image should be consistent, otherwise the regions
+defined by SExtractor will be shifted respect to the data cube)</p>
+</div>
+<div class="section" id="ds9-catalogue">
+<h3>1.4.2. DS9 catalogue<a class="headerlink" href="#ds9-catalogue" title="Permalink to this headline">¶</a></h3>
+<p>Some source detection algorithms create an output catalogue defined as a DS9 region file. A DS9 catalogue can also be used
+as an input for PyMUSE to systematically extract the corresponding spectra by doing this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_ds9regfile_specs</span><span class="p">(</span><span class="s1">&#39;example.reg&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To name the saved spectra according to their coordinates:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_ds9regfile_specs</span><span class="p">(</span><span class="s1">&#39;example.reg&#39;</span><span class="p">,</span><span class="n">coord_name</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="redmonster">
+<h3>1.4.3. Redmonster<a class="headerlink" href="#redmonster" title="Permalink to this headline">¶</a></h3>
+<p>As you may have noticed, all the saved spectra by default are named as “_RMF.fits”. This is because they are automatically
+saved in a readable format for redmonster. The redmonster software is a sophisticated and flexible set of Python utilities for redshift measurement,
+and classification of 1-D spectra.</p>
+<p>To access them use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">PyMUSE.utils</span> <span class="k">as</span> <span class="nn">mcu</span>
+<span class="n">wv</span><span class="p">,</span><span class="n">fl</span><span class="p">,</span><span class="n">sig</span><span class="o">=</span><span class="n">mcu</span><span class="o">.</span><span class="n">get_rm_spec</span><span class="p">(</span><span class="s1">&#39;001_example_RMF.fits&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">1. Focus demo ADASS XXVII</a><ul>
+<li><a class="reference internal" href="#initializing">1.1. Initializing</a></li>
+<li><a class="reference internal" href="#extraction-of-a-spectrum">1.2. Extraction of a spectrum</a><ul>
+<li><a class="reference internal" href="#modes-of-extraction">1.2.1. Modes of extraction</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#imaging">1.3. Imaging</a></li>
+<li><a class="reference internal" href="#external-software-compatibilities">1.4. External software compatibilities</a><ul>
+<li><a class="reference internal" href="#sextractor">1.4.1. SExtractor</a></li>
+<li><a class="reference internal" href="#ds9-catalogue">1.4.2. DS9 catalogue</a></li>
+<li><a class="reference internal" href="#redmonster">1.4.3. Redmonster</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="tutorial.html"
+                        title="previous chapter">1. Initializing</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="license.html"
+                        title="next chapter">1. MIT License</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/demo.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="license.html" title="1. MIT License"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="tutorial.html" title="1. Initializing"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>
