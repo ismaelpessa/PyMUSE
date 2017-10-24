@@ -3,8 +3,7 @@ Focus demo ADASS XXVII
 
 Multi Unit Spectroscopic Explorer (MUSE) is a panoramic integral-field spectrograph composed of 24 identical IFU modules.
 It has a field of view of ~1'x1' spatially sampled at 0.2" per pixel. This implies ~90000 spectra obtained in a single exposure.
-We introduce here PyMUSE, which is a Python package designed to help the users in the task of perform a complete analysis to these big
-datasets.
+We introduce here PyMUSE, which is a Python package designed to help the users in the task of perform a complete analysis to these information rich dataset.
 
 PyMUSE provides a set of potentially useful tools focused on versatility at the moment of extracting a spectrum or creating an image.
 
