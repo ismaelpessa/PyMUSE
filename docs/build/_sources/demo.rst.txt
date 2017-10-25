@@ -56,8 +56,8 @@ And even from a DS9 region file::
 Some extra features regarding the spectrum extraction are::
 
     spec= cube.get_spec_and_image((137,56),halfsize=12)
-That returns not only the 1-D spectrum but also the 2-D image of the selected source, and if you initialized in
-"--pylab qt enviroment" you are able to interactively define a polygonal region::
+
+ That returns not only the 1-D spectrum but also the 2-D image of the selected source, and if you initialized in "--pylab qt enviroment" you are able to interactively define a polygonal region::
 
     spec = cube.get_spec_from_interactive_polygon_region()
 
@@ -80,6 +80,9 @@ wavelength bin can be done in a variety of manners:
               * ``wfrac`` - It only takes the fraction ``frac`` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weights.
 
+
+Example of ``wfrac`` usage::
+        spec = cube.get_spec_from_ellipse_params(137,56,10,frac=0.1,mode="wfrac")
 
 Imaging
 -------
@@ -148,10 +151,13 @@ The galaxy is there. However there are a lot of extra sources that may not have 
     cube.get_image_wv_ranges([[5280,5300]],save=True,substract_cont=True)
 
 There is the galaxy!
-
+As you can see, there is another object at nearly ``(36,61)`` in the image. If we extract its spectrum::
+        spec = cube.get_spec_from_ellipse_params(36,61,4)
+We'll find another emission line galaxy with an emission line around the same wavelength.        
 In this context, the function::
 
     ranges=cube.create_ranges(z=0,width=30)
+
 that defines the wavelength ranges for Ha, Hb, OII, OIII at a given redshift can be useful to search for emission-line galaxies.
 
 

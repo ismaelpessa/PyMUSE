@@ -97,12 +97,11 @@ spec.wavelength, spec.flux and spec.sig (although XSpectrum1D objects include a 
 </pre></div>
 </div>
 <p>Some extra features regarding the spectrum extraction are:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span><span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_and_image</span><span class="p">((</span><span class="mi">137</span><span class="p">,</span><span class="mi">56</span><span class="p">),</span><span class="n">halfsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>That returns not only the 1-D spectrum but also the 2-D image of the selected source, and if you initialized in
-“–pylab qt enviroment” you are able to interactively define a polygonal region:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">()</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span>   <span class="n">spec</span><span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_and_image</span><span class="p">((</span><span class="mi">137</span><span class="p">,</span><span class="mi">56</span><span class="p">),</span><span class="n">halfsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+<span class="n">That</span> <span class="n">returns</span> <span class="ow">not</span> <span class="n">only</span> <span class="n">the</span> <span class="mi">1</span><span class="o">-</span><span class="n">D</span> <span class="n">spectrum</span> <span class="n">but</span> <span class="n">also</span> <span class="n">the</span> <span class="mi">2</span><span class="o">-</span><span class="n">D</span> <span class="n">image</span> <span class="n">of</span> <span class="n">the</span> <span class="n">selected</span> <span class="n">source</span><span class="p">,</span> <span class="ow">and</span> <span class="k">if</span> <span class="n">you</span> <span class="n">initialized</span> <span class="ow">in</span> <span class="s2">&quot;--pylab qt enviroment&quot;</span> <span class="n">you</span> <span class="n">are</span> <span class="n">able</span> <span class="n">to</span> <span class="n">interactively</span> <span class="n">define</span> <span class="n">a</span> <span class="n">polygonal</span> <span class="n">region</span><span class="p">::</span>
+
+   <span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">()</span>
 </pre></div>
 </div>
 <div class="section" id="modes-of-extraction">
@@ -127,6 +126,10 @@ wavelength bin can be done in a variety of manners:</p>
 </li>
 </ul>
 </div></blockquote>
+<dl class="docutils">
+<dt>Example of <code class="docutils literal"><span class="pre">wfrac</span></code> usage::</dt>
+<dd>spec = cube.get_spec_from_ellipse_params(137,56,10,frac=0.1,mode=”wfrac”)</dd>
+</dl>
 </div>
 </div>
 <div class="section" id="imaging">
@@ -188,8 +191,13 @@ Given the MUSE wavelength range PyMUSE can create r,i,R,V images:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_image_wv_ranges</span><span class="p">([[</span><span class="mi">5280</span><span class="p">,</span><span class="mi">5300</span><span class="p">]],</span><span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">substract_cont</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>There is the galaxy!</p>
-<p>In this context, the function:</p>
+<p>There is the galaxy!
+As you can see, there is another object at nearly <code class="docutils literal"><span class="pre">(36,61)</span></code> in the image. If we extract its spectrum:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ellipse_params</span><span class="p">(</span><span class="mi">36</span><span class="p">,</span><span class="mi">61</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We’ll find another emission line galaxy with an emission line around the same wavelength.
+In this context, the function:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">ranges</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">create_ranges</span><span class="p">(</span><span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">width</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
 </pre></div>
 </div>
