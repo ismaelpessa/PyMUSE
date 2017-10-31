@@ -1312,7 +1312,7 @@ class MuseCube:
         self.draw_pyregion(region_string)
         return complete_mask_new
 
-    def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None):
+    def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None, border_thresh=1):
         self.reload_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
@@ -1348,6 +1348,36 @@ class MuseCube:
                 x_pix[i], y_pix[i], params = self.ellipse_params_to_pixel(x_world[i], y_world[i], params=params_wcs)
                 a[i] = params[0]
                 b[i] = params[1]
+            x2=[]
+            y2=[]
+            a2=[]
+            b2=[]
+            theta2=[]
+            flags2=[]
+            id2=[]
+            mag2=[]
+            ly,lx=self.white_data.shape
+            for i in xrange(n):
+                if x_pix[i]>=border_thresh and y_pix[i]>=border_thresh and x_pix[i]<=lx-border_thresh and y_pix[i]<=ly-border_thresh:
+                    x2.append(x_pix[i])
+                    y2.append(y_pix[i])
+                    a2.append(a[i])
+                    b2.append(b[i])
+                    theta2.append(theta[i])
+                    flags2.append(flags[i])
+                    id2.append(id[i])
+                    mag2.append(mag[i])
+            x_pix=np.array(x2)
+            y_pix=np.array(y2)
+            a=np.array(a2)
+            b=np.array(b2)
+            theta=np.array(theta2)
+            flags=np.array(flags2)
+            id=np.array(id2)
+            mag=np.array(mag2)
+            n=len(x_pix)
+
+
 
         if n_id != None:
             j = np.where(id == n_id)[0][0]
@@ -1355,6 +1385,8 @@ class MuseCube:
             self.draw_pyregion(region_string)
             plt.text(x_pix[j], y_pix[j], id[j], color='Red')
             return
+
+
         for i in xrange(n):
             color = 'Green'
             if flags[i] > flag_threshold:
