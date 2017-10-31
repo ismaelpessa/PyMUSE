@@ -1398,10 +1398,10 @@ class MuseCube:
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2, wcs_coords=False,
-                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1):
+                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1, border_thresh=1):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
-            flag_threshold=flag_threshold, wcs_coords=wcs_coords)
+            flag_threshold=flag_threshold, wcs_coords=wcs_coords, border_thresh=border_thresh)
         self.reload_canvas()
         n = len(x_pix)
         for i in xrange(n):
