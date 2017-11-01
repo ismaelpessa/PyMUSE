@@ -676,7 +676,7 @@ class MuseCube:
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
         if warn:
-            warning.warn(
+            warnings.warn(
                 'Some wavelengths could not be combined using the selected mode (a mean where used only on those cases)')
 
         if mode not in ['sum', 'median', 'mean', 'wfrac']:  # normalize to match total integrated flux
