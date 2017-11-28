@@ -674,7 +674,7 @@ class MuseCube:
                 'Some wavelengths could not be combined using the selected mode (a mean where used only on those cases)')
 
         if mode not in ['sum', 'median', 'mean', 'wfrac']:  # normalize to match total integrated flux
-            spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
+            spec_sum = self.spec_from_minicube_mask(new_2dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
             if norm < 0:
