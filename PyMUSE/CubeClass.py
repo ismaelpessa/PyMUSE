@@ -101,7 +101,7 @@ class MuseCube:
         if self.filename_white is None:
             print("MuseCube: No white image given, creating one.")
 
-            w_data = copy.deepcopy(self.create_white(save=False).data)
+            w_data = self.create_white(save=False).data
 
             w_header_0 = copy.deepcopy(self.header_0)
             w_header_1 = copy.deepcopy(self.header_1)
