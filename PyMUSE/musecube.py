@@ -304,13 +304,8 @@ class MuseCube:
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 1, 1, 0, coord_system='pix')
         self.draw_pyregion(region_string)
         w = self.wavelength
-        n = len(w)
-        spec = np.zeros(n)
-        sigma = np.zeros(n)
-        for wv_ii in range(n):
-            spec[wv_ii] = self.cube[wv_ii][int(y_c)][int(x_c)]
-            sigma[wv_ii] = np.sqrt(self.stat[wv_ii][int(y_c)][int(x_c)])
-
+        spec = self.cube[:,int(y_c),int(x_c)]
+        sigma = np.sqrt(self.stat[:,int(y_c),int(x_c)])
         spec=np.where(np.isnan(spec),0,spec)
         sigma = np.where(np.isnan(spec), 99., sigma)
 
