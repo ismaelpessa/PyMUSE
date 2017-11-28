@@ -1,7 +1,6 @@
 Welcome to PyMUSE's documentation!
 ==================================
 
-        ``>> import PyMUSE as muse``
         
 Getting Started
 ---------------
