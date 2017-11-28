@@ -88,14 +88,9 @@ class MuseCube:
         print("MuseCube: Loading the cube fluxes and variances...")
 
         # import pdb; pdb.set_trace()
-        self.cube = ma.MaskedArray(hdulist[1].data)
-        self.stat = ma.MaskedArray(hdulist[2].data)
+        self.cube = hdulist[1].data
+        self.stat = hdulist[2].data
 
-        print("MuseCube: Defining master masks (this may take a while but it is for the greater good).")
-        # masking
-        self.mask_init = np.isnan(self.cube) | np.isnan(self.stat)
-        self.cube.mask = self.mask_init
-        self.stat.mask = self.mask_init
 
         # for ivar weighting ; consider creating it in init ; takes long
         # self.flux_over_ivar = self.cube / self.stat
@@ -106,7 +101,7 @@ class MuseCube:
         if self.filename_white is None:
             print("MuseCube: No white image given, creating one.")
 
-            w_data = copy.deepcopy(self.create_white(save=False).data)
+            w_data = self.create_white(save=False)
 
             w_header_0 = copy.deepcopy(self.header_0)
             w_header_1 = copy.deepcopy(self.header_1)
@@ -202,11 +197,12 @@ class MuseCube:
         if not isinstance(npix, int):
             raise ValueError("npix must be integer.")
 
-        cube_new = copy.deepcopy(self.cube)
+        cube_new = ma.MaskedArray(copy.deepcopy(self.cube))
+        cube_new.mask = np.isnan(self.cube_new) | np.isnan(self.stat)
         ntot = len(self.cube)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii + 1, ntot))
-            image_aux = self.cube[wv_ii, :, :]
+            image_aux = self.cube_new[wv_ii, :, :]
             smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
@@ -253,7 +249,7 @@ class MuseCube:
                 image[j2][i2] = data_white[j - 1][i - 1]
         return image
 
-    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4):
+    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4, n_figure=2, save = False):
         """
         Function to extract the spectrum of a circular aperture defined by x_c, y_c and radius in spaxel space.
         The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = seeing in spaxels
@@ -264,23 +260,32 @@ class MuseCube:
         :return: XSpectrum1D object
         """
         import scipy.ndimage.filters as fi
-        new_3dmask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, radius)
+        new_2dmask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, radius)
         w = self.wavelength
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        self.cube.mask = new_3dmask
+        mask=new_2dmask
         for wv_ii in range(n):
-            mask = new_3dmask[wv_ii]
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
             center[y_c][x_c] = 1
-            weigths = ma.MaskedArray(fi.gaussian_filter(center, seeing))
-            weigths.mask = mask
-            weigths = weigths / np.sum(weigths)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weigths)
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weigths ** 2)))
-        self.cube.mask = self.mask_init
-        return XSpectrum1D.from_tuple((w, fl, sig))
+            weigths = fi.gaussian_filter(center, seeing)
+            weigths = weigths / np.nansum(weigths)
+            fl[wv_ii] = np.nansum(self.cube[wv_ii] * weigths)
+            sig[wv_ii] = np.sqrt(np.nansum(self.stat[wv_ii] * (weigths ** 2)))
+        spec = XSpectrum1D.from_tuple((w, fl, sig))
+        spec = self.spec_to_vacuum(spec)
+        plt.figure(n_figure)
+        plt.plot(spec.wavelength, spec.flux)
+        x_world, y_world = self.p2w(x_c, y_c)
+        coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+        name = name_from_coord(coords)
+        plt.title(name)
+        plt.xlabel('Angstroms')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        if save:
+            spec.write_to_fits(name + '.fits')
+        return spec
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
         """
@@ -300,11 +305,12 @@ class MuseCube:
         self.draw_pyregion(region_string)
         w = self.wavelength
         n = len(w)
-        spec = np.zeros(n)
-        sigma = np.zeros(n)
-        for wv_ii in range(n):
-            spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
-            sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
+        spec=self.cube[:][int(y_c)][int(x_c)]
+        sigma=self.cube[:][int(y_c)][int(x_c)]
+
+        spec=np.where(np.isnan(spec),0,spec)
+        sigma = np.where(np.isnan(spec), 99., sigma)
+
         spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
@@ -418,9 +424,9 @@ class MuseCube:
         print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
-        complete_mask = self.mask_init + mask_inv
-        new_3dmask = np.where(complete_mask == 0, False, True)
-        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix, frac=frac)
+        complete_mask =  mask_inv
+        new_2dmask = np.where(complete_mask == 0, False, True)
+        spec = self.spec_from_minicube_mask(new_2dmask, mode=mode, npix=npix, frac=frac)
         self.reload_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
@@ -544,14 +550,14 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=0, frac=0.1):
-        """Given a 3D mask, this function provides a combined spectrum
+    def spec_from_minicube_mask(self, new_2dmask, mode='wwm', npix=0, frac=0.1):
+        """Given a 2D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
         Parameters
         ----------
-        new_3dmask : np.array of same shape as self.cube
-            The 3D mask
+        new_2dmask : np.array of same shape as self.cube
+            The 2D mask
         mode : str
             Mode for combining spaxels:
               * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
@@ -571,8 +577,8 @@ class MuseCube:
         """
         if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
-        if np.shape(new_3dmask) != np.shape(self.cube.mask):
-            raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
+        if np.shape(new_2dmask) != np.shape(self.cube[0]):
+            raise ValueError("new_2dmask must be of same shape as the original MUSE cube.")
 
         n = len(self.wavelength)
         fl = np.zeros(n)
@@ -585,11 +591,11 @@ class MuseCube:
             if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
             elif mode == 'wfrac':
-                mask2d = new_3dmask[1]
+                mask2d = new_2dmask
                 self.wfrac_show_spaxels(frac=frac, mask2d=mask2d, smoothed_white=smoothed_white)
         warn = False
+        mask = new_2dmask
         for wv_ii in xrange(n):
-            mask = new_3dmask[wv_ii]  # 2-D mask
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
@@ -604,8 +610,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
                 im_var_white = var_white[~mask]
                 im_weights = 1. / im_var_white
@@ -615,8 +621,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'ivarwv':
                 im_weights = 1. / im_var
                 n_weights = len(im_weights)
@@ -625,8 +631,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'wwm_ivarwv':
                 im_white = smoothed_white[~mask]
                 im_weights = im_white / im_var
@@ -636,8 +642,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'wwm_ivar':
                 im_white = smoothed_white[~mask]
                 im_var_white = var_white[~mask]
@@ -648,19 +654,20 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'sum':
                 im_weights = 1.
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'mean':
-                im_weights = 1. / len(im_fl)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+
+                im_weights = 1. / len(im_fl[np.where(~np.isnan(im_fl))])
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'median':
-                fl[wv_ii] = np.median(im_fl)
-                er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
+                fl[wv_ii] = np.nanmedian(im_fl)
+                er[wv_ii] = 1.2533 * np.sqrt(np.nansum(im_var)) / len(im_fl[np.where(~np.isnan(im_fl))])  # explain 1.2533
             elif mode == 'wfrac':
                 if (frac > 1) or (frac < 0):
                     raise ValueError('`frac` must be value within (0,1)')
@@ -680,7 +687,7 @@ class MuseCube:
                 'Some wavelengths could not be combined using the selected mode (a mean where used only on those cases)')
 
         if mode not in ['sum', 'median', 'mean', 'wfrac']:  # normalize to match total integrated flux
-            spec_sum = self.spec_from_minicube_mask(new_3dmask, mode='sum')
+            spec_sum = self.spec_from_minicube_mask(new_2dmask, mode='sum')
             fl_sum = spec_sum.flux.value
             norm = np.sum(fl_sum) / np.sum(fl)
             if norm < 0:
@@ -789,12 +796,6 @@ class MuseCube:
         mask2d = mask_new_inverse
         return mask2d
 
-    def region_3dmask(self, r):
-        mask2d = self.region_2dmask(r)
-        complete_mask_new = mask2d + self.mask_init
-        complete_mask_new = np.where(complete_mask_new != 0, True, False)
-        mask3d = complete_mask_new
-        return mask3d
 
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
                            cmap='seismic'):
@@ -1012,9 +1013,9 @@ class MuseCube:
             id_ = id_start + i
             r_i = pyregion.ShapeList([r[i]])
             self.draw_region(r_i)
-            mask3d = self.region_3dmask(r_i)
+            mask2d = self.region_2dmask(r_i)
             ##Get spec
-            spec = self.spec_from_minicube_mask(mask3d, mode=mode, npix=npix, frac=frac)
+            spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
             if empirical_std:
                 spec = mcu.calculate_empirical_rms(spec)
             spec = self.spec_to_vacuum(spec)
@@ -1071,9 +1072,9 @@ class MuseCube:
 
         self.draw_region(r)
 
-        mask3d = self.region_3dmask(r)
+        mask2d = self.region_2dmask(r)
 
-        spec = self.spec_from_minicube_mask(mask3d, mode=mode, npix=npix, frac=frac)
+        spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
@@ -1201,18 +1202,18 @@ class MuseCube:
 
     def get_mini_cube_mask_from_region_string(self, region_string):
         """
-        Creates a 3D mask where all original masked voxels are masked out,
+        Creates a 2D mask where all original masked voxels are masked out,
         plus all voxels associated to spaxels outside the elliptical region
         defined by the given parameters.
         :param region_string: Region defined by ds9 format
         :return: complete_mask_new: a new mask for the cube
         """
-        complete_mask_new = self.get_new_3dmask(region_string)
+        complete_mask_new = self.get_new_2dmask(region_string)
         return complete_mask_new
 
     def get_mini_cube_mask_from_ellipse_params(self, x_c, y_c, params, coord_system='pix',color='green'):
         """
-        Creates a 3D mask where all original masked voxels are masked out,
+        Creates a 2D mask where all original masked voxels are masked out,
         plus all voxels associated to spaxels outside the elliptical region
         defined by the given parameters.
 
@@ -1238,7 +1239,7 @@ class MuseCube:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
 
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta, coord_system=coord_system,color=color)
-        complete_mask_new = self.get_new_3dmask(region_string)
+        complete_mask_new = self.get_new_2dmask(region_string)
         return complete_mask_new
 
     def ellipse_param_to_ds9reg_string(self, xc, yc, a, b, theta, color='green', coord_system='pix'):
@@ -1264,11 +1265,10 @@ class MuseCube:
                 plt.figure(self.n)
                 plt.plot(x[i] + 1, y[i] + 1, 'o', color='Blue')
 
-    def _test_3dmask(self, region_string, alpha=0.8, slice=0):
-        complete_mask = self.get_new_3dmask(region_string)
-        mask_slice = complete_mask[int(slice)]
+    def _test_mask(self, region_string, alpha=0.8, slice=0):
+        complete_mask = self.get_new_2dmask(region_string)
         plt.figure(self.n)
-        plt.imshow(mask_slice, alpha=alpha)
+        plt.imshow(complete_mask, alpha=alpha)
         self.draw_pyregion(region_string)
 
     def get_new_2dmask(self, region_string):
@@ -1285,32 +1285,9 @@ class MuseCube:
         region_filter = as_region_filter(r, origin=0)
         mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
+        self.draw_pyregion(region_string)
         return mask_new_inverse
 
-    def get_new_3dmask(self, region_string):
-        """Creates a 3D mask for the cube that also mask out
-        spaxels that are outside the gemoetrical redion defined by
-        region_string.
-
-        Parameters
-        ----------
-        region_string : str
-            A string that defines a geometrical region using the
-            DS9 format (e.g. see http://ds9.si.edu/doc/ref/region.html)
-
-        Returns
-        -------
-        A 3D mask that includes already masked voxels from the original cube,
-        plus all spaxels outside the region defined by region_string.
-
-        Notes: It uses pyregion package.
-
-        """
-        mask2d = self.get_new_2dmask(region_string)
-        complete_mask_new = mask2d + self.mask_init
-        complete_mask_new = np.where(complete_mask_new != 0, True, False)
-        self.draw_pyregion(region_string)
-        return complete_mask_new
 
     def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None, border_thresh=1):
         self.reload_canvas()
@@ -1546,9 +1523,9 @@ class MuseCube:
         new_shape = filter_curve_final.shape + (1,) * extra_dims
         new_filter_curve = filter_curve_final.reshape(new_shape)
         new_filtered_cube = sub_cube * new_filter_curve
-        new_filtered_image = np.sum(new_filtered_cube, axis=0)
+        new_filtered_image = np.nansum(new_filtered_cube, axis=0)
         if save:
-            self.__save2fits(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
+            self.__save2fits(fitsname, new_filtered_image, type='white', n_figure=n_figure)
         return new_filtered_image
 
     def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False,
@@ -1580,9 +1557,9 @@ class MuseCube:
 
         sub_cube = self.sub_cube(wv_input, stat=stat)
         if type == 'sum':
-            matrix_flat = np.sum(sub_cube, axis=0)
+            matrix_flat = np.nansum(sub_cube, axis=0)
         elif type == 'median':
-            matrix_flat = np.median(sub_cube, axis=0)
+            matrix_flat = np.nanmedian(sub_cube, axis=0)
         else:
             raise ValueError('Unknown type, please chose sum or median')
         if maskfile:
@@ -1592,7 +1569,7 @@ class MuseCube:
 
         else:
             if save:
-                self.__save2fits(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+                self.__save2fits(fitsname, matrix_flat, type='white', n_figure=n_figure)
 
         return matrix_flat
 
@@ -1624,7 +1601,7 @@ class MuseCube:
             cont_image = (n + 1) * (cont_inf_image + cont_sup_image) / 2.
             if substract_cont:
                 image = image - cont_image
-            image_stacker = image_stacker + image.data
+            image_stacker = image_stacker + image
         image_stacker = np.where(image_stacker < 0, 0, image_stacker)
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
@@ -2538,17 +2515,13 @@ class MuseCube:
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        new_3dmask = self.get_new_3dmask(region_string)
-        self.cube.mask = new_3dmask
+        mask = self.get_new_2dmask(region_string)
         for wv_ii in range(n):
-            mask = new_3dmask[wv_ii]
             weights.mask = mask
             # n_spaxels = np.sum(mask)
             weights = weights / np.sum(weights)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weights)  # * n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
-        # reset mask
-        self.cube.mask = self.mask_init
+            fl[wv_ii] = np.nansum(self.cube[wv_ii] * weights)  # * n_spaxels
+            sig[wv_ii] = np.sqrt(np.nansum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
 
         # renormalize
         fl_sum = spec_sum.flux.value
@@ -2566,8 +2539,6 @@ class MuseCube:
         :return: seeing: float
                          the observational seeing of the image defined as the FWHM of the gaussian
         """
-        hdulist = self.hdulist_white
-        data = hdulist[1].data
         matrix_data = np.array(self.get_mini_image([xc, yc], halfsize=halfsize))
         x = np.arange(0, matrix_data.shape[0], 1)
         y = np.arange(0, matrix_data.shape[1], 1)
