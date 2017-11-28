@@ -305,8 +305,11 @@ class MuseCube:
         self.draw_pyregion(region_string)
         w = self.wavelength
         n = len(w)
-        spec=self.cube[:][int(y_c)][int(x_c)]
-        sigma=self.cube[:][int(y_c)][int(x_c)]
+        spec = np.zeros(n)
+        sigma = np.zeros(n)
+        for wv_ii in range(n):
+            spec[wv_ii] = self.cube.data[wv_ii][int(y_c)][int(x_c)]
+            sigma[wv_ii] = np.sqrt(self.stat.data[wv_ii][int(y_c)][int(x_c)])
 
         spec=np.where(np.isnan(spec),0,spec)
         sigma = np.where(np.isnan(spec), 99., sigma)
