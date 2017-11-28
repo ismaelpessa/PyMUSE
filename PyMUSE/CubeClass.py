@@ -412,9 +412,9 @@ class MuseCube:
         print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
-        complete_mask = self.mask_init + mask_inv
-        new_3dmask = np.where(complete_mask == 0, False, True)
-        spec = self.spec_from_minicube_mask(new_3dmask, mode=mode, npix=npix, frac=frac)
+        complete_mask =  mask_inv
+        new_2dmask = np.where(complete_mask == 0, False, True)
+        spec = self.spec_from_minicube_mask(new_2dmask, mode=mode, npix=npix, frac=frac)
         self.reload_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux)
@@ -544,7 +544,7 @@ class MuseCube:
 
         Parameters
         ----------
-        new_3dmask : np.array of same shape as self.cube
+        new_2dmask : np.array of same shape as self.cube
             The 2D mask
         mode : str
             Mode for combining spaxels:
@@ -566,7 +566,7 @@ class MuseCube:
         if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
         if np.shape(new_2dmask) != np.shape(self.cube[0]):
-            raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
+            raise ValueError("new_2dmask must be of same shape as the original MUSE cube.")
 
         n = len(self.wavelength)
         fl = np.zeros(n)
@@ -784,12 +784,6 @@ class MuseCube:
         mask2d = mask_new_inverse
         return mask2d
 
-    def region_3dmask(self, r):
-        mask2d = self.region_2dmask(r)
-        complete_mask_new = mask2d + self.mask_init
-        complete_mask_new = np.where(complete_mask_new != 0, True, False)
-        mask3d = complete_mask_new
-        return mask3d
 
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
                            cmap='seismic'):
@@ -2509,17 +2503,13 @@ class MuseCube:
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        new_3dmask = self.get_new_3dmask(region_string)
-        self.cube.mask = new_3dmask
+        mask = self.get_new_2dmask(region_string)
         for wv_ii in range(n):
-            mask = new_3dmask[wv_ii]
             weights.mask = mask
             # n_spaxels = np.sum(mask)
             weights = weights / np.sum(weights)
-            fl[wv_ii] = np.sum(self.cube[wv_ii] * weights)  # * n_spaxels
-            sig[wv_ii] = np.sqrt(np.sum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
-        # reset mask
-        self.cube.mask = self.mask_init
+            fl[wv_ii] = np.nansum(self.cube[wv_ii] * weights)  # * n_spaxels
+            sig[wv_ii] = np.sqrt(np.nansum(self.stat[wv_ii] * (weights ** 2)))  # * n_spaxels
 
         # renormalize
         fl_sum = spec_sum.flux.value
