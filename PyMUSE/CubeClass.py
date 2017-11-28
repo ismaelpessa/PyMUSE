@@ -249,7 +249,7 @@ class MuseCube:
                 image[j2][i2] = data_white[j - 1][i - 1]
         return image
 
-    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4):
+    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4, n_figure=2, save = False):
         """
         Function to extract the spectrum of a circular aperture defined by x_c, y_c and radius in spaxel space.
         The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = seeing in spaxels
@@ -273,7 +273,19 @@ class MuseCube:
             weigths = weigths / np.nansum(weigths)
             fl[wv_ii] = np.nansum(self.cube[wv_ii] * weigths)
             sig[wv_ii] = np.sqrt(np.nansum(self.stat[wv_ii] * (weigths ** 2)))
-        return XSpectrum1D.from_tuple((w, fl, sig))
+        spec = XSpectrum1D.from_tuple((w, fl, sig))
+        spec = self.spec_to_vacuum(spec)
+        plt.figure(n_figure)
+        plt.plot(spec.wavelength, spec.flux)
+        x_world, y_world = self.p2w(x_c, y_c)
+        coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
+        name = name_from_coord(coords)
+        plt.title(name)
+        plt.xlabel('Angstroms')
+        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        if save:
+            spec.write_to_fits(name + '.fits')
+        return spec
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
         """
