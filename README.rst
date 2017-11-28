@@ -9,7 +9,7 @@ Usage and methods:
 ------------------
 Read Tutorial_
 
-.. _Tutorial: http://pymuse-docs.readthedocs.io/
+.. _Tutorial: http://pymuse.readthedocs.io/en/latest/#
 
 
 
