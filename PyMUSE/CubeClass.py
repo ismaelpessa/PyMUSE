@@ -1259,11 +1259,10 @@ class MuseCube:
                 plt.figure(self.n)
                 plt.plot(x[i] + 1, y[i] + 1, 'o', color='Blue')
 
-    def _test_3dmask(self, region_string, alpha=0.8, slice=0):
-        complete_mask = self.get_new_3dmask(region_string)
-        mask_slice = complete_mask[int(slice)]
+    def _test_mask(self, region_string, alpha=0.8, slice=0):
+        complete_mask = self.get_new_2dmask(region_string)
         plt.figure(self.n)
-        plt.imshow(mask_slice, alpha=alpha)
+        plt.imshow(complete_mask, alpha=alpha)
         self.draw_pyregion(region_string)
 
     def get_new_2dmask(self, region_string):
@@ -1280,6 +1279,7 @@ class MuseCube:
         region_filter = as_region_filter(r, origin=0)
         mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
+        self.draw_pyregion(region_string)
         return mask_new_inverse
 
 
