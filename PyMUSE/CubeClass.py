@@ -197,11 +197,12 @@ class MuseCube:
         if not isinstance(npix, int):
             raise ValueError("npix must be integer.")
 
-        cube_new = copy.deepcopy(self.cube)
+        cube_new = ma.MaskedArray(copy.deepcopy(self.cube))
+        cube_new.mask = np.isnan(self.cube_new) | np.isnan(self.stat)
         ntot = len(self.cube)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii + 1, ntot))
-            image_aux = self.cube[wv_ii, :, :]
+            image_aux = self.cube_new[wv_ii, :, :]
             smooth_ii = ma.MaskedArray(ndimage.gaussian_filter(image_aux, sigma=npix, **kwargs))
             smooth_ii.mask = image_aux.mask | np.isnan(smooth_ii)
 
@@ -1516,9 +1517,9 @@ class MuseCube:
         new_shape = filter_curve_final.shape + (1,) * extra_dims
         new_filter_curve = filter_curve_final.reshape(new_shape)
         new_filtered_cube = sub_cube * new_filter_curve
-        new_filtered_image = np.sum(new_filtered_cube, axis=0)
+        new_filtered_image = np.nansum(new_filtered_cube, axis=0)
         if save:
-            self.__save2fits(fitsname, new_filtered_image.data, type='white', n_figure=n_figure)
+            self.__save2fits(fitsname, new_filtered_image, type='white', n_figure=n_figure)
         return new_filtered_image
 
     def get_image(self, wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False,
@@ -1562,7 +1563,7 @@ class MuseCube:
 
         else:
             if save:
-                self.__save2fits(fitsname, matrix_flat.data, type='white', n_figure=n_figure)
+                self.__save2fits(fitsname, matrix_flat, type='white', n_figure=n_figure)
 
         return matrix_flat
 
@@ -1594,7 +1595,7 @@ class MuseCube:
             cont_image = (n + 1) * (cont_inf_image + cont_sup_image) / 2.
             if substract_cont:
                 image = image - cont_image
-            image_stacker = image_stacker + image.data
+            image_stacker = image_stacker + image
         image_stacker = np.where(image_stacker < 0, 0, image_stacker)
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
@@ -2536,8 +2537,6 @@ class MuseCube:
         :return: seeing: float
                          the observational seeing of the image defined as the FWHM of the gaussian
         """
-        hdulist = self.hdulist_white
-        data = hdulist[1].data
         matrix_data = np.array(self.get_mini_image([xc, yc], halfsize=halfsize))
         x = np.arange(0, matrix_data.shape[0], 1)
         y = np.arange(0, matrix_data.shape[1], 1)
