@@ -1,21 +1,23 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
     <title>1. Initializing &#8212; PyMUSE 1 documentation</title>
+    
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
         VERSION:     '1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
+        HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -23,10 +25,11 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="PyMUSE 1 documentation" href="index.html" />
     <link rel="next" title="1. Focus demo ADASS XXVII" href="demo.html" />
     <link rel="prev" title="Welcome to PyMUSE’s documentation!" href="index.html" /> 
   </head>
-  <body>
+  <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -50,7 +53,7 @@
             
   <div class="section" id="initializing">
 <h1>1. Initializing<a class="headerlink" href="#initializing" title="Permalink to this headline">¶</a></h1>
-<p>Initializing is easy You must be in “ipython –pylab” enviroment.:</p>
+<p>Initializing is easy You must be in &#8220;ipython &#8211;pylab&#8221; enviroment.:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PyMUSE.musecube</span> <span class="k">import</span> <span class="n">MuseCube</span><span class="p">)</span>
 <span class="n">cube</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="n">filename_cube</span><span class="p">,</span> <span class="n">filename_white</span><span class="p">)</span>
 </pre></div>
@@ -59,7 +62,7 @@
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="n">filename_cube</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This method will collapse the spectral dimension of the cube and save a create a file named ‘new_white.fits’</p>
+<p>This method will collapse the spectral dimension of the cube and save a create a file named &#8216;new_white.fits&#8217;</p>
 </div>
 <div class="section" id="spectral-analysis">
 <h1>2. Spectral analysis<a class="headerlink" href="#spectral-analysis" title="Permalink to this headline">¶</a></h1>
@@ -99,7 +102,7 @@ region or a set of [a,b,theta] parameters defining an ellipse, will plot the spe
 <div class="section" id="get-a-spectrum-interactively">
 <h3>2.1.1. Get a spectrum interactively<a class="headerlink" href="#get-a-spectrum-interactively" title="Permalink to this headline">¶</a></h3>
 <p>To use this feature, the class must have been initialized in a <code class="docutils literal"><span class="pre">ipython</span> <span class="pre">--pylab</span> <span class="pre">qt</span></code> enviroment
-It’s also needed the package roipoly. Installation instructions and LICENSE in
+It&#8217;s also needed the package roipoly. Installation instructions and LICENSE in
 https//github.com/jdoepfert/roipoly.py/</p>
 <p>This feature allows the user to interactively define a region in the canvas as a polygon. To do this:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
@@ -119,21 +122,31 @@ The only thing needed is that the .reg file MUST be saved in physical coordinate
 </div>
 <div class="section" id="modes-of-spectrum-extraction">
 <h2>2.2. Modes of spectrum extraction<a class="headerlink" href="#modes-of-spectrum-extraction" title="Permalink to this headline">¶</a></h2>
-<p>As you have noted, all the diferent <cite>get_spec_</cite> functions have the keyword argument “mode”. The mode availables to combine the spectrum of the diferent spaxels in a region ar/</p>
+<p>As you have noted, all the diferent <cite>get_spec_</cite> functions have the keyword argument &#8220;mode&#8221;. The mode availables to combine the spectrum of the diferent spaxels in a region ar/</p>
 <blockquote>
-<div><ul class="simple">
-<li><code class="docutils literal"><span class="pre">ivar</span></code> - Inverse variance weighting, variance is taken only spatially, from a “white variance images.</li>
-<li><code class="docutils literal"><span class="pre">sum</span></code> - Sum of total flux.</li>
-<li><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profil/</li>
-<li><code class="docutils literal"><span class="pre">wwm</span></code> - ‘White Weighted Mean’. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done</li>
-<li><code class="docutils literal"><span class="pre">ivarwv</span></code> - Weighted mean, the weight of every pixel is given by the inverse of it’s variance.</li>
-<li><code class="docutils literal"><span class="pre">mean</span></code>  -  Mean of the total flux</li>
-<li><code class="docutils literal"><span class="pre">median</span></code> - Median of the total flux</li>
-<li><code class="docutils literal"><span class="pre">wwm_ivarwv</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">ivarwv</span></code> and <code class="docutils literal"><span class="pre">wwm</span></code></li>
-<li><code class="docutils literal"><span class="pre">wwm_ivar</span></code> - Weghts given by both, <code class="docutils literal"><span class="pre">wwm</span></code> and <code class="docutils literal"><span class="pre">ivar</span></code></li>
+<div><ul>
+<li><p class="first"><code class="docutils literal"><span class="pre">ivar</span></code> - Inverse variance weighting, variance is taken only spatially, from a &#8220;white variance images.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">sum</span></code> - Sum of total flux.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profil/</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">wwm</span></code> - &#8216;White Weighted Mean&#8217;. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">ivarwv</span></code> - Weighted mean, the weight of every pixel is given by the inverse of it&#8217;s variance.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">mean</span></code>  -  Mean of the total flux</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">median</span></code> - Median of the total flux</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">wwm_ivarwv</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">ivarwv</span></code> and <code class="docutils literal"><span class="pre">wwm</span></code></p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">wwm_ivar</span></code> - Weghts given by both, <code class="docutils literal"><span class="pre">wwm</span></code> and <code class="docutils literal"><span class="pre">ivar</span></code></p>
+</li>
 <li><dl class="first docutils">
 <dt><code class="docutils literal"><span class="pre">wfrac</span></code> - It only takes the fraction <code class="docutils literal"><span class="pre">frac</span></code> of brightest spaxels (white) in the region.</dt>
-<dd>(e.g. frac=0.1 means 10% brightest) with equal weights.</dd>
+<dd><p class="first last">(e.g. frac=0.1 means 10% brightest) with equal weights.</p>
+</dd>
 </dl>
 </li>
 </ul>
@@ -182,7 +195,7 @@ First, to plot your regions, you can use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">plot_sextractor_regions</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Where sextractor_filename is the name of the SExtractor’s output. Every source with a SExtractor flag higher
+<p>Where sextractor_filename is the name of the SExtractor&#8217;s output. Every source with a SExtractor flag higher
 than flag_threshold will be marked in red.</p>
 <p>The a_min value correspond to the minimum number of spaxels that will have the semimajor axis of a regions
 The original (a/b) ratio will be constant, but this set a minimum size for the elliptical apertures</p>
@@ -200,7 +213,7 @@ You can access to the data of a file writen in this format doing the next:</p>
 </div>
 <p>where rm_spec_name is the name of the fits file.
 Also, you can set the parameter <code class="docutils literal"><span class="pre">mag_kwrd</span></code> which by default is <code class="docutils literal"><span class="pre">'mag_r'</span></code> to the keyword in the new fits_image that wil/
-contain the SExtractor’s MAG_AUTO value.
+contain the SExtractor&#8217;s MAG_AUTO value.
 It is possible the usage of a different image as an input for SExtractor. If this is the case, you should not use the
 X_IMAGE, Y_IMAGE, A_IMAGE, B_IMAGE given by SExtractor (although they still must be included in the parameters list), because the spaxel-wcs conversion in the image given to SExtractor will be probably different to the conversion in the MUSE cube.  You may want to include the parameters:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">X_WORLD</span>
@@ -221,7 +234,7 @@ Once you included them in the parameters list, you should set the parameter <cod
 </div>
 <p>to save them.
 Save a set of spectra defined by a multi regionfile DS9 .reg file
-——————————————————————-
+&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-
 You can save all the spectra of regions defined by a DS9 region file to the hard disk. Just use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_ds9regfile_specs</span><span class="p">(</span><span class="n">regfile</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">,</span><span class="n">frac</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span><span class="n">npix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">empirical_std</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">redmonster_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">id_start</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">coord_name</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
 </pre></div>
@@ -238,7 +251,7 @@ PyMUSE allow the user te extraction of a set spectra given a MUSELET output fits
 </div>
 <p>Will do it easily. Most of the keyword parameters are related to the extraction modes. The important parameters are <code class="docutils literal"><span class="pre">params</span></code> and <code class="docutils literal"><span class="pre">ids`/</span>
 <span class="pre">``params</span></code> by default is set to 4 and correspond to the elliptical parameter of the extraction for ALL the sources in the catalog. It can be either a int or a iterable [a,b, theta] (in spaxel units)
-<code class="docutils literal"><span class="pre">ids</span></code> by default is set to ‘all’. This means that <code class="docutils literal"><span class="pre">save_muselet_specs()</span></code> will extract all the sources in the MUSELET catalog. If you set ids = [1,5,23] for example, the function will extract only the sources with that IDs in the MUSELET catalog.</p>
+<code class="docutils literal"><span class="pre">ids</span></code> by default is set to &#8216;all&#8217;. This means that <code class="docutils literal"><span class="pre">save_muselet_specs()</span></code> will extract all the sources in the MUSELET catalog. If you set ids = [1,5,23] for example, the function will extract only the sources with that IDs in the MUSELET catalog.</p>
 </div>
 <div class="section" id="saving-a-single-spectrum-to-the-hard-drive">
 <h2>2.6. Saving a single spectrum to the hard drive<a class="headerlink" href="#saving-a-single-spectrum-to-the-hard-drive" title="Permalink to this headline">¶</a></h2>
@@ -277,10 +290,10 @@ the FWHM of the profile with the seeing. The halfsize parameter  indicates the r
 </div>
 <p>IMPORTANT!! wv_input must be list. The list can contain either individual wavelength values (e.g [5000,5005,5010]) o/
 a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 5000 and 6000 angstroms)/
-If save is True, the new image will be saved to the hard disk as <code class="docutils literal"><span class="pre">fitsname</span></code>. The <code class="docutils literal"><span class="pre">type</span></code> of collapse can be either ‘sum/
-or ‘median’. n_figure is the figure’s number  to display the image if <code class="docutils literal"><span class="pre">save</span></code> = True. Finally, if stat = True, the collapse wil/
+If save is True, the new image will be saved to the hard disk as <code class="docutils literal"><span class="pre">fitsname</span></code>. The <code class="docutils literal"><span class="pre">type</span></code> of collapse can be either &#8216;sum/
+or &#8216;median&#8217;. n_figure is the figure&#8217;s number  to display the image if <code class="docutils literal"><span class="pre">save</span></code> = True. Finally, if stat = True, the collapse wil/
 be done in the stat extension of the MUSE cube/
-If you want to directly create a new “white” just use:</p>
+If you want to directly create a new &#8220;white&#8221; just use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">create_white</span><span class="p">(</span><span class="n">new_white_fitsname</span><span class="o">=</span><span class="s1">&#39;white_from_colapse.fits&#39;</span><span class="p">,</span> <span class="n">stat</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -327,7 +340,7 @@ Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly 
 <h2>4.1. Emission line kinematics<a class="headerlink" href="#emission-line-kinematics" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt>An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::</dt>
-<dd>cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type=’abs’, z=0)</dd>
+<dd>cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type=&#8217;abs&#8217;, z=0)</dd>
 </dl>
 <p>estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
 the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required paramters are:</p>
@@ -345,7 +358,7 @@ the region and fit a gaussian + linear model, in order to fit and emi/abs line a
 </dd>
 <dt>Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines::</dt>
 <dd><ul class="first last simple">
-<li>type ‘abs’ or ‘emi’. Type of transition to fit. ‘abs’ for absorption and ‘emi’ for emissions</li>
+<li>type &#8216;abs&#8217; or &#8216;emi&#8217;. Type of transition to fit. &#8216;abs&#8217; for absorption and &#8216;emi&#8217; for emissions</li>
 <li>z redshift of the galaxy</li>
 </ul>
 </dd>
@@ -409,14 +422,14 @@ IMPORTANT Select strong lines that be spatially extended.</p>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to PyMUSE’s documentation!</a></p>
+                        title="previous chapter">Welcome to PyMUSE&#8217;s documentation!</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="demo.html"
                         title="next chapter">1. Focus demo ADASS XXVII</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="_sources/tutorial.rst.txt"
+      <li><a href="_sources/tutorial.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
@@ -451,7 +464,7 @@ IMPORTANT Select strong lines that be spatially extended.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
     </div>
   </body>
 </html>

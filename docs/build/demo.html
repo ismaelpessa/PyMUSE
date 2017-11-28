@@ -1,21 +1,23 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
     <title>1. Focus demo ADASS XXVII &#8212; PyMUSE 1 documentation</title>
+    
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
         VERSION:     '1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
+        HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -23,10 +25,11 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="PyMUSE 1 documentation" href="index.html" />
     <link rel="next" title="1. MIT License" href="license.html" />
     <link rel="prev" title="1. Initializing" href="tutorial.html" /> 
   </head>
-  <body>
+  <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -51,7 +54,7 @@
   <div class="section" id="focus-demo-adass-xxvii">
 <h1>1. Focus demo ADASS XXVII<a class="headerlink" href="#focus-demo-adass-xxvii" title="Permalink to this headline">¶</a></h1>
 <p>Multi Unit Spectroscopic Explorer (MUSE) is the first large integral field spectrograph ever installed at an 8-meter telescope (VLT). It uses 24 spectrographs to separate
-light into its component colors to create both images and spectra of its field of view, which has a size of ~1’x1’ spatially sampled at 0.2” per pixel. This implies ~90000 spectra obtained in a single exposure.</p>
+light into its component colors to create both images and spectra of its field of view, which has a size of ~1&#8217;x1&#8217; spatially sampled at 0.2&#8221; per pixel. This implies ~90000 spectra obtained in a single exposure.</p>
 <img alt="_images/cubo.jpg" src="_images/cubo.jpg" />
 <p>Integral field spectroscopy has demonstrated to be a powerful tool to study the physical properties of extended astronomical
 objects (e.g. kinematics and chemical distribution) or to search for extremely faint objects (e.g. with low continuum level but with emission lines), among others. We introduce here PyMUSE, which is a Python package designed to help the users in the task of perform a complete analysis to these information rich dataset.
@@ -59,7 +62,7 @@ PyMUSE is optimized to extract 1-D spectra of arbitrary spatial regions within t
 <p>PyMUSE provides a set of potentially useful tools focused on versatility at the moment of extracting a spectrum or creating an image.</p>
 <div class="section" id="initializing">
 <h2>1.1. Initializing<a class="headerlink" href="#initializing" title="Permalink to this headline">¶</a></h2>
-<p>Initializing is easy. You must be in “ipython –pylab” enviroment.:</p>
+<p>Initializing is easy. You must be in &#8220;ipython &#8211;pylab&#8221; enviroment.:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PyMUSE.musecube</span> <span class="k">import</span> <span class="n">MuseCube</span>
 <span class="n">cube</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="s1">&#39;example_cube.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;example_white.fits&#39;</span><span class="p">)</span>
 </pre></div>
@@ -109,26 +112,36 @@ spec.wavelength, spec.flux and spec.sig (although XSpectrum1D objects include a 
 <p>Once the aperture of extraction is defined, the combination of the spaxels inside it to calculate the total flux per
 wavelength bin can be done in a variety of manners:</p>
 <blockquote>
-<div><ul class="simple">
-<li><code class="docutils literal"><span class="pre">ivar</span></code> - Inverse variance weighting, variance is taken only spatially, from a “white variance” images.</li>
-<li><code class="docutils literal"><span class="pre">sum</span></code> - Sum of total flux.</li>
-<li><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile.</li>
-<li><code class="docutils literal"><span class="pre">wwm</span></code> - ‘White Weighted Mean’. Weighted mean, weights are obtained from the white image, optionally smoothed using a gaussian filter.</li>
-<li><code class="docutils literal"><span class="pre">ivarwv</span></code> - Weighted mean, the weight of every pixel is given by the inverse of it’s variance.</li>
-<li><code class="docutils literal"><span class="pre">mean</span></code>  -  Mean of the total flux.</li>
-<li><code class="docutils literal"><span class="pre">median</span></code> - Median of the total flux.</li>
-<li><code class="docutils literal"><span class="pre">wwm_ivarwv</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">ivarwv</span></code> and <code class="docutils literal"><span class="pre">wwm</span></code>.</li>
-<li><code class="docutils literal"><span class="pre">wwm_ivar</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">wwm</span></code> and <code class="docutils literal"><span class="pre">ivar</span></code>.</li>
+<div><ul>
+<li><p class="first"><code class="docutils literal"><span class="pre">ivar</span></code> - Inverse variance weighting, variance is taken only spatially, from a &#8220;white variance&#8221; images.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">sum</span></code> - Sum of total flux.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">wwm</span></code> - &#8216;White Weighted Mean&#8217;. Weighted mean, weights are obtained from the white image, optionally smoothed using a gaussian filter.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">ivarwv</span></code> - Weighted mean, the weight of every pixel is given by the inverse of it&#8217;s variance.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">mean</span></code>  -  Mean of the total flux.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">median</span></code> - Median of the total flux.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">wwm_ivarwv</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">ivarwv</span></code> and <code class="docutils literal"><span class="pre">wwm</span></code>.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">wwm_ivar</span></code> - Weights given by both, <code class="docutils literal"><span class="pre">wwm</span></code> and <code class="docutils literal"><span class="pre">ivar</span></code>.</p>
+</li>
 <li><dl class="first docutils">
 <dt><code class="docutils literal"><span class="pre">wfrac</span></code> - It only takes the fraction <code class="docutils literal"><span class="pre">frac</span></code> of brightest spaxels (white) in the region</dt>
-<dd>(e.g. frac=0.1 means 10% brightest) with equal weights.</dd>
+<dd><p class="first last">(e.g. frac=0.1 means 10% brightest) with equal weights.</p>
+</dd>
 </dl>
 </li>
 </ul>
 </div></blockquote>
 <dl class="docutils">
 <dt>Example of <code class="docutils literal"><span class="pre">wfrac</span></code> usage::</dt>
-<dd>spec = cube.get_spec_from_ellipse_params(137,56,10,frac=0.1,mode=”wfrac”)</dd>
+<dd>spec = cube.get_spec_from_ellipse_params(137,56,10,frac=0.1,mode=&#8221;wfrac&#8221;)</dd>
 </dl>
 </div>
 </div>
@@ -196,7 +209,7 @@ As you can see, there is another object at nearly <code class="docutils literal"
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spec</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ellipse_params</span><span class="p">(</span><span class="mi">36</span><span class="p">,</span><span class="mi">61</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>We’ll find another emission line galaxy with an emission line around the same wavelength.
+<p>We&#8217;ll find another emission line galaxy with an emission line around the same wavelength.
 In this context, the function:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">ranges</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">create_ranges</span><span class="p">(</span><span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">width</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
 </pre></div>
@@ -236,7 +249,7 @@ as an input for PyMUSE to systematically extract the corresponding spectra by do
 </div>
 <div class="section" id="redmonster">
 <h3>1.4.3. Redmonster<a class="headerlink" href="#redmonster" title="Permalink to this headline">¶</a></h3>
-<p>As you may have noticed, all the saved spectra by default are named as “_RMF.fits”. This is because they are automatically
+<p>As you may have noticed, all the saved spectra by default are named as &#8220;_RMF.fits&#8221;. This is because they are automatically
 saved in a readable format for redmonster. The redmonster software is a sophisticated and flexible set of Python utilities for redshift measurement,
 and classification of 1-D spectra.</p>
 <p>To access them use:</p>
@@ -283,7 +296,7 @@ and classification of 1-D spectra.</p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="_sources/demo.rst.txt"
+      <li><a href="_sources/demo.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
@@ -318,7 +331,7 @@ and classification of 1-D spectra.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
     </div>
   </body>
 </html>
