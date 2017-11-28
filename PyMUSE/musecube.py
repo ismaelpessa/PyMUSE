@@ -415,6 +415,7 @@ class MuseCube:
         :return: spec: XSpectrum1D object
 
         """
+        self.reload_canvas()
         from roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r', fig=current_fig)
