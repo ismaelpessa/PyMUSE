@@ -1007,9 +1007,9 @@ class MuseCube:
             id_ = id_start + i
             r_i = pyregion.ShapeList([r[i]])
             self.draw_region(r_i)
-            mask3d = self.region_3dmask(r_i)
+            mask2d = self.region_2dmask(r_i)
             ##Get spec
-            spec = self.spec_from_minicube_mask(mask3d, mode=mode, npix=npix, frac=frac)
+            spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
             if empirical_std:
                 spec = mcu.calculate_empirical_rms(spec)
             spec = self.spec_to_vacuum(spec)
@@ -1066,9 +1066,9 @@ class MuseCube:
 
         self.draw_region(r)
 
-        mask3d = self.region_3dmask(r)
+        mask2d = self.region_2dmask(r)
 
-        spec = self.spec_from_minicube_mask(mask3d, mode=mode, npix=npix, frac=frac)
+        spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
