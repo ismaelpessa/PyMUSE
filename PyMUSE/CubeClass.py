@@ -537,14 +537,14 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_3dmask, mode='wwm', npix=0, frac=0.1):
-        """Given a 3D mask, this function provides a combined spectrum
+    def spec_from_minicube_mask(self, new_2dmask, mode='wwm', npix=0, frac=0.1):
+        """Given a 2D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
         Parameters
         ----------
         new_3dmask : np.array of same shape as self.cube
-            The 3D mask
+            The 2D mask
         mode : str
             Mode for combining spaxels:
               * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
@@ -564,7 +564,7 @@ class MuseCube:
         """
         if mode not in ['ivarwv', 'ivar', 'mean', 'median', 'wwm', 'sum', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
             raise ValueError("Not ready for this type of `mode`.")
-        if np.shape(new_3dmask) != np.shape(self.cube.mask):
+        if np.shape(new_2dmask) != np.shape(self.cube[0]):
             raise ValueError("new_3dmask must be of same shape as the original MUSE cube.")
 
         n = len(self.wavelength)
@@ -578,11 +578,11 @@ class MuseCube:
             if mode == 'wwm_ivar':
                 var_white = self.create_white(stat=True, save=False)
             elif mode == 'wfrac':
-                mask2d = new_3dmask[1]
+                mask2d = new_2dmask
                 self.wfrac_show_spaxels(frac=frac, mask2d=mask2d, smoothed_white=smoothed_white)
         warn = False
+        mask = new_2dmask
         for wv_ii in xrange(n):
-            mask = new_3dmask[wv_ii]  # 2-D mask
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
@@ -597,8 +597,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'ivar':
                 im_var_white = var_white[~mask]
                 im_weights = 1. / im_var_white
@@ -608,8 +608,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'ivarwv':
                 im_weights = 1. / im_var
                 n_weights = len(im_weights)
@@ -618,8 +618,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'wwm_ivarwv':
                 im_white = smoothed_white[~mask]
                 im_weights = im_white / im_var
@@ -629,8 +629,8 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'wwm_ivar':
                 im_white = smoothed_white[~mask]
                 im_var_white = var_white[~mask]
@@ -641,19 +641,20 @@ class MuseCube:
                     im_weights[:] = 1. / n_weights
                     warn = True
                 im_weights = im_weights / np.sum(im_weights)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'sum':
                 im_weights = 1.
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'mean':
-                im_weights = 1. / len(im_fl)
-                fl[wv_ii] = np.sum(im_fl * im_weights)
-                er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+
+                im_weights = 1. / len(im_fl[np.where(~np.isnan(im_fl))])
+                fl[wv_ii] = np.nansum(im_fl * im_weights)
+                er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'median':
-                fl[wv_ii] = np.median(im_fl)
-                er[wv_ii] = 1.2533 * np.sqrt(np.sum(im_var)) / len(im_fl)  # explain 1.2533
+                fl[wv_ii] = np.nanmedian(im_fl)
+                er[wv_ii] = 1.2533 * np.sqrt(np.nansum(im_var)) / len(im_fl[np.where(~np.isnan(im_fl))])  # explain 1.2533
             elif mode == 'wfrac':
                 if (frac > 1) or (frac < 0):
                     raise ValueError('`frac` must be value within (0,1)')
