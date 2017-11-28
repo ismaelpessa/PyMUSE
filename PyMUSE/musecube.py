@@ -198,7 +198,7 @@ class MuseCube:
             raise ValueError("npix must be integer.")
 
         cube_new = ma.MaskedArray(copy.deepcopy(self.cube))
-        cube_new.mask = np.isnan(self.cube_new) | np.isnan(self.stat)
+        cube_new.mask = np.isnan(self.cube) | np.isnan(self.stat)
         ntot = len(self.cube)
         for wv_ii in range(ntot):
             print('{}/{}'.format(wv_ii + 1, ntot))
