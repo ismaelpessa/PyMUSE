@@ -797,7 +797,7 @@ class MuseCube:
 
 
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
-                           cmap='seismic'):
+                           cmap='jet'):
         ##Get the integrated spec fit, and estimate the 0 velocity wv from there
         wv_line = wv_line_vac * (1 + z)
         dwmax = 10
