@@ -1618,13 +1618,6 @@ class MuseCube:
         white_image = self.get_image(wv_input, fitsname=new_white_fitsname, stat=stat, save=save)
         return white_image
 
-    def calculate_mag(self, wavelength, flux, _filter, zeropoint_flux=9.275222661263278e-07):
-        dw = np.diff(wavelength)
-        new_flux = flux * _filter
-        f_mean = (new_flux[:-1] + new_flux[1:]) * 0.5
-        total_flux = np.sum(f_mean * dw) * self.flux_units.value
-        mag = -2.5 * np.log10(total_flux / zeropoint_flux)
-        return mag
 
     def get_filter(self, wavelength_spec, _filter='r'):
 
