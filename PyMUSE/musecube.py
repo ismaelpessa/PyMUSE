@@ -454,7 +454,7 @@ class MuseCube:
         if deg:
             x_c, y_c = r[0].coord_list[0], r[0].coord_list[1]
             if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
-                x_world, y_world = self.p2w(x_c - 1, y_c - 1)
+                x_world, y_world = self.p2w(x_c , y_c )
             else:
                 x_world, y_world = x_c, y_c
             return x_world, y_world
@@ -466,7 +466,7 @@ class MuseCube:
                 y_world = r[0].coord_list[1]
                 par = r[0].coord_list[2:5]
                 x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, params=par)
-            return x_c - 1, y_c - 1, params
+            return x_c , y_c , params
 
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
                                     save=False):
