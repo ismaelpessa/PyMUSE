@@ -6,8 +6,9 @@ Initializing is easy You must be in "ipython --pylab" enviroment.::
         cube = MuseCube(filename_cube, filename_white)
 
 If for any reason you do not have the white image, you can still initialize the cube just typing::
-        
+
         cube = MuseCube(filename_cube)
+
 This method will collapse the spectral dimension of the cube and save a create a file named 'new_white.fits'
 
 Spectral analysis
@@ -30,7 +31,7 @@ where ``[10,5,35]`` corresponds to the semimajor axis, semiminor axis and rotati
 You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see http//ds9.si.edu/doc/ref/region.html)
 To do this, you can use the function::
 
-    spectrum = cube.get_spec_from_region_string(region_string, mode = 'wwm')
+    spectrum = cube.get_spec_from_region_string('physical;ellipse(134,219,10,5,35) # color = green', mode = 'wwm')
 
 In both of the ``get_spec()`` functions you can set ``save = True`` to save the spectrum to the hard_disk
 
@@ -38,8 +39,8 @@ Another extra feature is given by the  function::
 
     spectrum = cube.get_spec_and_image(center,halfsize,mode='wwm')
 
-This code will, in addition of extract the spectrum given by ``center = (x,y)`` and halfsize either the radius of a circula/
-region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot/
+This code will, in addition of extract the spectrum given by ``center = (x,y)`` and halfsize either the radius of a circular
+region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot
 
 If you want to insert the input positions and semi-axes in degrees, you can set the coord_system parameter to wcs by adding::
 
@@ -62,7 +63,7 @@ This feature allows the user to interactively define a region in the canvas as a
 
     spectrum=cube.get_spec_from_interactive_polygon_region(mode='wwm')
 
-This will turn interactive the canvas. To select the spaxel that will be the vertices of the region, just press left click on them/
+This will turn interactive the canvas. To select the spaxel that will be the vertices of the region, just press left click on them
 When you have finished, just press right click and then enter to continue. The last vertex that you selected will link the first one to define the contour of the region.
 
 Get the spectrum of a region defined in a DS9 .reg file
@@ -70,7 +71,9 @@ Get the spectrum of a region defined in a DS9 .reg file
 You also can define a region in a ds9 .reg file
 The only thing needed is that the .reg file MUST be saved in physical coordinates. Once this is done, you can get the spectrum::
 
-    spectrum = cube.get_spec_from_ds9regfile(regfile,mode='wwm')
+    spectrum = cube.get_spec_from_ds9regfile(regfile,mode='wwm',i=0)
+
+Where the index i is used in the case that you have more than one region defined in the same region file (i=0 correspond to the first region)
 
 Modes of spectrum extraction
 ----------------------------
@@ -130,7 +133,7 @@ To do this, you should have at least the next parameters in the SExtractor outpu
     * NUMBER
     * MAG_AUTO
 
-(Assuming that you ran SExtractor in the white image or any image with the same dimensions and astrometry of the cube/
+(Assuming that you used SExtractor in the white image or any image with the same dimensions and astrometry of the cube
 First, to plot your regions, you can use::
 
     cube.plot_sextractor_regions('sextractor_filename', flag_threshold=32, a_min=3.5)
@@ -151,7 +154,7 @@ You can access to the data of a file writen in this format doing the next::
     import PyMUSE.utils as mc
     wv,fl,er = mcu.get_rm_spec(rm_spec_name)
 where rm_spec_name is the name of the fits file.
-Also, you can set the parameter ``mag_kwrd`` which by default is ``'mag_r'`` to the keyword in the new fits_image that wil/
+Also, you can set the parameter ``mag_kwrd`` which by default is ``'mag_r'`` to the keyword in the new fits_image that will
 contain the SExtractor's MAG_AUTO value.
 It is possible the usage of a different image as an input for SExtractor. If this is the case, you should not use the
 X_IMAGE, Y_IMAGE, A_IMAGE, B_IMAGE given by SExtractor (although they still must be included in the parameters list), because the spaxel-wcs conversion in the image given to SExtractor will be probably different to the conversion in the MUSE cube.  You may want to include the parameters::
@@ -221,16 +224,16 @@ You can create a 2D image by collapsing some wavelength slices of the cube using
 
     cube.get_image(wv_input, fitsname='new_collapsed_cube.fits', type='sum', n_figure=2, save=False, stat=False)
 
-IMPORTANT!! wv_input must be list. The list can contain either individual wavelength values (e.g [5000,5005,5010]) o/
-a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 5000 and 6000 angstroms)/
-If save is True, the new image will be saved to the hard disk as ``fitsname``. The ``type`` of collapse can be either 'sum/
-or 'median'. n_figure is the figure's number  to display the image if ``save`` = True. Finally, if stat = True, the collapse wil/
-be done in the stat extension of the MUSE cube/
+IMPORTANT!! wv_input must be list. The list can contain either individual wavelength values (e.g [5000,5005,5010]) or
+a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 5000 and 6000 angstroms).
+If save is True, the new image will be saved to the hard disk as ``fitsname``. The ``type`` of collapse can be either 'sum
+or 'median'. n_figure is the figure's number  to display the image if ``save`` = True. Finally, if stat = True, the collapse will
+be done in the stat extension of the MUSE cube.
 If you want to directly create a new "white" just use::
 
     cube.create_white(new_white_fitsname='white_from_colapse.fits', stat=False, save=True)
 
-This will sum all wavelengths and the new image will be saved in a fits file named by ``new_white_fitsname``. If stat=True, the ne/
+This will sum all wavelengths and the new image will be saved in a fits file named by ``new_white_fitsname``. If stat=True, the new
 image will be created from the stat extension, as the sum of the variances along the wavelength range.
 
 Maybe you want to collapse more than just one wavelength range (for example, the range of several emission lines
@@ -242,7 +245,7 @@ wv_ranges must be a list of ranges (for example ``[[4000,4100],[5000,5100],[5200
 
     cube.create_ranges(z,width=10)
 
-To define the ranges that correspond to the [OII, Hb, OIII 4959,OIII 5007, Ha].  This method will return the list of the rang/
+To define the ranges that correspond to the [OII, Hb, OIII 4959,OIII 5007, Ha].  This method will return the list of the ranges
 of these transitions at redshift z, and the width given (in angstroms). The method will only return those ranges that
 remains inside the MUSE wavelength range.
 Finally, if ``substract_cont`` is True, the flux level around the ranges given by wv_ranges will be substracted from the image
@@ -267,6 +270,24 @@ and compose a new filtered image. To do this, you can use the method::
 This method will write a new filtered image that will be useful to photometry analysis
 Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly reduced  in order to fit the MUSE spectral range)
 
+You can also define your own filter, for example if we define a Gaussian transmission curve::
+
+    import numpy as np
+    from astropy.modeling import models
+    Gauss=models.Gaussian1D(mean=5400,stddev=200,amplitude=1)
+    w=np.arange(5000,6000,1)
+    tc=Gauss(w)
+    plt.figure()
+    plt.plot(w,tc)
+
+We can use::
+
+    cube.get_filtered_image(custom_filter=[w,tc])
+
+
+To create the new filtered image.
+
+
 Extra features
 ==============
 Emission line kinematics
@@ -275,7 +296,7 @@ An useful thing to do with a MuseCube is a kinematic analysis of an extended sou
     cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type='abs', z=0)
 
 estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
-the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required paramters are::
+the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are::
     * x_c
     * y_c
     * params
@@ -295,7 +316,7 @@ As an extra analysis to your data, the MuseCube Class allows the user to create 
 Will create a video which frames will be, at each redshifts, the sum of all wavelengths that would fall at strong emission lines
 (Ha,Hb,OII,OIII)::
     cube_create_movie_wavelength_range(w_ini,w_end,width)
-Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_en
+Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_end
 
 
 
