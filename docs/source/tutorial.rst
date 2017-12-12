@@ -184,7 +184,7 @@ starting from id_start (default = 1). The coord_name variable will determine how
 Save a set of spectra defined by a MUSELET output fits table.
 --------------------------------------------------------------
 MUSELET (for MUSE Line Emission Tracker)  is an emission line galaxy detection tool based on SExtractor from MPDAF (MUSE Python Data Analysis Framework) Python package `<(http//mpdaf.readthedocs.io/en/latest/muselet.html)>`
-PyMUSE allow the user te extraction of a set spectra given a MUSELET output fits table. The method::
+PyMUSE allow the user the extraction of a set spectra given a MUSELET output fits table. The method::
 
     cube.save_muselet_specs(self, filename, mode='wwm', params=4, frac=0.1, npix=0, empirical_std=False, redmonster_format=True, ids='all')
 
