@@ -80,7 +80,7 @@
 <p>where <code class="docutils literal"><span class="pre">[10,5,35]</span></code> corresponds to the semimajor axis, semiminor axis and rotation angle respectively
 You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see http//ds9.si.edu/doc/ref/region.html)
 To do this, you can use the function:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_region_string</span><span class="p">(</span><span class="n">region_string</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_region_string</span><span class="p">(</span><span class="s1">&#39;physical;ellipse(134,219,10,5,35) # color = green&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>In both of the <code class="docutils literal"><span class="pre">get_spec()</span></code> functions you can set <code class="docutils literal"><span class="pre">save</span> <span class="pre">=</span> <span class="pre">True</span></code> to save the spectrum to the hard_disk</p>
@@ -88,8 +88,8 @@ To do this, you can use the function:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_and_image</span><span class="p">(</span><span class="n">center</span><span class="p">,</span><span class="n">halfsize</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This code will, in addition of extract the spectrum given by <code class="docutils literal"><span class="pre">center</span> <span class="pre">=</span> <span class="pre">(x,y)</span></code> and halfsize either the radius of a circula/
-region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot/</p>
+<p>This code will, in addition of extract the spectrum given by <code class="docutils literal"><span class="pre">center</span> <span class="pre">=</span> <span class="pre">(x,y)</span></code> and halfsize either the radius of a circular
+region or a set of [a,b,theta] parameters defining an ellipse, will plot the spectrum and will show the source that is being analysed in a  subplot</p>
 <p>If you want to insert the input positions and semi-axes in degrees, you can set the coord_system parameter to wcs by adding:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">coord_system</span> <span class="o">=</span> <span class="s1">&#39;wcs&#39;</span>
 </pre></div>
@@ -108,16 +108,17 @@ https//github.com/jdoepfert/roipoly.py/</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This will turn interactive the canvas. To select the spaxel that will be the vertices of the region, just press left click on them/
+<p>This will turn interactive the canvas. To select the spaxel that will be the vertices of the region, just press left click on them
 When you have finished, just press right click and then enter to continue. The last vertex that you selected will link the first one to define the contour of the region.</p>
 </div>
 <div class="section" id="get-the-spectrum-of-a-region-defined-in-a-ds9-reg-file">
 <h3>2.1.2. Get the spectrum of a region defined in a DS9 .reg file<a class="headerlink" href="#get-the-spectrum-of-a-region-defined-in-a-ds9-reg-file" title="Permalink to this headline">¶</a></h3>
 <p>You also can define a region in a ds9 .reg file
 The only thing needed is that the .reg file MUST be saved in physical coordinates. Once this is done, you can get the spectrum:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ds9regfile</span><span class="p">(</span><span class="n">regfile</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_ds9regfile</span><span class="p">(</span><span class="n">regfile</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">,</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>Where the index i is used in the case that you have more than one region defined in the same region file (i=0 correspond to the first region)</p>
 </div>
 </div>
 <div class="section" id="modes-of-spectrum-extraction">
@@ -190,7 +191,7 @@ To do this, you should have at least the next parameters in the SExtractor outpu
 <span class="o">*</span> <span class="n">MAG_AUTO</span>
 </pre></div>
 </div>
-<p>(Assuming that you ran SExtractor in the white image or any image with the same dimensions and astrometry of the cube/
+<p>(Assuming that you used SExtractor in the white image or any image with the same dimensions and astrometry of the cube
 First, to plot your regions, you can use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">plot_sextractor_regions</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">)</span>
 </pre></div>
@@ -212,7 +213,7 @@ You can access to the data of a file writen in this format doing the next:</p>
 </pre></div>
 </div>
 <p>where rm_spec_name is the name of the fits file.
-Also, you can set the parameter <code class="docutils literal"><span class="pre">mag_kwrd</span></code> which by default is <code class="docutils literal"><span class="pre">'mag_r'</span></code> to the keyword in the new fits_image that wil/
+Also, you can set the parameter <code class="docutils literal"><span class="pre">mag_kwrd</span></code> which by default is <code class="docutils literal"><span class="pre">'mag_r'</span></code> to the keyword in the new fits_image that will
 contain the SExtractor&#8217;s MAG_AUTO value.
 It is possible the usage of a different image as an input for SExtractor. If this is the case, you should not use the
 X_IMAGE, Y_IMAGE, A_IMAGE, B_IMAGE given by SExtractor (although they still must be included in the parameters list), because the spaxel-wcs conversion in the image given to SExtractor will be probably different to the conversion in the MUSE cube.  You may want to include the parameters:</p>
@@ -288,16 +289,16 @@ the FWHM of the profile with the seeing. The halfsize parameter  indicates the r
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span><span class="n">wv_input</span><span class="p">,</span> <span class="n">fitsname</span><span class="o">=</span><span class="s1">&#39;new_collapsed_cube.fits&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span> <span class="n">n_figure</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>IMPORTANT!! wv_input must be list. The list can contain either individual wavelength values (e.g [5000,5005,5010]) o/
-a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 5000 and 6000 angstroms)/
-If save is True, the new image will be saved to the hard disk as <code class="docutils literal"><span class="pre">fitsname</span></code>. The <code class="docutils literal"><span class="pre">type</span></code> of collapse can be either &#8216;sum/
-or &#8216;median&#8217;. n_figure is the figure&#8217;s number  to display the image if <code class="docutils literal"><span class="pre">save</span></code> = True. Finally, if stat = True, the collapse wil/
-be done in the stat extension of the MUSE cube/
+<p>IMPORTANT!! wv_input must be list. The list can contain either individual wavelength values (e.g [5000,5005,5010]) or
+a wavelength range (defined as [[5000,6000]] to collapse all wavelength between 5000 and 6000 angstroms).
+If save is True, the new image will be saved to the hard disk as <code class="docutils literal"><span class="pre">fitsname</span></code>. The <code class="docutils literal"><span class="pre">type</span></code> of collapse can be either &#8216;sum
+or &#8216;median&#8217;. n_figure is the figure&#8217;s number  to display the image if <code class="docutils literal"><span class="pre">save</span></code> = True. Finally, if stat = True, the collapse will
+be done in the stat extension of the MUSE cube.
 If you want to directly create a new &#8220;white&#8221; just use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">create_white</span><span class="p">(</span><span class="n">new_white_fitsname</span><span class="o">=</span><span class="s1">&#39;white_from_colapse.fits&#39;</span><span class="p">,</span> <span class="n">stat</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This will sum all wavelengths and the new image will be saved in a fits file named by <code class="docutils literal"><span class="pre">new_white_fitsname</span></code>. If stat=True, the ne/
+<p>This will sum all wavelengths and the new image will be saved in a fits file named by <code class="docutils literal"><span class="pre">new_white_fitsname</span></code>. If stat=True, the new
 image will be created from the stat extension, as the sum of the variances along the wavelength range.</p>
 <p>Maybe you want to collapse more than just one wavelength range (for example, the range of several emission lines
 To do that, you may want to use the method.:</p>
@@ -308,7 +309,7 @@ To do that, you may want to use the method.:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">create_ranges</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">width</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>To define the ranges that correspond to the [OII, Hb, OIII 4959,OIII 5007, Ha].  This method will return the list of the rang/
+<p>To define the ranges that correspond to the [OII, Hb, OIII 4959,OIII 5007, Ha].  This method will return the list of the ranges
 of these transitions at redshift z, and the width given (in angstroms). The method will only return those ranges that
 remains inside the MUSE wavelength range.
 Finally, if <code class="docutils literal"><span class="pre">substract_cont</span></code> is True, the flux level around the ranges given by wv_ranges will be substracted from the image</p>
@@ -332,6 +333,21 @@ and compose a new filtered image. To do this, you can use the method:</p>
 </div>
 <p>This method will write a new filtered image that will be useful to photometry analysis
 Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly reduced  in order to fit the MUSE spectral range)</p>
+<p>You can also define your own filter, for example if we define a Gaussian transmission curve:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy.modeling</span> <span class="k">import</span> <span class="n">models</span>
+<span class="n">Gauss</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">Gaussian1D</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mi">5400</span><span class="p">,</span><span class="n">stddev</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span><span class="n">amplitude</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">w</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span><span class="mi">6000</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">tc</span><span class="o">=</span><span class="n">Gauss</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">w</span><span class="p">,</span><span class="n">tc</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">get_filtered_image</span><span class="p">(</span><span class="n">custom_filter</span><span class="o">=</span><span class="p">[</span><span class="n">w</span><span class="p">,</span><span class="n">tc</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>To create the new filtered image.</p>
 </div>
 </div>
 <div class="section" id="extra-features">
@@ -343,7 +359,7 @@ Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly 
 <dd>cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type=&#8217;abs&#8217;, z=0)</dd>
 </dl>
 <p>estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
-the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required paramters are:</p>
+the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">x_c</span>
 <span class="o">*</span> <span class="n">y_c</span>
 <span class="o">*</span> <span class="n">params</span>
@@ -377,7 +393,7 @@ IMPORTANT Select strong lines that be spatially extended.</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube_create_movie_wavelength_range</span><span class="p">(</span><span class="n">w_ini</span><span class="p">,</span><span class="n">w_end</span><span class="p">,</span><span class="n">width</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_en</p>
+<p>Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_end</p>
 </div>
 </div>
 
