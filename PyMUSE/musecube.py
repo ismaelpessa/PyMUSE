@@ -681,6 +681,10 @@ class MuseCube:
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
+            if er[wv_ii]==0:
+                fl[wv_ii]=0
+                er[wv_ii]=99
+
         if warn:
             warnings.warn(
                 'Some wavelengths could not be combined using the selected mode (a mean where used only on those cases)')
