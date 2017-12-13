@@ -598,7 +598,7 @@ class MuseCube:
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
-            if len(im_fl) == 0:
+            if len(im_fl) == 0 or np.nansum(im_fl)==0 or np.nansum(im_var)==0:
                 fl[wv_ii] = 0
                 er[wv_ii] = 99
             elif mode == 'wwm':
