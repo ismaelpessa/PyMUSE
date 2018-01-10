@@ -775,7 +775,7 @@ class MuseCube:
         plt.ylim([ymin, ymax])
         plt.xlim([w[0], w[n - 1]])
         ax2 = plt.subplot2grid((1, 4), (0, 3), colspan=1)
-        ax2.imshow(mini_image, cmap='gray', vmin=self.vmin, vmax=self.vmax)
+        ax2.imshow(mini_image, cmap='gray')#, vmin=self.vmin, vmax=self.vmax)
         plt.ylim([0, 2 * halfsize])
         plt.xlim([0, 2 * halfsize])
         return spec
