@@ -58,7 +58,6 @@ class MuseCube:
         plt.close(self.n)
         self.wave_cal = wave_cal
 
-
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
@@ -67,11 +66,11 @@ class MuseCube:
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
 
         if not vmin:
-            self.vmin=np.nanpercentile(self.white_data,0.25)
+            self.vmin = np.nanpercentile(self.white_data, 0.25)
         else:
             self.vmin = vmin
         if not vmax:
-            self.vmax=np.nanpercentile(self.white_data,98.)
+            self.vmax = np.nanpercentile(self.white_data, 98.)
         else:
             self.vmax = vmax
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
@@ -90,7 +89,6 @@ class MuseCube:
         # import pdb; pdb.set_trace()
         self.cube = hdulist[1].data
         self.stat = hdulist[2].data
-
 
         # for ivar weighting ; consider creating it in init ; takes long
         # self.flux_over_ivar = self.cube / self.stat
@@ -160,7 +158,7 @@ class MuseCube:
             hdulist.writeto('smoothed_white.fits', clobber=True)
             if show:
                 fig = aplpy.FITSFigure('smoothed_white.fits', figure=plt.figure())
-                fig.show_grayscale(vmin=self.vmin,vmax=self.vmax)
+                fig.show_grayscale(vmin=self.vmin, vmax=self.vmax)
 
         return smooth_im
 
@@ -249,7 +247,7 @@ class MuseCube:
                 image[j2][i2] = data_white[j - 1][i - 1]
         return image
 
-    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4, n_figure=2, save = False):
+    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4, n_figure=2, save=False):
         """
         Function to extract the spectrum of a circular aperture defined by x_c, y_c and radius in spaxel space.
         The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = seeing in spaxels
@@ -265,7 +263,7 @@ class MuseCube:
         n = len(w)
         fl = np.zeros(n)
         sig = np.zeros(n)
-        mask=new_2dmask
+        mask = new_2dmask
         for wv_ii in range(n):
             center = np.zeros(mask.shape)  ###Por alguna razon no funciona si cambio la asignacion a np.zeros_like(mask)
             center[y_c][x_c] = 1
@@ -304,9 +302,9 @@ class MuseCube:
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 1, 1, 0, coord_system='pix')
         self.draw_pyregion(region_string)
         w = self.wavelength
-        spec = self.cube[:,int(y_c),int(x_c)]
-        sigma = np.sqrt(self.stat[:,int(y_c),int(x_c)])
-        spec=np.where(np.isnan(spec),0,spec)
+        spec = self.cube[:, int(y_c), int(x_c)]
+        sigma = np.sqrt(self.stat[:, int(y_c), int(x_c)])
+        spec = np.where(np.isnan(spec), 0, spec)
         sigma = np.where(np.isnan(spec), 99., sigma)
 
         spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
@@ -361,7 +359,8 @@ class MuseCube:
         if mode == 'gaussian':
             spec = self.get_gaussian_profile_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
-            new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system,color=color)
+            new_mask = self.get_mini_cube_mask_from_ellipse_params(x_c, y_c, params, coord_system=coord_system,
+                                                                   color=color)
             spec = self.spec_from_minicube_mask(new_mask, mode=mode, npix=npix, frac=frac)
 
         if empirical_std:
@@ -423,7 +422,7 @@ class MuseCube:
         print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
-        complete_mask =  mask_inv
+        complete_mask = mask_inv
         new_2dmask = np.where(complete_mask == 0, False, True)
         spec = self.spec_from_minicube_mask(new_2dmask, mode=mode, npix=npix, frac=frac)
         self.reload_canvas()
@@ -454,7 +453,7 @@ class MuseCube:
         if deg:
             x_c, y_c = r[0].coord_list[0], r[0].coord_list[1]
             if r[0].coord_format == 'physical' or r[0].coord_format == 'image':
-                x_world, y_world = self.p2w(x_c , y_c )
+                x_world, y_world = self.p2w(x_c, y_c)
             else:
                 x_world, y_world = x_c, y_c
             return x_world, y_world
@@ -466,7 +465,7 @@ class MuseCube:
                 y_world = r[0].coord_list[1]
                 par = r[0].coord_list[2:5]
                 x_c, y_c, params = self.ellipse_params_to_pixel(x_world, y_world, params=par)
-            return x_c , y_c , params
+            return x_c, y_c, params
 
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
                                     save=False):
@@ -598,7 +597,7 @@ class MuseCube:
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
-            if len(im_fl) == 0 or np.nansum(im_fl)==0 or np.nansum(im_var)==0:
+            if len(im_fl) == 0 or np.nansum(im_fl) == 0 or np.nansum(im_var) == 0:
                 fl[wv_ii] = 0
                 er[wv_ii] = 99
             elif mode == 'wwm':
@@ -666,7 +665,8 @@ class MuseCube:
                 er[wv_ii] = np.sqrt(np.nansum(im_var * (im_weights ** 2)))
             elif mode == 'median':
                 fl[wv_ii] = np.nanmedian(im_fl)
-                er[wv_ii] = 1.2533 * np.sqrt(np.nansum(im_var)) / len(im_fl[np.where(~np.isnan(im_fl))])  # explain 1.2533
+                er[wv_ii] = 1.2533 * np.sqrt(np.nansum(im_var)) / len(
+                    im_fl[np.where(~np.isnan(im_fl))])  # explain 1.2533
             elif mode == 'wfrac':
                 if (frac > 1) or (frac < 0):
                     raise ValueError('`frac` must be value within (0,1)')
@@ -681,9 +681,9 @@ class MuseCube:
                 im_weights = im_weights / np.sum(im_weights)
                 fl[wv_ii] = np.sum(im_fl * im_weights)
                 er[wv_ii] = np.sqrt(np.sum(im_var * (im_weights ** 2)))
-            if er[wv_ii]==0:
-                fl[wv_ii]=0
-                er[wv_ii]=99
+            if er[wv_ii] == 0:
+                fl[wv_ii] = 0
+                er[wv_ii] = 99
 
         if warn:
             warnings.warn(
@@ -798,7 +798,6 @@ class MuseCube:
         mask_new_inverse = np.where(~mask_new, True, False)
         mask2d = mask_new_inverse
         return mask2d
-
 
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
                            cmap='jet'):
@@ -1214,7 +1213,7 @@ class MuseCube:
         complete_mask_new = self.get_new_2dmask(region_string)
         return complete_mask_new
 
-    def get_mini_cube_mask_from_ellipse_params(self, x_c, y_c, params, coord_system='pix',color='green'):
+    def get_mini_cube_mask_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', color='green'):
         """
         Creates a 2D mask where all original masked voxels are masked out,
         plus all voxels associated to spaxels outside the elliptical region
@@ -1241,7 +1240,8 @@ class MuseCube:
         else:
             raise ValueError('If iterable, the length of radius must be == 3; otherwise try float.')
 
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta, coord_system=coord_system,color=color)
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, a, b, theta, coord_system=coord_system,
+                                                            color=color)
         complete_mask_new = self.get_new_2dmask(region_string)
         return complete_mask_new
 
@@ -1291,8 +1291,8 @@ class MuseCube:
         self.draw_pyregion(region_string)
         return mask_new_inverse
 
-
-    def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None, border_thresh=1):
+    def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None,
+                                mag_sex='MAG_AUTO', border_thresh=1):
         self.reload_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
@@ -1307,7 +1307,7 @@ class MuseCube:
         theta = np.array(self.get_from_table(sextractor_filename, 'THETA_IMAGE'))
         flags = self.get_from_table(sextractor_filename, 'FLAGS').data
         id = self.get_from_table(sextractor_filename, 'NUMBER').data
-        mag = self.get_from_table(sextractor_filename, 'MAG_AUTO').data
+        mag = self.get_from_table(sextractor_filename, mag_sex).data
         n = len(x_pix)
         if wcs_coords:
             x_world = np.array(self.get_from_table(sextractor_filename, 'X_WORLD'))
@@ -1328,17 +1328,18 @@ class MuseCube:
                 x_pix[i], y_pix[i], params = self.ellipse_params_to_pixel(x_world[i], y_world[i], params=params_wcs)
                 a[i] = params[0]
                 b[i] = params[1]
-            x2=[]
-            y2=[]
-            a2=[]
-            b2=[]
-            theta2=[]
-            flags2=[]
-            id2=[]
-            mag2=[]
-            ly,lx=self.white_data.shape
+            x2 = []
+            y2 = []
+            a2 = []
+            b2 = []
+            theta2 = []
+            flags2 = []
+            id2 = []
+            mag2 = []
+            ly, lx = self.white_data.shape
             for i in xrange(n):
-                if x_pix[i]>=border_thresh and y_pix[i]>=border_thresh and x_pix[i]<=lx-border_thresh and y_pix[i]<=ly-border_thresh:
+                if x_pix[i] >= border_thresh and y_pix[i] >= border_thresh and x_pix[i] <= lx - border_thresh and y_pix[
+                    i] <= ly - border_thresh:
                     x2.append(x_pix[i])
                     y2.append(y_pix[i])
                     a2.append(a[i])
@@ -1347,17 +1348,15 @@ class MuseCube:
                     flags2.append(flags[i])
                     id2.append(id[i])
                     mag2.append(mag[i])
-            x_pix=np.array(x2)
-            y_pix=np.array(y2)
-            a=np.array(a2)
-            b=np.array(b2)
-            theta=np.array(theta2)
-            flags=np.array(flags2)
-            id=np.array(id2)
-            mag=np.array(mag2)
-            n=len(x_pix)
-
-
+            x_pix = np.array(x2)
+            y_pix = np.array(y2)
+            a = np.array(a2)
+            b = np.array(b2)
+            theta = np.array(theta2)
+            flags = np.array(flags2)
+            id = np.array(id2)
+            mag = np.array(mag2)
+            n = len(x_pix)
 
         if n_id != None:
             j = np.where(id == n_id)[0][0]
@@ -1365,7 +1364,6 @@ class MuseCube:
             self.draw_pyregion(region_string)
             plt.text(x_pix[j], y_pix[j], id[j], color='Red')
             return
-
 
         for i in xrange(n):
             color = 'Green'
@@ -1378,10 +1376,10 @@ class MuseCube:
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2, wcs_coords=False,
-                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1, border_thresh=1):
+                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1, mag_sex='MAG_AUTO', border_thresh=1):
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
-            flag_threshold=flag_threshold, wcs_coords=wcs_coords, border_thresh=border_thresh)
+            flag_threshold=flag_threshold, wcs_coords=wcs_coords, mag_sex=mag_sex, border_thresh=border_thresh)
         self.reload_canvas()
         n = len(x_pix)
         for i in xrange(n):
@@ -1621,7 +1619,6 @@ class MuseCube:
         wv_input = [[wave[0], wave[n - 1]]]
         white_image = self.get_image(wv_input, fitsname=new_white_fitsname, stat=stat, save=save)
         return white_image
-
 
     def get_filter(self, wavelength_spec, _filter='r'):
 
