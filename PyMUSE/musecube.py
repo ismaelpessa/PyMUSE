@@ -583,21 +583,21 @@ class MuseCube:
         fl = np.zeros(n)
         er = np.zeros(n)
         if mode == 'ivar':
-            if self.ivar_im:
+            if self.ivar_im is not None:
                 var_white = self.ivar_im
             else:
                 var_white = self.create_white(stat=True, save=False)
                 self.ivar_im = var_white
 
         elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
-            if self.smooth_im and npix==self.__npix:
+            if self.smooth_im is not None and npix==self.__npix:
                 smoothed_white = self.smooth_im
             else:
                 smoothed_white = self.get_smoothed_white(npix=npix, save=False)
                 self.smooth_im = smoothed_white
                 self.__npix = npix
             if mode == 'wwm_ivar':
-                if self.ivar_im:
+                if self.ivar_im is not None:
                     var_white = self.ivar_im
                 else:
                     var_white = self.create_white(stat=True, save=False)
