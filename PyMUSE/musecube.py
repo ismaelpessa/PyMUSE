@@ -388,8 +388,6 @@ class MuseCube:
         Function used to interactively define a region and extract the spectrum of that region
 
         To use this function, the class must have been initialized in a "ipython --pylab qt" enviroment
-        It's also needed the package roipoly. Installation instructions and LICENSE in:
-        https://github.com/jdoepfert/roipoly.py/
         :param mode: str, default = wwm
             Mode for combining spaxels:
               * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
@@ -415,7 +413,7 @@ class MuseCube:
 
         """
         self.reload_canvas()
-        from roipoly import roipoly
+        from PyMUSE.roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r', fig=current_fig)
         raw_input("MuseCube: Please select points with left click. Right click and Enter to continue...")
