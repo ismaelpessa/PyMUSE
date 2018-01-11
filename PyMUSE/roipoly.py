@@ -4,7 +4,8 @@ See the file example.py for an application.
 Created by Joerg Doepfert 2014 based on code posted by Daniel
 Kornhauser.
 
-This has been copied from the original file. The original repository can be found at https://github.com/jdoepfert/roipoly.py/blob/master/roipoly.py
+This has been copied from the original file.
+The original repository and LICENSE can be found at https://github.com/jdoepfert/roipoly.py/blob/master/roipoly.py
 '''
 
 
