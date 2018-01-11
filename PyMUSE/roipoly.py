@@ -132,7 +132,5 @@ class roipoly:
                 if sys.flags.interactive:
                     pass
                 else:
-            # figure has to be closed so that code can continue
-
-
-plt.close(self.fig)
+                    # figure has to be closed so that code can continue
+                    plt.close(self.fig)
