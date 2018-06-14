@@ -988,7 +988,7 @@ class MuseCube:
             print('ID = ' + str_id + ' Ready!!')
 
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
-                              id_start=1, coord_name=False, debug=False):
+                              id_start=1, coord_name=False, debug=False, a_min=3.5):
         """
         Function used to save a set of spectra given by a DS9 regionfile "regfile"
         :param regfile: str. Name of the DS9 region file
@@ -1012,6 +1012,13 @@ class MuseCube:
         for i in xrange(n):
             id_ = id_start + i
             r_i = pyregion.ShapeList([r[i]])
+            # check size of r_i for ellipses
+            if r_i[0].name == 'ellipse':
+                if r_i[0].coord_list[2] < a_min:
+                    ratio = r_i[0].coord_list[2] / r_i[0].coord_list[3]
+                    r_i[0].coord_list[2] = a_min
+                    r_i[0].coord_list[3] = a_min / ratio
+
             self.draw_region(r_i)
             mask2d = self.region_2dmask(r_i)
             ##Get spec
@@ -1029,10 +1036,8 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = str_id + '_' + name_from_coord(coord)
             if redmonster_format:
-                if debug:
-                    mag_tuple = ['mag_r', '-']
-                else:
-                    mag_tuple = None
+                # assuming regions from ds9 come with no photometry, we fill with a placeholder
+                mag_tuple = ['mag_r', '-']
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=id_, mag=mag_tuple)
             else:
                 spec.write_to_fits(spec_fits_name + '.fits')
