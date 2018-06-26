@@ -1019,8 +1019,8 @@ class MuseCube:
                     r_i[0].coord_list[2] = a_min
                     r_i[0].coord_list[3] = a_min / ratio
             if r_i[0].name == 'circle':
-                if r_i[0].coord_list[2] == 0:
-                    print("Circle region has radius = 0. Skipping it.")
+                if r_i[0].coord_list[2] < 1:
+                    print("Circle region has radius < 1. Skipping it.")
                     continue
             self.draw_region(r_i)
             mask2d = self.region_2dmask(r_i)
