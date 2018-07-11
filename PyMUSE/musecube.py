@@ -914,11 +914,12 @@ class MuseCube:
             noise = np.std(residual)
             if debug:
                 plt.figure()
-                plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey')
-                plt.plot(wv_eff, fl_eff, drawstyle='steps-mid')
-                plt.plot(wv_eff, model_fit(wv_eff))
-                plt.plot(wv_eff, residual, color='red')
-                plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid')
+                plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
+                plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color = 'blue', label = 'spaxel flux')
+                plt.plot(wv_eff, model_fit(wv_eff), color = 'green', label = 'modeled flux')
+                plt.plot(wv_eff, residual, color='red', label = 'residual')
+                plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label = 'sigma')
+                plt.legend()
                 m = fitter.fit_info['param_cov']
                 if m != None:
                     print('Display Cov Matrix')
