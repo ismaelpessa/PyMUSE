@@ -934,7 +934,7 @@ class MuseCube:
                     print('Fit Aceptado')
                     print(str(x[i]) + ',' + str(y[i]))
                 units = u.km / u.s
-                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z_line).to(units).value
+                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
                 kine_im[y[i]][x[i]] = vel
             else:
                 if debug:
