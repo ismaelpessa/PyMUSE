@@ -277,7 +277,7 @@ class MuseCube:
         spec = XSpectrum1D.from_tuple((w, fl, sig))
         spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
-        plt.plot(spec.wavelength, spec.flux)
+        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         x_world, y_world = self.p2w(x_c, y_c)
         coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         name = name_from_coord(coords)
@@ -315,7 +315,7 @@ class MuseCube:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
-        plt.plot(spec.wavelength, spec.flux)
+        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         name = name_from_coord(coords)
         plt.title(name)
@@ -370,7 +370,7 @@ class MuseCube:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
-        plt.plot(spec.wavelength, spec.flux)
+        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         if coord_system == 'wcs':
             x_world, y_world = x_c, y_c
         else:
@@ -428,7 +428,7 @@ class MuseCube:
         spec = self.spec_from_minicube_mask(new_2dmask, mode=mode, npix=npix, frac=frac)
         self.reload_canvas()
         plt.figure(n_figure)
-        plt.plot(spec.wavelength, spec.flux)
+        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.title('Polygonal region spectrum ')
@@ -510,7 +510,7 @@ class MuseCube:
         self.draw_pyregion(region_string)
         spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
-        plt.plot(spec.wavelength, spec.flux)
+        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         x_world, y_world = self.params_from_ellipse_region_string(region_string, deg=True)
         coords = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
         name = name_from_coord(coords)
@@ -778,7 +778,7 @@ class MuseCube:
         plt.title(spec_name)
         w = spec.wavelength.value
         f = spec.flux.value
-        ax1.plot(w, f)
+        ax1.plot(w, f, drawstyle='steps-mid')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         n = len(w)
@@ -1034,7 +1034,10 @@ class MuseCube:
                     ratio = r_i[0].coord_list[2] / r_i[0].coord_list[3]
                     r_i[0].coord_list[2] = a_min
                     r_i[0].coord_list[3] = a_min / ratio
-
+            if r_i[0].name == 'circle':
+                if r_i[0].coord_list[2] < 1:
+                    print("Circle region has radius < 1. Skipping it.")
+                    continue
             self.draw_region(r_i)
             mask2d = self.region_2dmask(r_i)
             ##Get spec
@@ -1103,7 +1106,7 @@ class MuseCube:
             spec.write_to_fits(regfile[:-4] + '.fits')
 
         plt.figure(n_figure)
-        plt.plot(spec.wavelength, spec.flux)
+        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         plt.title('Spectrum from ' + regfile)
         plt.xlabel('Angstroms')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
