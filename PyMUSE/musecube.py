@@ -1341,7 +1341,7 @@ class MuseCube:
         :param b: float, side of the box
         :param color: string, color to plot the region
         :param coord_system: string, default = pix. Possible values: "wcs", "pix".  If "wcs", the
-                             cordinates and sides are assumed to be in degrees
+                             coordinates and sides are assumed to be in degrees
         :return: string. The region defined in ds9 format.
         """
         if coord_system == 'wcs':
