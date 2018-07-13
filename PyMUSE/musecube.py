@@ -800,6 +800,16 @@ class MuseCube:
         patch_list, artist_list = r.get_mpl_patches_texts(origin=0)
         patch = patch_list[0]
         ax.add_patch(patch)
+    def draw_ds9_reg(self,regfile,i=0):
+        """
+        Function to draw a region from a ds9 region file
+        :param regfile: ds9 region file
+        :param i: index of the region to draw in the region file, i=0 is the first region
+        :return:
+        """
+        r = pyregion.open(regfile)
+        r = pyregion.ShapeList([r[i]])
+        self.draw_region(r)
 
     def region_2dmask(self, r):
         from pyregion.region_to_filter import as_region_filter
@@ -814,10 +824,30 @@ class MuseCube:
         return mask2d
 
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
-                           cmap='jet'):
-        ##Get the integrated spec fit, and estimate the 0 velocity wv from there
+                           cmap='jet', amplitude_threshold=2., dwmax=10.):
+        """
+
+        :param x_c: float, x-coordinate of the center of the source
+        :param y_c: float, y-coordinate of the center of the source
+        :param params: float, int or iterable, parameters of the extraction aperture
+        :param wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used
+               to compute the kinematics
+        :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
+                              of the line wavelength
+        :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
+        :param debug: If True, the fit for each spaxel will be shown
+        :param z: Redshift of the source
+        :param cmap: Output colormap
+        :param amplitude_threshold: float, sets the theshold for the minimum aplitude required for the fit to be accepted.
+                                    amplitude_threshold = 2 means that the amplitud should be at leat 2 times higher that the noise,
+                                    defined as the std of the residuals.
+        :param dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
+                      to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
+                      spectrum, the fit will be rejected
+        :return:
+        """
+        ##Get the integrated spec fit
         wv_line = wv_line_vac * (1 + z)
-        dwmax = 10
         spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
@@ -842,6 +872,10 @@ class MuseCube:
         model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
         mean_total = model_fit[0].mean.value
         sigma_total = model_fit[0].stddev.value
+        a_total = model_fit[0].amplitude.value
+        if debug:
+            print('a_total = '+str(a_total)+'\n')
+            print('mean_total = ' + str(mean_total) + '\n')
         z_line = (mean_total / wv_line_vac) - 1.
         if isinstance(params, (int, float)):
             params = [params, params, 0]
@@ -884,6 +918,7 @@ class MuseCube:
         n = len(x)
         kine_im = np.where(self.white_data == 0, np.nan, np.nan)
         sigma_im = np.where(self.white_data == 0, np.nan, np.nan)
+        SN_im = np.where(self.white_data == 0, np.nan, np.nan)
 
         for i in xrange(n):
             print(str(i + 1) + '/' + str(n))
@@ -912,6 +947,7 @@ class MuseCube:
             m = fitter.fit_info['param_cov']
             residual = model_fit(wv_eff) - fl_eff
             noise = np.std(residual)
+            SN=np.median(fl_eff/sig_eff)
             if debug:
                 plt.figure()
                 plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
@@ -930,16 +966,18 @@ class MuseCube:
                     print('Cov Matrix undefined')
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
-            if abs(amp) >= 2. * noise and (a_center * amp > 0) and abs(mean_center - mean) <= dwmax:
+            sig = model_fit[0].stddev.value
+            if abs(amp) >= amplitude_threshold * noise and sigma_total>sig and (a_total * amp > 0) and abs(mean_total - mean) <= dwmax:
                 if debug:
-                    print('Fit Aceptado')
+                    print('Fit Accepted')
                     print(str(x[i]) + ',' + str(y[i]))
                 units = u.km / u.s
                 vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
                 kine_im[y[i]][x[i]] = vel
+                SN_im[y[i]][x[i]] = SN
             else:
                 if debug:
-                    print('Fit Negado')
+                    print('Fit Rejected')
                     print(str(x[i]) + ',' + str(y[i]))
             if debug:
                 print('value of wv_dif = ' + str(mean_center - mean))
@@ -947,20 +985,31 @@ class MuseCube:
                 print('noise = ' + str(noise))
                 raw_input('Enter to continue...')
 
-        hdulist = self.hdulist_white
-        hdulist[1].data = kine_im
-        hdulist.writeto('kinematics.fits', clobber=True)
-        fig = aplpy.FITSFigure('kinematics.fits', figure=plt.figure())
-        fig.show_colorscale(cmap=cmap)
-        fig.add_colorbar()
-        fig.colorbar.set_axis_label_text('V (km s$^{-1}$)')
+        hdulist_kin = self.hdulist_white
+        hdulist_kin[1].data = kine_im
+        hdulist_kin.writeto('kinematics.fits', clobber=True)
+        fig_k = aplpy.FITSFigure('kinematics.fits', figure=plt.figure())
+        fig_k.show_colorscale(cmap=cmap)
+        fig_k.add_colorbar()
+        fig_k.colorbar.set_axis_label_text('dV (km s$^{-1}$)')
+
+        hdulist_SN = self.hdulist_white
+        hdulist_SN[1].data = SN_im
+        hdulist_SN.writeto('SN_im.fits', clobber=True)
+        fig_SN = aplpy.FITSFigure('SN_im.fits', figure=plt.figure())
+        fig_SN.show_colorscale(cmap=cmap)
+        fig_SN.add_colorbar()
+        fig_SN.colorbar.set_axis_label_text('SN')
+
+
         xw, yw = self.p2w(x_c, y_c)
         if isinstance(params, (int, float)):
             r = params * self.pixelsize
         else:
             r = params[0] * self.pixelsize
         r = r.to(u.deg)
-        fig.recenter(xw, yw, r.value)
+        fig_k.recenter(xw, yw, r.value)
+        fig_SN.recenter(xw, yw, r.value)
         return kine_im
 
     def save_muselet_specs(self, filename, mode='sum', params=4, frac=0.1, npix=0, empirical_std=False,
@@ -1316,6 +1365,20 @@ class MuseCube:
 
     def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None,
                                 mag_sex='MAG_AUTO', border_thresh=1):
+        """
+        Function to plot the regions in a SExtractor catalog
+        :param sextractor_filename: string, catalog filename
+        :param a_min: Minimum semi-major axis of an elliptical region. If the axis of the region is smaller than this value
+                      the ellipse will be rescaled.
+        :param flag_threshold: int, the regions with a flag higher than this number in the catalog, will be drawn in red
+        :param wcs_coords: Boolean, If true, the world coordinate will be used instead of the pixel coordinates. This is useful if you
+                           used SExtractor in an image different than the MUSE white image.
+        :param n_id: None or int, if None, all the regions will be marked, if int, only the region with that id will be drawn
+        :param mag_sex: string, magntiude keyword in the SExtractor catalog
+        :param border_thresh: If wcs_coords = True, and the image where SExtractor were used is bigger, this parameter can be used
+                              to set the limit of the regions to draw, in pixels (you do not want to draw regions outside of the MUSE white image canvas)
+        :return:
+        """
         self.reload_canvas()
         x_pix = np.array(self.get_from_table(sextractor_filename, 'X_IMAGE'))
         y_pix = np.array(self.get_from_table(sextractor_filename, 'Y_IMAGE'))
