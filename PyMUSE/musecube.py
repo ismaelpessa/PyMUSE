@@ -848,6 +848,9 @@ class MuseCube:
         """
         ##Get the integrated spec fit
         wv_line = wv_line_vac * (1 + z)
+        if isinstance(params, (int, float)):
+            params = [params, params, 0]
+
         spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
@@ -877,8 +880,6 @@ class MuseCube:
             print('a_total = '+str(a_total)+'\n')
             print('mean_total = ' + str(mean_total) + '\n')
         z_line = (mean_total / wv_line_vac) - 1.
-        if isinstance(params, (int, float)):
-            params = [params, params, 0]
 
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
         mask2d = self.get_new_2dmask(region_string)
@@ -1328,6 +1329,27 @@ class MuseCube:
         region_string = 'physical;ellipse({},{},{},{},{}) # color = {}'.format(x_center, y_center, radius[0],
                                                                                radius[1],
                                                                                radius[2], color)
+        return region_string
+
+    def box_params_to_ds9reg_string(self, xc, yc, a, b, color = 'green', coord_system='pix'):
+        """
+        Function to create a string that defines a region in ds9 format.
+        The output region created by this function can be used as an input for the function "get_spec_from_region_string"
+        :param xc: float, x-coordinate of the center of the box
+        :param yc: float, y-coordinate of the center of the box
+        :param a: float, side of the box
+        :param b: float, side of the box
+        :param color: string, color to plot the region
+        :param coord_system: string, default = pix. Possible values: "wcs", "pix".  If "wcs", the
+                             cordinates and sides are assumed to be in degrees
+        :return: string. The region defined in ds9 format.
+        """
+        if coord_system == 'wcs':
+            x_center, y_center, sides = self.ellipse_params_to_pixel(xc, yc, params=[a, b, 0])
+        else:
+            x_center, y_center, sides = xc, yc, [a, b]
+        region_string = 'physical;box({},{},{},{},0) # color = {}'.format(x_center, y_center, sides[0],
+                                                                               sides[1], color)
         return region_string
 
     def wfrac_show_spaxels(self, frac, mask2d, smoothed_white):
