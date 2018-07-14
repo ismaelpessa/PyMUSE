@@ -824,7 +824,7 @@ class MuseCube:
         return mask2d
 
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
-                           cmap='jet', amplitude_threshold=2., dwmax=10.):
+                           cmap='jet', amplitude_threshold=2., dwmax=10., side = 3):
         """
 
         :param x_c: float, x-coordinate of the center of the source
@@ -851,7 +851,9 @@ class MuseCube:
         if isinstance(params, (int, float)):
             params = [params, params, 0]
 
-        spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm')
+        #spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm') #COMENTADO POR TESTEO 13/JUL
+        region_string=self.box_params_to_ds9reg_string(x_c,y_c,2*np.max(params),2*np.max(params))
+        spec_total=self.get_spec_from_region_string(region_string,mode='wwm')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t = spec_total.sig.value
@@ -881,10 +883,13 @@ class MuseCube:
             print('mean_total = ' + str(mean_total) + '\n')
         z_line = (mean_total / wv_line_vac) - 1.
 
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
+        #region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])   #TESTEO 13/JUL
         mask2d = self.get_new_2dmask(region_string)
         ##Find center guessing parameters
-        spec_c = self.get_spec_spaxel(x_c, y_c)
+
+        region_string_c = self.box_params_to_ds9reg_string(x_c, y_c, side, side)
+        spec_c = self.get_spec_from_region_string(region_string_c, mode='wwm')
+        #spec_c = self.get_spec_spaxel(x_c, y_c)
         fl_c = spec_c.flux.value
         wv_c = spec_c.wavelength.value
         sig_c = spec_total.sig.value
@@ -916,80 +921,100 @@ class MuseCube:
 
         ##get spaxel in mask2d
         y, x = np.where(~mask2d)
-        n = len(x)
         kine_im = np.where(self.white_data == 0, np.nan, np.nan)
         sigma_im = np.where(self.white_data == 0, np.nan, np.nan)
         SN_im = np.where(self.white_data == 0, np.nan, np.nan)
 
-        for i in xrange(n):
-            print(str(i + 1) + '/' + str(n))
-            spec = self.get_spec_spaxel(x[i], y[i])
-            wv = spec.wavelength.value
-            fl = spec.flux.value
-            sig = spec_total.sig.value
-            sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-            wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-            fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-            fl_left = fl_eff[:3]
-            fl_right = fl_eff[-3:]
-            intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
-            if type == 'abs':
-                a_init = np.min(fl_eff) - intercept_init
-            if type == 'emi':
-                a_init = np.max(fl_eff) - intercept_init
-            slope_init = 0
-            sigma_init = sigma_center
-            mean_init = mean_center
-            gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
-            line = models.Linear1D(slope=slope_init, intercept=intercept_init)
-            model_init = gaussian + line
-            fitter = fitting.LevMarLSQFitter()
-            model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
-            m = fitter.fit_info['param_cov']
-            residual = model_fit(wv_eff) - fl_eff
-            noise = np.std(residual)
-            SN=np.median(fl_eff/sig_eff)
-            if debug:
-                plt.figure()
-                plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
-                plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color = 'blue', label = 'spaxel flux')
-                plt.plot(wv_eff, model_fit(wv_eff), color = 'green', label = 'modeled flux')
-                plt.plot(wv_eff, residual, color='red', label = 'residual')
-                plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label = 'sigma')
-                plt.legend()
-                m = fitter.fit_info['param_cov']
-                if m != None:
-                    print('Display Cov Matrix')
-                    plt.figure()
-                    plt.imshow(m, interpolation='none', vmin=0, vmax=15)
-                    plt.colorbar()
-                else:
-                    print('Cov Matrix undefined')
-            mean = model_fit[0].mean.value
-            amp = model_fit[0].amplitude.value
-            sig = model_fit[0].stddev.value
-            if abs(amp) >= amplitude_threshold * noise and sigma_total>sig and (a_total * amp > 0) and abs(mean_total - mean) <= dwmax:
-                if debug:
-                    print('Fit Accepted')
-                    print(str(x[i]) + ',' + str(y[i]))
-                units = u.km / u.s
-                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
-                kine_im[y[i]][x[i]] = vel
-                SN_im[y[i]][x[i]] = SN
-            else:
-                if debug:
-                    print('Fit Rejected')
-                    print(str(x[i]) + ',' + str(y[i]))
-            if debug:
-                print('value of wv_dif = ' + str(mean_center - mean))
-                print('amplitude = ' + str(amp))
-                print('noise = ' + str(noise))
-                raw_input('Enter to continue...')
+        if side / 2. == int(side / 2):  # If even:
+            radius = side / 2. - 0.5
+        else:
+            radius = int(side / 2)
+        dim = np.sqrt(len(x))  # same for x or y
+        x_start = np.min(x) + (side - 1) * 0.5
+        y_start = np.min(y) + (side - 1) * 0.5
+        n_iter = int(dim / side)
+        iteration_x = np.arange(x_start, x_start + side * n_iter, side)
+        iteration_y = np.arange(y_start, y_start + side * n_iter, side)
 
+        n=len(iteration_x)*len(iteration_y)
+        count=0
+        for x_ in iteration_x:
+            for y_ in iteration_y:
+                count+=1
+                print(str(count)+'/'+str(n))
+                region_string = self.box_params_to_ds9reg_string(x_, y_, side, side)
+                spec = self.get_spec_from_region_string(region_string, mode='wwm')
+                #spec = self.get_spec_spaxel(x[i], y[i])
+
+                wv = spec.wavelength.value
+                fl = spec.flux.value
+                sig = spec_total.sig.value
+                sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+                wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+                fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+                fl_left = fl_eff[:3]
+                fl_right = fl_eff[-3:]
+                intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+                if type == 'abs':
+                    a_init = np.min(fl_eff) - intercept_init
+                if type == 'emi':
+                    a_init = np.max(fl_eff) - intercept_init
+                slope_init = 0
+                sigma_init = sigma_center
+                mean_init = mean_center
+                gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+                line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+                model_init = gaussian + line
+                fitter = fitting.LevMarLSQFitter()
+                model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
+                m = fitter.fit_info['param_cov']
+                residual = model_fit(wv_eff) - fl_eff
+                noise = np.std(residual)
+                SN=np.median(fl_eff/sig_eff)
+                if debug:
+                    plt.figure()
+                    plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
+                    plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color = 'blue', label = 'spaxel flux')
+                    plt.plot(wv_eff, model_fit(wv_eff), color = 'green', label = 'modeled flux')
+                    plt.plot(wv_eff, residual, color='red', label = 'residual')
+                    plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label = 'sigma')
+                    plt.legend()
+                    m = fitter.fit_info['param_cov']
+                    if m != None:
+                        print('Display Cov Matrix')
+                        plt.figure()
+                        plt.imshow(m, interpolation='none', vmin=0, vmax=15)
+                        plt.colorbar()
+                    else:
+                        print('Cov Matrix undefined')
+                mean = model_fit[0].mean.value
+                amp = model_fit[0].amplitude.value
+                sig = model_fit[0].stddev.value
+                if abs(amp) >= amplitude_threshold * noise and sigma_total>sig and (a_total * amp > 0) and abs(mean_total - mean) <= dwmax:
+                    if debug:
+                        print('Fit Accepted')
+                        print(str(x_) + ',' + str(y_))
+                    units = u.km / u.s
+                    vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
+                    for i in xrange(int(x_ - radius), int(x_ + radius + 1)):
+                        for j in xrange(int(y_ - radius), int(y_ + radius + 1)):
+                            kine_im[j][i] = vel
+                            SN_im[j][i] = SN
+                    #kine_im[y[i]][x[i]] = vel
+                    #SN_im[y[i]][x[i]] = SN
+                else:
+                    if debug:
+                        print('Fit Rejected')
+                        print(str(x_) + ',' + str(y_))
+                if debug:
+                    print('value of wv_dif = ' + str(mean_center - mean))
+                    print('amplitude = ' + str(amp))
+                    print('noise = ' + str(noise))
+                    raw_input('Enter to continue...')
         hdulist_kin = self.hdulist_white
         hdulist_kin[1].data = kine_im
-        hdulist_kin.writeto('kinematics.fits', clobber=True)
-        fig_k = aplpy.FITSFigure('kinematics.fits', figure=plt.figure())
+        hdulist_kin.writeto('kinematics_im.fits', clobber=True)
+        fig_k = aplpy.FITSFigure('kinematics_im.fits', figure=plt.figure())
         fig_k.show_colorscale(cmap=cmap)
         fig_k.add_colorbar()
         fig_k.colorbar.set_axis_label_text('dV (km s$^{-1}$)')
