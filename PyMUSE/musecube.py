@@ -844,6 +844,10 @@ class MuseCube:
         :param dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
                       to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
                       spectrum, the fit will be rejected
+        :param side: int, pixels, size of the side of the sub-boxes to re-bin the complete aperture. If this number is bigger,
+                     you will obtain a higher signal to noise, but a lower spatial resolution. side = 1 is the maximum spatial resolution,
+                     where a single spectrum will be obtained from each spaxels. Bigger boxes will generate less spectra, with higher s/n each one
+
         :return:
         """
         ##Get the integrated spec fit
