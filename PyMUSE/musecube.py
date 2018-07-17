@@ -1733,11 +1733,11 @@ class MuseCube:
         image_stacker = np.zeros_like(self.white_data)
         for r in wv_ranges:
             image = self.get_image([r])
-            cont_range_inf, cont_range_sup, n = self.get_continuum_range(r)
-            cont_inf_image = self.get_image([cont_range_inf], type='median')
-            cont_sup_image = self.get_image([cont_range_sup], type='median')
-            cont_image = (n + 1) * (cont_inf_image + cont_sup_image) / 2.
             if substract_cont:
+                cont_range_inf, cont_range_sup, n = self.get_continuum_range(r)
+                cont_inf_image = self.get_image([cont_range_inf], type='median')
+                cont_sup_image = self.get_image([cont_range_sup], type='median')
+                cont_image = (n + 1) * (cont_inf_image + cont_sup_image) / 2.
                 image = image - cont_image
             image_stacker = image_stacker + image
         image_stacker = np.where(image_stacker < 0, 0, image_stacker)
