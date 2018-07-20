@@ -975,28 +975,14 @@ class MuseCube:
                 residual = model_fit(wv_eff) - fl_eff
                 noise = np.std(residual)
                 SN=np.median(fl_eff/sig_eff)
-                if debug:
-                    plt.figure()
-                    plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
-                    plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color = 'blue', label = 'spaxel flux')
-                    plt.plot(wv_eff, model_fit(wv_eff), color = 'green', label = 'modeled flux')
-                    plt.plot(wv_eff, residual, color='red', label = 'residual')
-                    plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label = 'sigma')
-                    plt.legend()
-                    m = fitter.fit_info['param_cov']
-                    if m != None:
-                        print('Display Cov Matrix')
-                        plt.figure()
-                        plt.imshow(m, interpolation='none', vmin=0, vmax=15)
-                        plt.colorbar()
-                    else:
-                        print('Cov Matrix undefined')
+
                 mean = model_fit[0].mean.value
                 amp = model_fit[0].amplitude.value
                 sig = model_fit[0].stddev.value
                 if abs(amp) >= amplitude_threshold * noise and 1.5*sigma_total>sig and (a_total * amp > 0) and abs(mean_total - mean) <= dwmax:
                     if debug:
                         print('Fit Accepted')
+                        t='Accepted'
                         print(str(x_) + ',' + str(y_))
                     units = u.km / u.s
                     vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
@@ -1009,8 +995,25 @@ class MuseCube:
                 else:
                     if debug:
                         print('Fit Rejected')
+                        t='Rejected'
                         print(str(x_) + ',' + str(y_))
                 if debug:
+                    plt.figure()
+                    plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
+                    plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color = 'blue', label = 'spaxel flux')
+                    plt.plot(wv_eff, model_fit(wv_eff), color = 'green', label = 'modeled flux')
+                    plt.plot(wv_eff, residual, color='red', label = 'residual')
+                    plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label = 'sigma')
+                    plt.legend()
+                    plt.title(t)
+                    m = fitter.fit_info['param_cov']
+                    if m != None:
+                        print('Display Cov Matrix')
+                        plt.figure()
+                        plt.imshow(m, interpolation='none', vmin=0, vmax=15)
+                        plt.colorbar()
+                    else:
+                        print('Cov Matrix undefined')
                     print('value of wv_dif = ' + str(mean_center - mean))
                     print('amplitude = ' + str(amp))
                     print('noise = ' + str(noise))
