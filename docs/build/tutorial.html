@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>1. Initializing &#8212; PyMUSE 1 documentation</title>
+    <title>1. Initializing &mdash; PyMUSE 1 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -23,8 +23,6 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
     <link rel="top" title="PyMUSE 1 documentation" href="index.html" />
     <link rel="next" title="1. Focus demo ADASS XXVII" href="demo.html" />
     <link rel="prev" title="Welcome to PyMUSE’s documentation!" href="index.html" /> 
@@ -42,7 +40,7 @@
         <li class="right" >
           <a href="index.html" title="Welcome to PyMUSE’s documentation!"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -53,7 +51,7 @@
             
   <div class="section" id="initializing">
 <h1>1. Initializing<a class="headerlink" href="#initializing" title="Permalink to this headline">¶</a></h1>
-<p>Initializing is easy You must be in &#8220;ipython &#8211;pylab&#8221; enviroment.:</p>
+<p>Initializing is easy You must be in &#8220;ipython &#8211;pylab&#8221; enviroment:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PyMUSE.musecube</span> <span class="k">import</span> <span class="n">MuseCube</span><span class="p">)</span>
 <span class="n">cube</span> <span class="o">=</span> <span class="n">MuseCube</span><span class="p">(</span><span class="n">filename_cube</span><span class="p">,</span> <span class="n">filename_white</span><span class="p">)</span>
 </pre></div>
@@ -78,7 +76,7 @@
 </pre></div>
 </div>
 <p>where <code class="docutils literal"><span class="pre">[10,5,35]</span></code> corresponds to the semimajor axis, semiminor axis and rotation angle respectively
-You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see http//ds9.si.edu/doc/ref/region.html)
+You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see <a class="reference external" href="http://ds9.si.edu/doc/ref/region.html">http://ds9.si.edu/doc/ref/region.html</a>)
 To do this, you can use the function:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_region_string</span><span class="p">(</span><span class="s1">&#39;physical;ellipse(134,219,10,5,35) # color = green&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
 </pre></div>
@@ -98,13 +96,20 @@ region or a set of [a,b,theta] parameters defining an ellipse, will plot the spe
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spec_spaxel</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">coord_system</span> <span class="o">=</span><span class="s1">&#39;pix&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Again, you can set <code class="docutils literal"><span class="pre">coord_system</span> <span class="pre">=</span> <span class="pre">'wcs'</span></code> if you want to insert an xy coordinate in degrees</p>
+<p>Again, you can set <code class="docutils literal"><span class="pre">coord_system</span> <span class="pre">=</span> <span class="pre">'wcs'</span></code> if you want to insert an xy coordinate in degrees.
+You can also create your own region string from a set of parameters using:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">region_string</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">box_params_to_ds9reg_string</span><span class="p">(</span><span class="n">xc</span><span class="p">,</span> <span class="n">yc</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="n">coord_system</span><span class="o">=</span><span class="s1">&#39;pix&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>and:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">region_string</span> <span class="o">=</span> <span class="n">ellipse_param_to_ds9reg_string</span><span class="p">(</span><span class="n">xc</span><span class="p">,</span> <span class="n">yc</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="n">coord_system</span><span class="o">=</span><span class="s1">&#39;pix&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And use the function defined above to get the spectrum of the corresponding region.</p>
 <div class="section" id="get-a-spectrum-interactively">
 <h3>2.1.1. Get a spectrum interactively<a class="headerlink" href="#get-a-spectrum-interactively" title="Permalink to this headline">¶</a></h3>
-<p>To use this feature, the class must have been initialized in a <code class="docutils literal"><span class="pre">ipython</span> <span class="pre">--pylab</span> <span class="pre">qt</span></code> enviroment
-It&#8217;s also needed the package roipoly. Installation instructions and LICENSE in
-https//github.com/jdoepfert/roipoly.py/</p>
-<p>This feature allows the user to interactively define a region in the canvas as a polygon. To do this:</p>
+<p>To use this feature, the class may need to have been initialized in a <code class="docutils literal"><span class="pre">ipython</span> <span class="pre">--pylab</span> <span class="pre">qt</span></code> enviroment
+This feature allows the user to interactively define a region in the canvas as a polygon. To do this:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -123,14 +128,14 @@ The only thing needed is that the .reg file MUST be saved in physical coordinate
 </div>
 <div class="section" id="modes-of-spectrum-extraction">
 <h2>2.2. Modes of spectrum extraction<a class="headerlink" href="#modes-of-spectrum-extraction" title="Permalink to this headline">¶</a></h2>
-<p>As you have noted, all the diferent <cite>get_spec_</cite> functions have the keyword argument &#8220;mode&#8221;. The mode availables to combine the spectrum of the diferent spaxels in a region ar/</p>
+<p>As you have noted, all the diferent <cite>get_spec_</cite> functions have the keyword argument &#8220;mode&#8221;. The mode availables to combine the spectrum of the diferent spaxels in a region are</p>
 <blockquote>
 <div><ul>
 <li><p class="first"><code class="docutils literal"><span class="pre">ivar</span></code> - Inverse variance weighting, variance is taken only spatially, from a &#8220;white variance images.</p>
 </li>
 <li><p class="first"><code class="docutils literal"><span class="pre">sum</span></code> - Sum of total flux.</p>
 </li>
-<li><p class="first"><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profil/</p>
+<li><p class="first"><code class="docutils literal"><span class="pre">gaussian</span></code> - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile</p>
 </li>
 <li><p class="first"><code class="docutils literal"><span class="pre">wwm</span></code> - &#8216;White Weighted Mean&#8217;. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done</p>
 </li>
@@ -165,16 +170,16 @@ that will smooth the white image, where the bright profile will be obtained. If 
 <p>if <code class="docutils literal"><span class="pre">save</span> <span class="pre">=</span> <span class="pre">True</span></code> (default = False) The new spectrum extracted will be saved to the hard drive.</p>
 <div class="section" id="read-a-spectrum-saved-by-get-spec-method">
 <h3>2.3.1. Read a spectrum saved by get_spec_method<a class="headerlink" href="#read-a-spectrum-saved-by-get-spec-method" title="Permalink to this headline">¶</a></h3>
-<dl class="docutils">
-<dt>If you used the ::</dt>
-<dd>save = True</dd>
-</dl>
+<p>If you used the:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">save</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
 <p>Option, you saved the spectrum to the hard-disk as a fits file. To access the data you can use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">linetools.spectra.io</span> <span class="k">import</span> <span class="n">readspec</span>
 <span class="n">spectrum</span> <span class="o">=</span> <span class="n">readspec</span><span class="p">(</span><span class="s1">&#39;spectrum_fitsname&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This will create a <code class="docutils literal"><span class="pre">XSpectrum1D</span></code> object from the fits file. You can access to the spectrum wavelength, flux and sigma by typing <code class="docutils literal"><span class="pre">spectrum.wavelength</span></code>, <code class="docutils literal"><span class="pre">spectrum.flux</span></code> and <code class="docutils literal"><span class="pre">spectrum.sig</span></code>. Additional information on the <code class="docutils literal"><span class="pre">XSpectrum1D</span></code> Class can be found in <a class="reference external" href="https//github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py">https//github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py</a></p>
+<p>This will create a <code class="docutils literal"><span class="pre">XSpectrum1D</span></code> object from the fits file. You can access to the spectrum wavelength, flux and sigma by typing <code class="docutils literal"><span class="pre">spectrum.wavelength</span></code>, <code class="docutils literal"><span class="pre">spectrum.flux</span></code> and <code class="docutils literal"><span class="pre">spectrum.sig</span></code>. Additional information on the <code class="docutils literal"><span class="pre">XSpectrum1D</span></code> Class can be found in <a class="reference external" href="https://github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py">https://github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py</a></p>
 </div>
 </div>
 <div class="section" id="use-a-sextractor-output-file-as-an-input">
@@ -196,7 +201,7 @@ First, to plot your regions, you can use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">plot_sextractor_regions</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Where sextractor_filename is the name of the SExtractor&#8217;s output. Every source with a SExtractor flag higher
+<p>Where <code class="docutils literal"><span class="pre">sextractor_filename</span></code> is the name of the SExtractor&#8217;s output. Every source with a SExtractor flag higher
 than flag_threshold will be marked in red.</p>
 <p>The a_min value correspond to the minimum number of spaxels that will have the semimajor axis of a regions
 The original (a/b) ratio will be constant, but this set a minimum size for the elliptical apertures</p>
@@ -206,7 +211,7 @@ The original (a/b) ratio will be constant, but this set a minimum size for the e
 </pre></div>
 </div>
 <p>This will save in the hard disk the spectra of all the sources defined in the sextractor_filename which flags be lower or equal than flag_threshold using the specified modes.
-If <code class="docutils literal"><span class="pre">redmonster_format</span> <span class="pre">=</span> <span class="pre">True</span></code>, the spectra will be saved in a format redeable for redmonster software <a class="reference external" href="http//www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/">http//www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/</a>
+If <code class="docutils literal"><span class="pre">redmonster_format</span> <span class="pre">=</span> <span class="pre">True</span></code>, the spectra will be saved in a format redeable for redmonster software <a class="reference external" href="http://www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/">http://www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/</a>
 You can access to the data of a file writen in this format doing the next:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">PyMUSE.utils</span> <span class="k">as</span> <span class="nn">mc</span>
 <span class="n">wv</span><span class="p">,</span><span class="n">fl</span><span class="p">,</span><span class="n">er</span> <span class="o">=</span> <span class="n">mcu</span><span class="o">.</span><span class="n">get_rm_spec</span><span class="p">(</span><span class="n">rm_spec_name</span><span class="p">)</span>
@@ -229,29 +234,29 @@ Once you included them in the parameters list, you should set the parameter <cod
 </pre></div>
 </div>
 <p>to plot the regions and:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_sextractor_spec</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">redmonster_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span> <span class="n">n_figure</span><span class="o">=</span><span class="mi">2</span><span class="o">/</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_sextractor_spec</span><span class="p">(</span><span class="s1">&#39;sextractor_filename&#39;</span><span class="p">,</span> <span class="n">flag_threshold</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">redmonster_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span> <span class="n">n_figure</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
                           <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">,</span> <span class="n">mag_kwrd</span><span class="o">=</span><span class="s1">&#39;mag_r&#39;</span><span class="p">,</span> <span class="n">npix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">frac</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">wcs_coords</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>to save them.
 Save a set of spectra defined by a multi regionfile DS9 .reg file
-&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-
+&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8211;
 You can save all the spectra of regions defined by a DS9 region file to the hard disk. Just use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_ds9regfile_specs</span><span class="p">(</span><span class="n">regfile</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">,</span><span class="n">frac</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span><span class="n">npix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">empirical_std</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">redmonster_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">id_start</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">coord_name</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Again, you can select between all available modes (except gaussian). The different spectra in the file will be identified by an id/
+<p>Again, you can select between all available modes (except gaussian). The different spectra in the file will be identified by an id,
 starting from id_start (default = 1). The coord_name variable will determine how the different spectra are named. If False, The spectra will be named as ID_regfile.fits. If True, The name will depend of the first (X,Y) pair of each region. This is particularly good for ellipses and circles, but not as exact in polygons.</p>
 </div>
 <div class="section" id="save-a-set-of-spectra-defined-by-a-muselet-output-fits-table">
 <h2>2.5. Save a set of spectra defined by a MUSELET output fits table.<a class="headerlink" href="#save-a-set-of-spectra-defined-by-a-muselet-output-fits-table" title="Permalink to this headline">¶</a></h2>
-<p>MUSELET (for MUSE Line Emission Tracker)  is an emission line galaxy detection tool based on SExtractor from MPDAF (MUSE Python Data Analysis Framework) Python package <cite>&lt;(http//mpdaf.readthedocs.io/en/latest/muselet.html)&gt;</cite>
-PyMUSE allow the user te extraction of a set spectra given a MUSELET output fits table. The method:</p>
+<p>MUSELET (for MUSE Line Emission Tracker)  is an emission line galaxy detection tool based on SExtractor from MPDAF (MUSE Python Data Analysis Framework) Python package <cite>&lt;(http://mpdaf.readthedocs.io/en/latest/muselet.html)&gt;</cite>
+PyMUSE allow the user the extraction of a set spectra given a MUSELET output fits table. The method:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">save_muselet_specs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">frac</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">npix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">empirical_std</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">redmonster_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Will do it easily. Most of the keyword parameters are related to the extraction modes. The important parameters are <code class="docutils literal"><span class="pre">params</span></code> and <code class="docutils literal"><span class="pre">ids`/</span>
-<span class="pre">``params</span></code> by default is set to 4 and correspond to the elliptical parameter of the extraction for ALL the sources in the catalog. It can be either a int or a iterable [a,b, theta] (in spaxel units)
+<p>Will do it easily. Most of the keyword parameters are related to the extraction modes. The important parameters are <code class="docutils literal"><span class="pre">params</span></code> and <code class="docutils literal"><span class="pre">ids</span></code>.
+<code class="docutils literal"><span class="pre">params</span></code> by default is set to 4 and correspond to the elliptical parameter of the extraction for ALL the sources in the catalog. It can be either a int or a iterable [a,b, theta] (in spaxel units)
 <code class="docutils literal"><span class="pre">ids</span></code> by default is set to &#8216;all&#8217;. This means that <code class="docutils literal"><span class="pre">save_muselet_specs()</span></code> will extract all the sources in the MUSELET catalog. If you set ids = [1,5,23] for example, the function will extract only the sources with that IDs in the MUSELET catalog.</p>
 </div>
 <div class="section" id="saving-a-single-spectrum-to-the-hard-drive">
@@ -262,12 +267,28 @@ PyMUSE allow the user te extraction of a set spectra given a MUSELET output fits
 </pre></div>
 </div>
 <p>You also may want to save the spectrum in a fits redeable for redmonster. In that case use the MuseCube function:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>       mcu.spec_to_redmonster_format(spectrum, fitsname, n_id=None, mag=None)
-
-If ``n_id`` is not  ``None``, the new fitsfile will contain a ID keyword with n_id in it
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">mcu</span><span class="o">.</span><span class="n">spec_to_redmonster_format</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">fitsname</span><span class="p">,</span> <span class="n">n_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mag</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>If <cite>mag</cite> is not <cite>None</cite>, must be a  tuple with two elements. The first one must contain the keyword that will be in the header (example mag_r) and the second one must contain the value that will be in that keyword on the header of the new fitsfile.</p>
+<p>If <code class="docutils literal"><span class="pre">n_id</span></code> is not  <code class="docutils literal"><span class="pre">None</span></code>, the new fitsfile will contain a ID keyword with n_id in it
+If <cite>mag</cite> is not <cite>None</cite>, must be a  tuple with two elements. The first one must contain the keyword that will be in the header (example mag_r) and the second one must contain the value that will be in that keyword on the header of the new fitsfile.</p>
+</div>
+<div class="section" id="draw-a-region">
+<h2>2.7. Draw a region<a class="headerlink" href="#draw-a-region" title="Permalink to this headline">¶</a></h2>
+<p>To visualize a region before extracting a spectrum, you can draw it, using for example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">draw_ellipse_params</span><span class="p">(</span><span class="n">xc</span><span class="p">,</span> <span class="n">yc</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;green&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Where the region should be defined in pixels.
+You can also use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">draw_pyregion</span><span class="p">(</span><span class="n">region_string</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">draw_ds9_reg</span><span class="p">(</span><span class="n">regfile</span><span class="p">,</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To draw a region defined by a region string or in a region file respectively. <code class="docutils literal"><span class="pre">i=0</span></code> corresponds to the first region in the regionfile</p>
 </div>
 </div>
 <div class="section" id="imaging">
@@ -275,7 +296,7 @@ If ``n_id`` is not  ``None``, the new fitsfile will contain a ID keyword with n_
 <div class="section" id="estimate-seeing">
 <h2>3.1. Estimate seeing<a class="headerlink" href="#estimate-seeing" title="Permalink to this headline">¶</a></h2>
 <p>The method:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">determinate_seeing_from_white</span><span class="p">(</span><span class="n">x_center</span><span class="p">,</span><span class="n">y_center</span><span class="p">,</span><span class="n">halfsize</span><span class="o">/</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">determinate_seeing_from_white</span><span class="p">(</span><span class="n">x_center</span><span class="p">,</span><span class="n">y_center</span><span class="p">,</span><span class="n">halfsize</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Will allow  you to estimate the seeing using the white image. The user must insert as the input the xy coordinates in spaxel space
@@ -354,28 +375,30 @@ Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly 
 <h1>4. Extra features<a class="headerlink" href="#extra-features" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="emission-line-kinematics">
 <h2>4.1. Emission line kinematics<a class="headerlink" href="#emission-line-kinematics" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::</dt>
-<dd>cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type=&#8217;abs&#8217;, z=0)</dd>
-</dl>
-<p>estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
-the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are:</p>
+<p>An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                       <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">,</span> <span class="n">side</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>estimates de kinematics of the region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of smaller regions within
+the main region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">x_c</span>
 <span class="o">*</span> <span class="n">y_c</span>
 <span class="o">*</span> <span class="n">params</span>
 </pre></div>
 </div>
 <dl class="docutils">
-<dt>That define the elliptical region::</dt>
+<dt>That define the region::</dt>
 <dd><ul class="first last simple">
-<li>wv_line_vac wavelength of the transition in vacuum</li>
-<li>wv_range_size Angstroms.</li>
-</ul>
-</dd>
-<dt>Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines::</dt>
-<dd><ul class="first last simple">
+<li>wv_line_vac: wavelength of the transition in vacuum</li>
+<li>wv_range_size: Angstroms. Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines:</li>
 <li>type &#8216;abs&#8217; or &#8216;emi&#8217;. Type of transition to fit. &#8216;abs&#8217; for absorption and &#8216;emi&#8217; for emissions</li>
 <li>z redshift of the galaxy</li>
+<li>cmap: colour map of the final image</li>
+<li>side: side of the box that will contain the smaller regions inside of the main region. Defines the spatial resolution of the kinematics image and the S/N of the spectra used to compute the kinematics</li>
+<li>amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)</li>
+<li>dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.</li>
+<li>debug: If true, the fit of each spatial resolution element will be shown, 1 by 1</li>
 </ul>
 </dd>
 </dl>
@@ -384,16 +407,16 @@ IMPORTANT Select strong lines that be spatially extended.</p>
 </div>
 <div class="section" id="create-video">
 <h2>4.2. Create Video<a class="headerlink" href="#create-video" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>As an extra analysis to your data, the MuseCube Class allows the user to create 2 types of videos (need the cv2 package)::</dt>
-<dd>cube.create_movie_redshift_range(z_ini,z_fin_dz)</dd>
-</dl>
+<p>As an extra analysis to your data, the MuseCube Class allows the user to create 2 types of videos (need the cv2 package):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">create_movie_redshift_range</span><span class="p">(</span><span class="n">z_ini</span><span class="p">,</span><span class="n">z_fin_dz</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>Will create a video which frames will be, at each redshifts, the sum of all wavelengths that would fall at strong emission lines
 (Ha,Hb,OII,OIII):</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube_create_movie_wavelength_range</span><span class="p">(</span><span class="n">w_ini</span><span class="p">,</span><span class="n">w_end</span><span class="p">,</span><span class="n">width</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_end</p>
+<p>Will create a movie that goes from wavelength = w_ini summing a number of wavelength values given by width, to wavelength = w_end</p>
 </div>
 </div>
 
@@ -420,6 +443,7 @@ IMPORTANT Select strong lines that be spatially extended.</p>
 <li><a class="reference internal" href="#use-a-sextractor-output-file-as-an-input">2.4. Use a SExtractor output file as an input</a></li>
 <li><a class="reference internal" href="#save-a-set-of-spectra-defined-by-a-muselet-output-fits-table">2.5. Save a set of spectra defined by a MUSELET output fits table.</a></li>
 <li><a class="reference internal" href="#saving-a-single-spectrum-to-the-hard-drive">2.6. Saving a single spectrum to the hard drive</a></li>
+<li><a class="reference internal" href="#draw-a-region">2.7. Draw a region</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#imaging">3. Imaging</a><ul>
@@ -452,8 +476,8 @@ IMPORTANT Select strong lines that be spatially extended.</p>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
@@ -475,12 +499,12 @@ IMPORTANT Select strong lines that be spatially extended.</p>
         <li class="right" >
           <a href="index.html" title="Welcome to PyMUSE’s documentation!"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+        &copy; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
     </div>
   </body>
 </html>
