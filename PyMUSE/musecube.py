@@ -937,8 +937,8 @@ class MuseCube:
         x_start = np.min(x) + (side - 1) * 0.5
         y_start = np.min(y) + (side - 1) * 0.5
         n_iter = int(dim / side)
-        iteration_x = np.arange(x_start, x_start + side * n_iter, side)
-        iteration_y = np.arange(y_start, y_start + side * n_iter, side)
+        iteration_x = np.arange(x_start, x_start + side * n_iter, side)+0.5
+        iteration_y = np.arange(y_start, y_start + side * n_iter, side)+0.5
 
         n=len(iteration_x)*len(iteration_y)
         count=0
@@ -994,7 +994,7 @@ class MuseCube:
                 mean = model_fit[0].mean.value
                 amp = model_fit[0].amplitude.value
                 sig = model_fit[0].stddev.value
-                if abs(amp) >= amplitude_threshold * noise and sigma_total>sig and (a_total * amp > 0) and abs(mean_total - mean) <= dwmax:
+                if abs(amp) >= amplitude_threshold * noise and 1.5*sigma_total>sig and (a_total * amp > 0) and abs(mean_total - mean) <= dwmax:
                     if debug:
                         print('Fit Accepted')
                         print(str(x_) + ',' + str(y_))
