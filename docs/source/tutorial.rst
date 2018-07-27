@@ -1,6 +1,6 @@
 Initializing
 ============
-Initializing is easy You must be in "ipython --pylab" enviroment.::
+Initializing is easy You must be in "ipython --pylab" enviroment::
 
         from PyMUSE.musecube import MuseCube)
         cube = MuseCube(filename_cube, filename_white)
@@ -28,7 +28,7 @@ You can also define an elliptical aperture by using instead::
     spectrum = cube.get_spec_from_ellipse_params(134,219,[10,5,35], mode='wwm')
 
 where ``[10,5,35]`` corresponds to the semimajor axis, semiminor axis and rotation angle respectively
-You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see http//ds9.si.edu/doc/ref/region.html)
+You also may want to get the spectrum of a region defined by a single string line in DS9 format (e.g. see http://ds9.si.edu/doc/ref/region.html)
 To do this, you can use the function::
 
     spectrum = cube.get_spec_from_region_string('physical;ellipse(134,219,10,5,35) # color = green', mode = 'wwm')
@@ -50,15 +50,20 @@ Finally, you are able to get the spectrum of a single spaxel of the cube by usin
 
     spectrum = cube.get_spec_spaxel(x,y,coord_system ='pix')
 
-Again, you can set ``coord_system = 'wcs'`` if you want to insert an xy coordinate in degrees
+Again, you can set ``coord_system = 'wcs'`` if you want to insert an xy coordinate in degrees.
+You can also create your own region string from a set of parameters using::
+
+    region_string = cube.box_params_to_ds9reg_string(xc, yc, a, b, color = 'green', coord_system='pix')
+and::
+
+    region_string = ellipse_param_to_ds9reg_string(xc, yc, a, b, theta, color='green', coord_system='pix')
+
+And use the function defined above to get the spectrum of the corresponding region.
 
 
 Get a spectrum interactively
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-To use this feature, the class must have been initialized in a ``ipython --pylab qt`` enviroment
-It's also needed the package roipoly. Installation instructions and LICENSE in
-https//github.com/jdoepfert/roipoly.py/
-
+To use this feature, the class may need to have been initialized in a ``ipython --pylab qt`` enviroment
 This feature allows the user to interactively define a region in the canvas as a polygon. To do this::
 
     spectrum=cube.get_spec_from_interactive_polygon_region(mode='wwm')
@@ -77,11 +82,11 @@ Where the index i is used in the case that you have more than one region defined
 
 Modes of spectrum extraction
 ----------------------------
-As you have noted, all the diferent `get_spec_` functions have the keyword argument "mode". The mode availables to combine the spectrum of the diferent spaxels in a region ar/
+As you have noted, all the diferent `get_spec_` functions have the keyword argument "mode". The mode availables to combine the spectrum of the diferent spaxels in a region are
 
               * ``ivar`` - Inverse variance weighting, variance is taken only spatially, from a "white variance images.
               * ``sum`` - Sum of total flux.
-              * ``gaussian`` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profil/
+              * ``gaussian`` - Weighted mean. Weights are obtained from a 2D gaussian fit of the bright profile
               * ``wwm`` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
               * ``ivarwv`` - Weighted mean, the weight of every pixel is given by the inverse of it's variance.
               * ``mean``  -  Mean of the total flux
@@ -110,15 +115,16 @@ if ``save = True`` (default = False) The new spectrum extracted will be saved to
 
 Read a spectrum saved by get_spec_method
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-If you used the ::
-        save = True
+If you used the::
+
+    save = True
 
 Option, you saved the spectrum to the hard-disk as a fits file. To access the data you can use::
 
     from linetools.spectra.io import readspec
     spectrum = readspec('spectrum_fitsname')
 
-This will create a ``XSpectrum1D`` object from the fits file. You can access to the spectrum wavelength, flux and sigma by typing ``spectrum.wavelength``, ``spectrum.flux`` and ``spectrum.sig``. Additional information on the ``XSpectrum1D`` Class can be found in `<https//github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py>`_
+This will create a ``XSpectrum1D`` object from the fits file. You can access to the spectrum wavelength, flux and sigma by typing ``spectrum.wavelength``, ``spectrum.flux`` and ``spectrum.sig``. Additional information on the ``XSpectrum1D`` Class can be found in `<https://github.com/linetools/linetools/blob/master/linetools/spectra/xspectrum1d.py>`_
 
 Use a SExtractor output file as an input
 ----------------------------------------
@@ -138,7 +144,7 @@ First, to plot your regions, you can use::
 
     cube.plot_sextractor_regions('sextractor_filename', flag_threshold=32, a_min=3.5)
 
-Where sextractor_filename is the name of the SExtractor's output. Every source with a SExtractor flag higher
+Where ``sextractor_filename`` is the name of the SExtractor's output. Every source with a SExtractor flag higher
 than flag_threshold will be marked in red.
 
 The a_min value correspond to the minimum number of spaxels that will have the semimajor axis of a regions
@@ -149,7 +155,7 @@ Once you are satisfied with the regions that will be extracted, you can run::
     cube.save_sextractor_spec('sextractor_filename', flag_threshold=32, redmonster_format=True, a_min=3.5, n_figure=2,
                               mode='wwm', mag_kwrd='mag_r', npix=0, frac = 0.1)
 This will save in the hard disk the spectra of all the sources defined in the sextractor_filename which flags be lower or equal than flag_threshold using the specified modes.
-If ``redmonster_format = True``, the spectra will be saved in a format redeable for redmonster software `<http//www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/>`_
+If ``redmonster_format = True``, the spectra will be saved in a format redeable for redmonster software `<http://www.sdss.org/dr13/algorithms/redmonster-redshift-measurement-and-spectral-classification/>`_
 You can access to the data of a file writen in this format doing the next::
     import PyMUSE.utils as mc
     wv,fl,er = mcu.get_rm_spec(rm_spec_name)
@@ -169,26 +175,26 @@ Once you included them in the parameters list, you should set the parameter ``wc
 
 to plot the regions and::
 
-    cube.save_sextractor_spec('sextractor_filename', flag_threshold=32, redmonster_format=True, a_min=3.5, n_figure=2/
+    cube.save_sextractor_spec('sextractor_filename', flag_threshold=32, redmonster_format=True, a_min=3.5, n_figure=2)
                               mode='wwm', mag_kwrd='mag_r', npix=0, frac = 0.1, wcs_coords = True)
 to save them.
 Save a set of spectra defined by a multi regionfile DS9 .reg file
--------------------------------------------------------------------
+-----------------------------------------------------------------
 You can save all the spectra of regions defined by a DS9 region file to the hard disk. Just use::
 
     cube.save_ds9regfile_specs(regfile,mode='wwm',frac=0.1,npix=0,empirical_std=False,redmonster_format=True,id_start=1, coord_name = False)
 
-Again, you can select between all available modes (except gaussian). The different spectra in the file will be identified by an id/
+Again, you can select between all available modes (except gaussian). The different spectra in the file will be identified by an id,
 starting from id_start (default = 1). The coord_name variable will determine how the different spectra are named. If False, The spectra will be named as ID_regfile.fits. If True, The name will depend of the first (X,Y) pair of each region. This is particularly good for ellipses and circles, but not as exact in polygons.
 
 Save a set of spectra defined by a MUSELET output fits table.
---------------------------------------------------------------
-MUSELET (for MUSE Line Emission Tracker)  is an emission line galaxy detection tool based on SExtractor from MPDAF (MUSE Python Data Analysis Framework) Python package `<(http//mpdaf.readthedocs.io/en/latest/muselet.html)>`
+-------------------------------------------------------------
+MUSELET (for MUSE Line Emission Tracker)  is an emission line galaxy detection tool based on SExtractor from MPDAF (MUSE Python Data Analysis Framework) Python package `<(http://mpdaf.readthedocs.io/en/latest/muselet.html)>`
 PyMUSE allow the user the extraction of a set spectra given a MUSELET output fits table. The method::
 
     cube.save_muselet_specs(self, filename, mode='wwm', params=4, frac=0.1, npix=0, empirical_std=False, redmonster_format=True, ids='all')
 
-Will do it easily. Most of the keyword parameters are related to the extraction modes. The important parameters are ``params`` and ``ids`/
+Will do it easily. Most of the keyword parameters are related to the extraction modes. The important parameters are ``params`` and ``ids``.
 ``params`` by default is set to 4 and correspond to the elliptical parameter of the extraction for ALL the sources in the catalog. It can be either a int or a iterable [a,b, theta] (in spaxel units)
 ``ids`` by default is set to 'all'. This means that ``save_muselet_specs()`` will extract all the sources in the MUSELET catalog. If you set ids = [1,5,23] for example, the function will extract only the sources with that IDs in the MUSELET catalog.
 
@@ -202,8 +208,27 @@ You also may want to save the spectrum in a fits redeable for redmonster. In tha
         
         mcu.spec_to_redmonster_format(spectrum, fitsname, n_id=None, mag=None)
 
- If ``n_id`` is not  ``None``, the new fitsfile will contain a ID keyword with n_id in it
+If ``n_id`` is not  ``None``, the new fitsfile will contain a ID keyword with n_id in it
 If `mag` is not `None`, must be a  tuple with two elements. The first one must contain the keyword that will be in the header (example mag_r) and the second one must contain the value that will be in that keyword on the header of the new fitsfile.
+
+Draw a region
+-------------
+To visualize a region before extracting a spectrum, you can draw it, using for example::
+
+    cube.draw_ellipse_params(xc, yc, params, color='green')
+
+Where the region should be defined in pixels.
+You can also use::
+
+    cube.draw_pyregion(region_string)
+or::
+
+    cube.draw_ds9_reg(regfile,i=0)
+To draw a region defined by a region string or in a region file respectively. ``i=0`` corresponds to the first region in the regionfile
+
+
+
+
 
 Imaging
 =======
@@ -211,7 +236,7 @@ Estimate seeing
 ---------------
 The method::
 
-    cube.determinate_seeing_from_white(x_center,y_center,halfsize/
+    cube.determinate_seeing_from_white(x_center,y_center,halfsize)
 Will allow  you to estimate the seeing using the white image. The user must insert as the input the xy coordinates in spaxel space
 of a nearly point source expanded by the seeing. The method will fit a 2D gaussian to the bright profile and will associate
 the FWHM of the profile with the seeing. The halfsize parameter  indicates the radius size in spaxels of the source that will be fited.
@@ -293,30 +318,39 @@ Extra features
 Emission line kinematics
 ------------------------
 An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::
-    cube.compute_kinematics(x_c,y_c,params,wv_line_vac, wv_range_size=35, type='abs', z=0)
 
-estimates de kinematics of the elliptical region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of every spaxel within
-the region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are::
+    compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
+                           cmap='jet', amplitude_threshold=2., dwmax=10., side = 3)
+
+estimates de kinematics of the region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of smaller regions within
+the main region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are::
     * x_c
     * y_c
     * params
-That define the elliptical region::
-    * wv_line_vac wavelength of the transition in vacuum
-    * wv_range_size Angstroms. 
-Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines::
+That define the region::
+    * wv_line_vac: wavelength of the transition in vacuum
+    * wv_range_size: Angstroms. Space at each side of the line in the spectrum. Set this parameter in order to fit the complete transition but do not include near additional lines::
     * type 'abs' or 'emi'. Type of transition to fit. 'abs' for absorption and 'emi' for emissions
     * z redshift of the galaxy
+    * cmap: colour map of the final image
+    * side: side of the box that will contain the smaller regions inside of the main region. Defines the spatial resolution of the kinematics image and the S/N of the spectra used to compute the kinematics
+    * amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)
+    * dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.
+    * debug: If true, the fit of each spatial resolution element will be shown, 1 by 1
 This function returns the kinematic image of the region, and saves the image in a .fits file
 IMPORTANT Select strong lines that be spatially extended.
 
 Create Video
 ------------
 As an extra analysis to your data, the MuseCube Class allows the user to create 2 types of videos (need the cv2 package)::
-        cube.create_movie_redshift_range(z_ini,z_fin_dz)
+
+    cube.create_movie_redshift_range(z_ini,z_fin_dz)
+
 Will create a video which frames will be, at each redshifts, the sum of all wavelengths that would fall at strong emission lines
 (Ha,Hb,OII,OIII)::
+
     cube_create_movie_wavelength_range(w_ini,w_end,width)
-Will create a movie that goes from wavelength = w_ini suming a number of wavelength values given by width, to wavelength = w_end
+Will create a movie that goes from wavelength = w_ini summing a number of wavelength values given by width, to wavelength = w_end
 
 
 
