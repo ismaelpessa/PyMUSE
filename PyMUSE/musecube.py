@@ -590,7 +590,7 @@ class MuseCube:
                 self.ivar_im = var_white
 
         elif mode in ['wwm', 'wwm_ivarwv', 'wwm_ivar', 'wfrac']:
-            if self.smooth_im is not None and npix==self.__npix:
+            if self.smooth_im is not None and npix == self.__npix:
                 smoothed_white = self.smooth_im
             else:
                 smoothed_white = self.get_smoothed_white(npix=npix, save=False)
@@ -800,7 +800,8 @@ class MuseCube:
         patch_list, artist_list = r.get_mpl_patches_texts(origin=0)
         patch = patch_list[0]
         ax.add_patch(patch)
-    def draw_ds9_reg(self,regfile,i=0):
+
+    def draw_ds9_reg(self, regfile, i=0):
         """
         Function to draw a region from a ds9 region file
         :param regfile: ds9 region file
@@ -824,7 +825,7 @@ class MuseCube:
         return mask2d
 
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
-                           cmap='jet', amplitude_threshold=2., dwmax=10., side = 3):
+                           cmap='jet', amplitude_threshold=2., dwmax=10., side=3):
         """
 
         :param x_c: float, x-coordinate of the center of the source
@@ -855,9 +856,9 @@ class MuseCube:
         if isinstance(params, (int, float)):
             params = [params, params, 0]
 
-        #spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm') #COMENTADO POR TESTEO 13/JUL
-        region_string=self.box_params_to_ds9reg_string(x_c,y_c,2*np.max(params),2*np.max(params))
-        spec_total=self.get_spec_from_region_string(region_string,mode='wwm')
+        # spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm') #COMENTADO POR TESTEO 13/JUL
+        region_string = self.box_params_to_ds9reg_string(x_c, y_c, 2 * np.max(params), 2 * np.max(params))
+        spec_total = self.get_spec_from_region_string(region_string, mode='wwm')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t = spec_total.sig.value
@@ -883,17 +884,17 @@ class MuseCube:
         sigma_total = model_fit[0].stddev.value
         a_total = model_fit[0].amplitude.value
         if debug:
-            print('a_total = '+str(a_total)+'\n')
+            print('a_total = ' + str(a_total) + '\n')
             print('mean_total = ' + str(mean_total) + '\n')
         z_line = (mean_total / wv_line_vac) - 1.
 
-        #region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])   #TESTEO 13/JUL
+        # region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])   #TESTEO 13/JUL
         mask2d = self.get_new_2dmask(region_string)
         ##Find center guessing parameters
 
         region_string_c = self.box_params_to_ds9reg_string(x_c, y_c, side, side)
         spec_c = self.get_spec_from_region_string(region_string_c, mode='wwm')
-        #spec_c = self.get_spec_spaxel(x_c, y_c)
+        # spec_c = self.get_spec_spaxel(x_c, y_c)
         fl_c = spec_c.flux.value
         wv_c = spec_c.wavelength.value
         sig_c = spec_total.sig.value
@@ -937,18 +938,18 @@ class MuseCube:
         x_start = np.min(x) + (side - 1) * 0.5
         y_start = np.min(y) + (side - 1) * 0.5
         n_iter = int(dim / side)
-        iteration_x = np.arange(x_start, x_start + side * n_iter, side)+0.5
-        iteration_y = np.arange(y_start, y_start + side * n_iter, side)+0.5
+        iteration_x = np.arange(x_start, x_start + side * n_iter, side) + 0.5
+        iteration_y = np.arange(y_start, y_start + side * n_iter, side) + 0.5
 
-        n=len(iteration_x)*len(iteration_y)
-        count=0
+        n = len(iteration_x) * len(iteration_y)
+        count = 0
         for x_ in iteration_x:
             for y_ in iteration_y:
-                count+=1
-                print(str(count)+'/'+str(n))
+                count += 1
+                print(str(count) + '/' + str(n))
                 region_string = self.box_params_to_ds9reg_string(x_, y_, side, side)
                 spec = self.get_spec_from_region_string(region_string, mode='wwm')
-                #spec = self.get_spec_spaxel(x[i], y[i])
+                # spec = self.get_spec_spaxel(x[i], y[i])
 
                 wv = spec.wavelength.value
                 fl = spec.flux.value
@@ -974,15 +975,16 @@ class MuseCube:
                 m = fitter.fit_info['param_cov']
                 residual = model_fit(wv_eff) - fl_eff
                 noise = np.std(residual)
-                SN=np.median(fl_eff/sig_eff)
+                SN = np.median(fl_eff / sig_eff)
 
                 mean = model_fit[0].mean.value
                 amp = model_fit[0].amplitude.value
                 sig = model_fit[0].stddev.value
-                if abs(amp) >= amplitude_threshold * noise and 1.5*sigma_total>sig and (a_total * amp > 0) and abs(mean_total - mean) <= dwmax:
+                if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
+                                mean_total - mean) <= dwmax:
                     if debug:
                         print('Fit Accepted')
-                        t='Accepted'
+                        t = 'Accepted'
                         print(str(x_) + ',' + str(y_))
                     units = u.km / u.s
                     vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
@@ -990,20 +992,20 @@ class MuseCube:
                         for j in xrange(int(y_ - radius), int(y_ + radius + 1)):
                             kine_im[j][i] = vel
                             SN_im[j][i] = SN
-                    #kine_im[y[i]][x[i]] = vel
-                    #SN_im[y[i]][x[i]] = SN
+                            # kine_im[y[i]][x[i]] = vel
+                            # SN_im[y[i]][x[i]] = SN
                 else:
                     if debug:
                         print('Fit Rejected')
-                        t='Rejected'
+                        t = 'Rejected'
                         print(str(x_) + ',' + str(y_))
                 if debug:
                     plt.figure()
                     plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
-                    plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color = 'blue', label = 'spaxel flux')
-                    plt.plot(wv_eff, model_fit(wv_eff), color = 'green', label = 'modeled flux')
-                    plt.plot(wv_eff, residual, color='red', label = 'residual')
-                    plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label = 'sigma')
+                    plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='spaxel flux')
+                    plt.plot(wv_eff, model_fit(wv_eff), color='green', label='modeled flux')
+                    plt.plot(wv_eff, residual, color='red', label='residual')
+                    plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='sigma')
                     plt.legend()
                     plt.title(t)
                     m = fitter.fit_info['param_cov']
@@ -1033,7 +1035,6 @@ class MuseCube:
         fig_SN.show_colorscale(cmap=cmap)
         fig_SN.add_colorbar()
         fig_SN.colorbar.set_axis_label_text('SN')
-
 
         xw, yw = self.p2w(x_c, y_c)
         if isinstance(params, (int, float)):
@@ -1363,7 +1364,7 @@ class MuseCube:
                                                                                radius[2], color)
         return region_string
 
-    def box_params_to_ds9reg_string(self, xc, yc, a, b, color = 'green', coord_system='pix'):
+    def box_params_to_ds9reg_string(self, xc, yc, a, b, color='green', coord_system='pix'):
         """
         Function to create a string that defines a region in ds9 format.
         The output region created by this function can be used as an input for the function "get_spec_from_region_string"
@@ -1381,7 +1382,7 @@ class MuseCube:
         else:
             x_center, y_center, sides = xc, yc, [a, b]
         region_string = 'physical;box({},{},{},{},0) # color = {}'.format(x_center, y_center, sides[0],
-                                                                               sides[1], color)
+                                                                          sides[1], color)
         return region_string
 
     def wfrac_show_spaxels(self, frac, mask2d, smoothed_white):
@@ -1607,6 +1608,51 @@ class MuseCube:
         inds = [np.argmin(np.fabs(wv_ii - self.wavelength)) for wv_ii in wv_array]
         inds = np.unique(inds)
         return inds
+
+    def get_subsection_cube(self, xc, yc, lx, ly, wv_range, output_fitsname='cube_subsec.fits'):
+        """
+        Creates and save in the current directory a sub section of the MUSE cube, defined by the central coordinates (xc,yc)
+        in pixels. The x and y dimension of the new cube will be 2lx and 2ly respectively. The new wavelength dimension
+        will be given by the values in wv_range, defined as [wv_ini,wv_end] in  Angstroms
+        :param xc: x-coordinate of the center of the new cube
+        :param yc: y-coordinate of the center of the new cube
+        :param lx: half of the x-dimension of the new cube
+        :param ly: half of the y-dimension of the new cube
+        :param wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where
+                         w_ini is the first wavelength element of the new cube and w_end is the last wavelength element
+        :param output_fitsname: String. The new fitsfile will be saved under this name
+        :return:
+        """
+        hdulist = fits.open(self.filename)
+        hdu1 = hdulist[1]
+        hdu2 = hdulist[2]
+        data = self.cube
+        stat = self.stat
+        wv_inds = self.find_wv_inds(wv_range)
+        datanew = data[wv_inds[0]:wv_inds[1] + 1, yc - ly:yc + ly, xc - lx:xc + lx]
+        statnew = stat[wv_inds[0]:wv_inds[1] + 1, yc - ly:yc + ly, xc - lx:xc + lx]
+        xw, yw = self.p2w(xc, yc)
+        hdu1.header['NAXIS1'] = datanew.shape[2]
+        hdu1.header['NAXIS2'] = datanew.shape[1]
+        hdu1.header['NAXIS3'] = datanew.shape[0]
+        hdu2.header['NAXIS1'] = datanew.shape[2]
+        hdu2.header['NAXIS2'] = datanew.shape[1]
+        hdu2.header['NAXIS3'] = datanew.shape[0]
+        hdu1.header['CRPIX1'] = lx
+        hdu1.header['CRPIX2'] = ly
+        hdu1.header['CRVAL1'] = xw
+        hdu1.header['CRVAL2'] = yw
+        hdu1.header['CRVAL3'] = self.wavelength[wv_inds[0]]
+        hdu2.header['CRPIX1'] = lx
+        hdu2.header['CRPIX2'] = ly
+        hdu2.header['CRVAL1'] = xw
+        hdu2.header['CRVAL2'] = yw
+        hdu2.header['CRVAL3'] = self.wavelength[wv_inds[0]]
+        hdulist[1] = hdu1
+        hdulist[2] = hdu2
+        hdulist[1].data = datanew
+        hdulist[2].data = statnew
+        hdulist.writeto(output_fitsname, clobber=True)
 
     def sub_cube(self, wv_input, stat=False):
         """
