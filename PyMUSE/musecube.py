@@ -1007,7 +1007,7 @@ class MuseCube:
                     plt.legend()
                     plt.title(t)
                     m = fitter.fit_info['param_cov']
-                    if m != None:
+                    if m is not None:
                         print('Display Cov Matrix')
                         plt.figure()
                         plt.imshow(m, interpolation='none', vmin=0, vmax=15)
