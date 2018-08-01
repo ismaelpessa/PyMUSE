@@ -1658,8 +1658,9 @@ class MuseCube:
         """
         Returns a cube-like object with fewer wavelength elements
 
-        :param wv_input: tuple or np.array
-        :return: XXXX
+        :param wv_input: tuple or np.array, to define a range of wavelengths or a set of discrete wavelengths.
+        :param stat: Default = False. If true, the new sub_cube will be constructed using the stat extension of the cube.
+        :return: sub_cube
         """
         if isinstance(wv_input[0], (tuple, list, np.ndarray)):
             if len(wv_input[0]) != 2:
