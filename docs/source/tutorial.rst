@@ -367,17 +367,14 @@ deally, the aperture defined by x_c, y_c, params should be the same aperture bin
     * y_c: float, y-coordinate of the center of the source
     * params: float, int or iterable, parameters of the extraction aperture
     * voronoi_output: Name of the voronoi output file.
-    * wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used
-                   to compute the kinematics
-    * wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
-                     of the line wavelength
+    * wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used to compute the kinematics
+    * wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side of the line wavelength
     * type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
     * inspect: If True, the fit for each resolution element will be shown
     * z: Redshift of the source
     * cmap: Output colormap
-    * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
-                           amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
-                           defined as the std of the residuals.
+    * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
+defined as the std of the residuals.
     * dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
              to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
              spectrum, the fit will be rejected
