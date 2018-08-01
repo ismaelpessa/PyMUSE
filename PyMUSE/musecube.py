@@ -937,6 +937,7 @@ class MuseCube:
             k = np.where(bin_n == z_)
             x_ = x[k]
             y_ = y[k]
+            n_spaxels=len(x_)
             spec_list = []
             for i, j in zip(x_, y_):
                 spec = self.get_spec_spaxel(i, j)
@@ -946,6 +947,7 @@ class MuseCube:
             for s in spec_list:
                 fl += s.flux.value
                 sig += (s.sig.value) ** 2
+            fl=fl/n_spaxels
             sig = np.sqrt(sig)
             sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
             wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
@@ -1074,7 +1076,7 @@ class MuseCube:
 
         # spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm') #COMENTADO POR TESTEO 13/JUL
         region_string = self.box_params_to_ds9reg_string(x_c, y_c, 2 * np.max(params), 2 * np.max(params))
-        spec_total = self.get_spec_from_region_string(region_string, mode='wwm')
+        spec_total = self.get_spec_from_region_string(region_string, mode='mean')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t = spec_total.sig.value
@@ -1109,7 +1111,7 @@ class MuseCube:
         ##Find center guessing parameters
 
         region_string_c = self.box_params_to_ds9reg_string(x_c, y_c, side, side)
-        spec_c = self.get_spec_from_region_string(region_string_c, mode='wwm')
+        spec_c = self.get_spec_from_region_string(region_string_c, mode='mean')
         # spec_c = self.get_spec_spaxel(x_c, y_c)
         fl_c = spec_c.flux.value
         wv_c = spec_c.wavelength.value
@@ -1164,7 +1166,7 @@ class MuseCube:
                 count += 1
                 print(str(count) + '/' + str(n))
                 region_string = self.box_params_to_ds9reg_string(x_, y_, side, side)
-                spec = self.get_spec_from_region_string(region_string, mode='wwm')
+                spec = self.get_spec_from_region_string(region_string, mode='mean')
                 # spec = self.get_spec_spaxel(x[i], y[i])
 
                 wv = spec.wavelength.value
