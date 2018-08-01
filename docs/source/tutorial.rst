@@ -334,7 +334,7 @@ The function::
 
 calculates de kinematics of the region defined by (x_c,y_c,params) in spaxels. It rebins the aperture in smaller boxes, that will define the spatial resolution.
 The size of each one of these boxes will be given by the keyword ``side``. The method extract the 1-D spectrum of smaller regions within
-the main region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are::
+the main region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are:
 
     * x_c: float, x-coordinate of the center of the source
     * y_c: float, y-coordinate of the center of the source
