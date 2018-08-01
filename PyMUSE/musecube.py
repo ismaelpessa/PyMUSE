@@ -948,7 +948,7 @@ class MuseCube:
                 fl += s.flux.value
                 sig += (s.sig.value) ** 2
             fl=fl/n_spaxels
-            sig = np.sqrt(sig)
+            sig = np.sqrt(sig/n_spaxels)
             sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
             wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
             fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
