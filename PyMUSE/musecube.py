@@ -824,8 +824,75 @@ class MuseCube:
         mask2d = mask_new_inverse
         return mask2d
 
+    def create_voronoi_input(self,x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt'):
+        """
+        Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
+        This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinmetics
+        of the galaxy using the function compute_kinematics_voronoi_binning().
+        This function will create a new flux image and stat image collpasing the wavelengts of the cube contained in wv_range.
+        Using this new images, the function will create an output file which has 4 columns.
+        1) The x-coordinate of the spaxels in the aperture
+        2) The y-coordinates of the spaxels in the aperture
+        3) Total flux per spaxel
+        4) Total sigma per spaxel (NO variance)
+        :param x_c: x-coordinate of the center of the aperture
+        :param y_c: y-coordinate of the center of the aperture
+        :param params: parameters that define the aperture, either a single radius or a [a,b,theta] set
+        :param wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images
+                         To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
+                         galaxy that contains the feature of interest
+        :param output_file: str. Name of the output file (the new voronoi's input file name)
+        :return:
+        """
+        if isinstance(params, (int, float)):
+            params = [params, params, 0]
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
+        mask2d = self.get_new_2dmask(region_string)
+        y, x = np.where(~mask2d)
+        self.get_image(wv_input=[wv_range],fitsname='white_voronoi.fits',save=True)
+        self.get_image(wv_input=[wv_range], fitsname='stat_voronoi.fits', save=True,stat=True)
+        hdulist = fits.open('white_subsection.fits')
+        white = hdulist[1].data
+        hdulist = fits.open('stat_subsection.fits')
+        stat = hdulist[1].data
+        f = open(output_file, 'w')
+        for i, j in zip(x, y):
+            flux = white[j][i]
+            noise = np.sqrt(stat[j][i])
+            f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
+        f.close()
+
+
     def compute_kinematics_voronoi_binning(self,x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
                            cmap = 'jet', amplitude_threshold = 2., dwmax = 10.):
+        """
+                Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
+                This function uses a VORONOI binning to define the spatial resolution element.
+                Function create_voronoi_input() can create the input for the voronoi code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
+                RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
+                the wavelength range of interest and the needed spatial dimensions.
+                Ideally, the aperture defined by x_c, y_x, params should be the same aperture binned by the voronoi algorithm.
+
+                :param x_c: float, x-coordinate of the center of the source
+                :param y_c: float, y-coordinate of the center of the source
+                :param params: float, int or iterable, parameters of the extraction aperture
+                :param voronoi_output: Name of the voronoi output file.
+                :param wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used
+                       to compute the kinematics
+                :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
+                                      of the line wavelength
+                :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
+                :param debug: If True, the fit for each resolution element will be shown
+                :param z: Redshift of the source
+                :param cmap: Output colormap
+                :param amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
+                                            amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
+                                            defined as the std of the residuals.
+                :param dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
+                              to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
+                              spectrum, the fit will be rejected
+                :return:
+                """
         if isinstance(params, (int, float)):
             params = [params, params, 0]
         wv_line = wv_line_vac * (1 + z)
@@ -861,13 +928,13 @@ class MuseCube:
         table = Table.read(voronoi_output, format='ascii')
         x = table['col1'].data
         y = table['col2'].data
-        z = table['col3'].data
-        z_uni = np.unique(z)
+        bin_n = table['col3'].data
+        z_uni = np.unique(bin_n)
         wv = self.wavelength
         kine_im = np.where(self.white_data == 0, np.nan, np.nan)
         SN_im = np.where(self.white_data == 0, np.nan, np.nan)
         for z_ in z_uni:
-            k = np.where(z == z_)
+            k = np.where(bin_n == z_)
             x_ = x[k]
             y_ = y[k]
             spec_list = []
