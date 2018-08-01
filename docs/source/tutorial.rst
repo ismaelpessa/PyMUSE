@@ -63,7 +63,7 @@ And use the function defined above to get the spectrum of the corresponding regi
 
 Get a spectrum interactively
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-To use this feature, the class may need to have been initialized in a ``ipython --pylab qt`` enviroment
+To use this feature, the class may need to have been initialized with ``ipython --pylab qt``.
 This feature allows the user to interactively define a region in the canvas as a polygon. To do this::
 
     spectrum=cube.get_spec_from_interactive_polygon_region(mode='wwm')
@@ -312,17 +312,28 @@ We can use::
 
 To create the new filtered image.
 
-
-Extra features
-==============
 Emission line kinematics
-------------------------
-An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function::
+========================
+An useful thing to do with a MuseCube is a kinematic analysis of an extended source.
+There are 2 different ways of binning the aperture containing the source.
+This rebinning allows the user modulating the relation between the spatial resolution element size and the S/N of the spectrum
+of each spatial resolution element. Smaller spatial resolution element grant a higher spatial resolution, but a lower S/N in each one
+of these elements. Larger spatial resolution elements reduces the spatial resolution, but enhances the S/N, leading to a better
+characterization of the velocity in each one of them.
 
-    compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
+RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
+                the wavelength range of interest and the needed spatial dimensions to contain the source.
+
+
+Uniform Binning:
+
+The function::
+
+    compute_kinematics_uniform_binning(x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', inspect=False, z=0,
                            cmap='jet', amplitude_threshold=2., dwmax=10., side = 3)
 
-estimates de kinematics of the region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of smaller regions within
+calculates de kinematics of the region defined by (x_c,y_c,params) in spaxels. It rebins the aperture in smaller boxes, that will define the spatial resolution.
+The size of each one of these boxes will be given by the keyword ``side``. The method extract the 1-D spectrum of smaller regions within
 the main region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are::
     * x_c
     * y_c
@@ -336,9 +347,99 @@ That define the region::
     * side: side of the box that will contain the smaller regions inside of the main region. Defines the spatial resolution of the kinematics image and the S/N of the spectra used to compute the kinematics
     * amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)
     * dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.
-    * debug: If true, the fit of each spatial resolution element will be shown, 1 by 1
+    * inspect: If true, the fit of each spatial resolution element will be shown, 1 by 1
 This function returns the kinematic image of the region, and saves the image in a .fits file
-IMPORTANT Select strong lines that be spatially extended.
+IMPORTANT Select strong and spatially extended features.
+
+Voronoi Binning:
+
+The function::
+
+    compute_kinematics_voronoi_binning(x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35,
+                                           type='abs', inspect=False, z=0,
+                                           cmap='jet', amplitude_threshold=2., dwmax=10.)
+its similar, but the bining will be done according to the file with the name given by ``voronoi_output``.
+This function uses a VORONOI binning to define the spatial resolution element (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
+Function create_voronoi_input() can create the input for the voronoi code.
+deally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.
+
+    * x_c: float, x-coordinate of the center of the source
+    * y_c: float, y-coordinate of the center of the source
+    * params: float, int or iterable, parameters of the extraction aperture
+    * voronoi_output: Name of the voronoi output file.
+    * wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used
+                   to compute the kinematics
+    * wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
+                     of the line wavelength
+    * type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
+    * inspect: If True, the fit for each resolution element will be shown
+    * z: Redshift of the source
+    * cmap: Output colormap
+    * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
+                           amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
+                           defined as the std of the residuals.
+    * dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
+             to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
+             spectrum, the fit will be rejected
+
+To generate the voronoi input file, you can use::
+
+    create_voronoi_input(x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_voronoi=False, targetSN=20)
+
+This function to creates an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
+This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinematics
+of the galaxy using the function compute_kinematics_voronoi_binning().
+This function will create a new flux image and stat image collapsing the wavelengths of the cube contained in wv_range.
+Using this new images, the function will create an output file which has 4 columns.
+1) The x-coordinate of the spaxels in the aperture
+2) The y-coordinates of the spaxels in the aperture
+3) Total flux per spaxel
+4) Total sigma per spaxel (NO variance)
+
+This function will also generate the output voronoi file if rune_voronoi is set to True. This requires to have installed vorbin
+
+        * x-coordinate of the center of the aperture
+        * y-coordinate of the center of the aperture
+        * params: parameters that define the aperture, either a single radius or a [a,b,theta] set
+        * wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images
+                    To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
+                    galaxy that contains the feature of interest
+        * output_file: str. Name of the output file (the new voronoi's input file name)
+        * run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the
+                       generated vorbin input file (vorbin must be installed to do this)
+        * targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins.
+                    Higher targetSN will generate less bins, with a higher S/N each one.
+
+
+
+
+Extra features
+==============
+
+Create a  smaller cube
+----------------------
+
+If for any reason, you are particularly interested in a source of the cube, or in a particular wavelength range (or both of them),
+Maybe you would like to work with a subsection of the MuseCube.
+You can use::
+
+    get_subsection_cube(xc, yc, lx, ly, wv_range, output_fitsname='cube_subsec.fits')
+
+To generate a smaller cube, that contains only the spatial region given by ``xc``, ``yc``, ``lx``, ``ly`` and the wavelength range given
+by ``wv_range``.
+
+Creates and save in the current directory a sub section of the MUSE cube, defined by the central coordinates (xc,yc)
+in pixels. The x and y dimension of the new cube will be 2lx and 2ly respectively. The new wavelength dimension
+will be given by the values in wv_range, defined as [wv_ini,wv_end] in  Angstroms.
+
+This is particularly recommended for kinematics analysis.
+        * x-coordinate of the center of the new cube
+        * yc: y-coordinate of the center of the new cube
+        * lx: half of the x-dimension of the new cube
+        * ly: half of the y-dimension of the new cube
+        * wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where
+                    w_ini is the first wavelength element of the new cube and w_end is the last wavelength element
+        * output_fitsname: String. The new fitsfile will be saved under this name
 
 Create Video
 ------------

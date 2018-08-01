@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>1. Initializing &#8212; PyMUSE 1 documentation</title>
+    <title>1. Initializing &mdash; PyMUSE 1 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -23,8 +23,6 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
     <link rel="top" title="PyMUSE 1 documentation" href="index.html" />
     <link rel="next" title="1. Focus demo ADASS XXVII" href="demo.html" />
     <link rel="prev" title="Welcome to PyMUSE’s documentation!" href="index.html" /> 
@@ -42,7 +40,7 @@
         <li class="right" >
           <a href="index.html" title="Welcome to PyMUSE’s documentation!"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -110,7 +108,7 @@ You can also create your own region string from a set of parameters using:</p>
 <p>And use the function defined above to get the spectrum of the corresponding region.</p>
 <div class="section" id="get-a-spectrum-interactively">
 <h3>2.1.1. Get a spectrum interactively<a class="headerlink" href="#get-a-spectrum-interactively" title="Permalink to this headline">¶</a></h3>
-<p>To use this feature, the class may need to have been initialized in a <code class="docutils literal"><span class="pre">ipython</span> <span class="pre">--pylab</span> <span class="pre">qt</span></code> enviroment
+<p>To use this feature, the class may need to have been initialized with <code class="docutils literal"><span class="pre">ipython</span> <span class="pre">--pylab</span> <span class="pre">qt</span></code>.
 This feature allows the user to interactively define a region in the canvas as a polygon. To do this:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">spectrum</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">get_spec_from_interactive_polygon_region</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wwm&#39;</span><span class="p">)</span>
 </pre></div>
@@ -373,16 +371,26 @@ Available filters u,g,r,i,z,V,R (The Johnson filters V and R have been slightly 
 <p>To create the new filtered image.</p>
 </div>
 </div>
-<div class="section" id="extra-features">
-<h1>4. Extra features<a class="headerlink" href="#extra-features" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="emission-line-kinematics">
-<h2>4.1. Emission line kinematics<a class="headerlink" href="#emission-line-kinematics" title="Permalink to this headline">¶</a></h2>
-<p>An useful thing to do with a MuseCube is a kinematic analysis of an extended source. The function:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<h1>4. Emission line kinematics<a class="headerlink" href="#emission-line-kinematics" title="Permalink to this headline">¶</a></h1>
+<p>An useful thing to do with a MuseCube is a kinematic analysis of an extended source.
+There are 2 different ways of binning the aperture containing the source.
+This rebinning allows the user modulating the relation between the spatial resolution element size and the S/N of the spectrum
+of each spatial resolution element. Smaller spatial resolution element grant a higher spatial resolution, but a lower S/N in each one
+of these elements. Larger spatial resolution elements reduces the spatial resolution, but enhances the S/N, leading to a better
+characterization of the velocity in each one of them.</p>
+<dl class="docutils">
+<dt>RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes</dt>
+<dd>the wavelength range of interest and the needed spatial dimensions to contain the source.</dd>
+</dl>
+<p>Uniform Binning:</p>
+<p>The function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics_uniform_binning</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                        <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">,</span> <span class="n">side</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>estimates de kinematics of the region defined by (x_c,y_c,params) in spaxels. The method extract the 1-D spectrum of smaller regions within
+<p>calculates de kinematics of the region defined by (x_c,y_c,params) in spaxels. It rebins the aperture in smaller boxes, that will define the spatial resolution.
+The size of each one of these boxes will be given by the keyword <code class="docutils literal"><span class="pre">side</span></code>. The method extract the 1-D spectrum of smaller regions within
 the main region and fit a gaussian + linear model, in order to fit and emi/abs line and the continuum. The required parameters are:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">x_c</span>
 <span class="o">*</span> <span class="n">y_c</span>
@@ -400,15 +408,155 @@ the main region and fit a gaussian + linear model, in order to fit and emi/abs l
 <li>side: side of the box that will contain the smaller regions inside of the main region. Defines the spatial resolution of the kinematics image and the S/N of the spectra used to compute the kinematics</li>
 <li>amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)</li>
 <li>dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.</li>
-<li>debug: If true, the fit of each spatial resolution element will be shown, 1 by 1</li>
+<li>inspect: If true, the fit of each spatial resolution element will be shown, 1 by 1</li>
 </ul>
 </dd>
 </dl>
 <p>This function returns the kinematic image of the region, and saves the image in a .fits file
-IMPORTANT Select strong lines that be spatially extended.</p>
+IMPORTANT Select strong and spatially extended features.</p>
+<p>Voronoi Binning:</p>
+<p>The function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics_voronoi_binning</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">voronoi_output</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span>
+                                       <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                       <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>its similar, but the bining will be done according to the file with the name given by <code class="docutils literal"><span class="pre">voronoi_output</span></code>.
+This function uses a VORONOI binning to define the spatial resolution element (see <a class="reference external" href="https://pypi.org/project/vorbin/#files">https://pypi.org/project/vorbin/#files</a> and <a class="reference external" href="http://www-astro.physics.ox.ac.uk/~mxc/software/">http://www-astro.physics.ox.ac.uk/~mxc/software/</a>)
+Function create_voronoi_input() can create the input for the voronoi code.
+deally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.</p>
+<blockquote>
+<div><ul>
+<li><p class="first">x_c: float, x-coordinate of the center of the source</p>
+</li>
+<li><p class="first">y_c: float, y-coordinate of the center of the source</p>
+</li>
+<li><p class="first">params: float, int or iterable, parameters of the extraction aperture</p>
+</li>
+<li><p class="first">voronoi_output: Name of the voronoi output file.</p>
+</li>
+<li><dl class="first docutils">
+<dt>wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used</dt>
+<dd><p class="first last">to compute the kinematics</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side</dt>
+<dd><p class="first last">of the line wavelength</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">type: string, &#8220;emi&#8221; to fit an emission line or &#8220;abs&#8221; to fit an absorption line,</p>
+</li>
+<li><p class="first">inspect: If True, the fit for each resolution element will be shown</p>
+</li>
+<li><p class="first">z: Redshift of the source</p>
+</li>
+<li><p class="first">cmap: Output colormap</p>
+</li>
+<li><dl class="first docutils">
+<dt>amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.</dt>
+<dd><p class="first last">amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
+defined as the std of the residuals.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel</dt>
+<dd><p class="first last">to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
+spectrum, the fit will be rejected</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<p>To generate the voronoi input file, you can use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">create_voronoi_input</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_range</span><span class="p">,</span> <span class="n">output_file</span><span class="o">=</span><span class="s1">&#39;voronoi_input_test.txt&#39;</span><span class="p">,</span> <span class="n">run_voronoi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">targetSN</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This function to creates an input file for the voronoi binning code (see <a class="reference external" href="https://pypi.org/project/vorbin/#files">https://pypi.org/project/vorbin/#files</a> and <a class="reference external" href="http://www-astro.physics.ox.ac.uk/~mxc/software/">http://www-astro.physics.ox.ac.uk/~mxc/software/</a>)
+This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinematics
+of the galaxy using the function compute_kinematics_voronoi_binning().
+This function will create a new flux image and stat image collapsing the wavelengths of the cube contained in wv_range.
+Using this new images, the function will create an output file which has 4 columns.
+1) The x-coordinate of the spaxels in the aperture
+2) The y-coordinates of the spaxels in the aperture
+3) Total flux per spaxel
+4) Total sigma per spaxel (NO variance)</p>
+<p>This function will also generate the output voronoi file if rune_voronoi is set to True. This requires to have installed vorbin</p>
+<blockquote>
+<div><ul>
+<li><p class="first">x-coordinate of the center of the aperture</p>
+</li>
+<li><p class="first">y-coordinate of the center of the aperture</p>
+</li>
+<li><p class="first">params: parameters that define the aperture, either a single radius or a [a,b,theta] set</p>
+</li>
+<li><dl class="first docutils">
+<dt>wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images</dt>
+<dd><p class="first last">To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
+galaxy that contains the feature of interest</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">output_file: str. Name of the output file (the new voronoi&#8217;s input file name)</p>
+</li>
+<li><dl class="first docutils">
+<dt>run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the</dt>
+<dd><p class="first last">generated vorbin input file (vorbin must be installed to do this)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins.</dt>
+<dd><p class="first last">Higher targetSN will generate less bins, with a higher S/N each one.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="extra-features">
+<h1>5. Extra features<a class="headerlink" href="#extra-features" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="create-a-smaller-cube">
+<h2>5.1. Create a  smaller cube<a class="headerlink" href="#create-a-smaller-cube" title="Permalink to this headline">¶</a></h2>
+<p>If for any reason, you are particularly interested in a source of the cube, or in a particular wavelength range (or both of them),
+Maybe you would like to work with a subsection of the MuseCube.
+You can use:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">get_subsection_cube</span><span class="p">(</span><span class="n">xc</span><span class="p">,</span> <span class="n">yc</span><span class="p">,</span> <span class="n">lx</span><span class="p">,</span> <span class="n">ly</span><span class="p">,</span> <span class="n">wv_range</span><span class="p">,</span> <span class="n">output_fitsname</span><span class="o">=</span><span class="s1">&#39;cube_subsec.fits&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To generate a smaller cube, that contains only the spatial region given by <code class="docutils literal"><span class="pre">xc</span></code>, <code class="docutils literal"><span class="pre">yc</span></code>, <code class="docutils literal"><span class="pre">lx</span></code>, <code class="docutils literal"><span class="pre">ly</span></code> and the wavelength range given
+by <code class="docutils literal"><span class="pre">wv_range</span></code>.</p>
+<p>Creates and save in the current directory a sub section of the MUSE cube, defined by the central coordinates (xc,yc)
+in pixels. The x and y dimension of the new cube will be 2lx and 2ly respectively. The new wavelength dimension
+will be given by the values in wv_range, defined as [wv_ini,wv_end] in  Angstroms.</p>
+<dl class="docutils">
+<dt>This is particularly recommended for kinematics analysis.</dt>
+<dd><ul class="first last">
+<li><p class="first">x-coordinate of the center of the new cube</p>
+</li>
+<li><p class="first">yc: y-coordinate of the center of the new cube</p>
+</li>
+<li><p class="first">lx: half of the x-dimension of the new cube</p>
+</li>
+<li><p class="first">ly: half of the y-dimension of the new cube</p>
+</li>
+<li><dl class="first docutils">
+<dt>wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where</dt>
+<dd><p class="first last">w_ini is the first wavelength element of the new cube and w_end is the last wavelength element</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">output_fitsname: String. The new fitsfile will be saved under this name</p>
+</li>
+</ul>
+</dd>
+</dl>
 </div>
 <div class="section" id="create-video">
-<h2>4.2. Create Video<a class="headerlink" href="#create-video" title="Permalink to this headline">¶</a></h2>
+<h2>5.2. Create Video<a class="headerlink" href="#create-video" title="Permalink to this headline">¶</a></h2>
 <p>As an extra analysis to your data, the MuseCube Class allows the user to create 2 types of videos (need the cv2 package):</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cube</span><span class="o">.</span><span class="n">create_movie_redshift_range</span><span class="p">(</span><span class="n">z_ini</span><span class="p">,</span><span class="n">z_fin_dz</span><span class="p">)</span>
 </pre></div>
@@ -455,9 +603,10 @@ IMPORTANT Select strong lines that be spatially extended.</p>
 <li><a class="reference internal" href="#compose-a-filtered-image">3.4. Compose a filtered image</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#extra-features">4. Extra features</a><ul>
-<li><a class="reference internal" href="#emission-line-kinematics">4.1. Emission line kinematics</a></li>
-<li><a class="reference internal" href="#create-video">4.2. Create Video</a></li>
+<li><a class="reference internal" href="#emission-line-kinematics">4. Emission line kinematics</a></li>
+<li><a class="reference internal" href="#extra-features">5. Extra features</a><ul>
+<li><a class="reference internal" href="#create-a-smaller-cube">5.1. Create a  smaller cube</a></li>
+<li><a class="reference internal" href="#create-video">5.2. Create Video</a></li>
 </ul>
 </li>
 </ul>
@@ -478,8 +627,8 @@ IMPORTANT Select strong lines that be spatially extended.</p>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
@@ -501,12 +650,12 @@ IMPORTANT Select strong lines that be spatially extended.</p>
         <li class="right" >
           <a href="index.html" title="Welcome to PyMUSE’s documentation!"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+        &copy; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
     </div>
   </body>
 </html>

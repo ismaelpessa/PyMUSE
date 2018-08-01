@@ -824,17 +824,19 @@ class MuseCube:
         mask2d = mask_new_inverse
         return mask2d
 
-    def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt'):
+    def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_voronoi=False,
+                             targetSN=20):
         """
         Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
-        This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinmetics
+        This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinematics
         of the galaxy using the function compute_kinematics_voronoi_binning().
-        This function will create a new flux image and stat image collpasing the wavelengts of the cube contained in wv_range.
+        This function will create a new flux image and stat image collapsing the wavelengths of the cube contained in wv_range.
         Using this new images, the function will create an output file which has 4 columns.
         1) The x-coordinate of the spaxels in the aperture
         2) The y-coordinates of the spaxels in the aperture
         3) Total flux per spaxel
         4) Total sigma per spaxel (NO variance)
+        This function will also generate the output voronoi file if rune_voronoi is set to True. This requires to have installed vorbin
         :param x_c: x-coordinate of the center of the aperture
         :param y_c: y-coordinate of the center of the aperture
         :param params: parameters that define the aperture, either a single radius or a [a,b,theta] set
@@ -842,6 +844,10 @@ class MuseCube:
                          To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
                          galaxy that contains the feature of interest
         :param output_file: str. Name of the output file (the new voronoi's input file name)
+        :param run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the
+                            generated vorbin input file (vorbin must be installed to do this)
+        :param targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins.
+                         Higher targetSN will generate less bins, with a higher S/N each one.
         :return:
         """
         if isinstance(params, (int, float)):
@@ -861,9 +867,18 @@ class MuseCube:
             noise = np.sqrt(stat[j][i])
             f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
         f.close()
+        if run_voronoi:
+            from os import path
+            from vorbin.voronoi_2d_binning import voronoi_2d_binning
+            x, y, signal, noise = np.loadtxt(output_file).T
+            binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
+                                                                                      plot=1, quiet=0)
+            np.savetxt('voronoi_output.txt', np.column_stack([x, y, binNum]), fmt=b'%10.6f %10.6f %8i')
+            plt.tight_layout()
+            plt.pause(1)
 
     def compute_kinematics_voronoi_binning(self, x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35,
-                                           type='abs', debug=False, z=0,
+                                           type='abs', inspect=False, z=0,
                                            cmap='jet', amplitude_threshold=2., dwmax=10.):
         """
                 Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
@@ -871,7 +886,7 @@ class MuseCube:
                 Function create_voronoi_input() can create the input for the voronoi code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
                 RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
                 the wavelength range of interest and the needed spatial dimensions.
-                Ideally, the aperture defined by x_c, y_x, params should be the same aperture binned by the voronoi algorithm.
+                Ideally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.
 
                 :param x_c: float, x-coordinate of the center of the source
                 :param y_c: float, y-coordinate of the center of the source
@@ -922,7 +937,7 @@ class MuseCube:
         mean_total = model_fit[0].mean.value
         sigma_total = model_fit[0].stddev.value
         a_total = model_fit[0].amplitude.value
-        if debug:
+        if inspect:
             print('a_total = ' + str(a_total) + '\n')
             print('mean_total = ' + str(mean_total) + '\n')
         table = Table.read(voronoi_output, format='ascii')
@@ -937,7 +952,7 @@ class MuseCube:
             k = np.where(bin_n == z_)
             x_ = x[k]
             y_ = y[k]
-            n_spaxels=len(x_)
+            n_spaxels = len(x_)
             spec_list = []
             for i, j in zip(x_, y_):
                 spec = self.get_spec_spaxel(i, j)
@@ -947,8 +962,8 @@ class MuseCube:
             for s in spec_list:
                 fl += s.flux.value
                 sig += (s.sig.value) ** 2
-            fl=fl/n_spaxels
-            sig = np.sqrt(sig/n_spaxels)
+            fl = fl / n_spaxels
+            sig = np.sqrt(sig) / n_spaxels
             sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
             wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
             fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
@@ -977,7 +992,7 @@ class MuseCube:
             sig = model_fit[0].stddev.value
             if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
                             mean_total - mean) <= dwmax:
-                if debug:
+                if inspect:
                     print('Fit Accepted')
                     t = 'Accepted'
                 units = u.km / u.s
@@ -986,10 +1001,10 @@ class MuseCube:
                     kine_im[j][i] = vel
                     SN_im[j][i] = SN
             else:
-                if debug:
+                if inspect:
                     print('Fit Rejected')
                     t = 'Rejected'
-            if debug:
+            if inspect:
                 plt.figure()
                 plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean_flux')
                 plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
@@ -1038,7 +1053,7 @@ class MuseCube:
         return kine_im
 
     def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs',
-                                           debug=False, z=0,
+                                           inspect=False, z=0,
                                            cmap='jet', amplitude_threshold=2., dwmax=10., side=3):
         """
         Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
@@ -1101,7 +1116,7 @@ class MuseCube:
         mean_total = model_fit[0].mean.value
         sigma_total = model_fit[0].stddev.value
         a_total = model_fit[0].amplitude.value
-        if debug:
+        if inspect:
             print('a_total = ' + str(a_total) + '\n')
             print('mean_total = ' + str(mean_total) + '\n')
         z_line = (mean_total / wv_line_vac) - 1.
@@ -1200,7 +1215,7 @@ class MuseCube:
                 sig = model_fit[0].stddev.value
                 if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
                                 mean_total - mean) <= dwmax:
-                    if debug:
+                    if inspect:
                         print('Fit Accepted')
                         t = 'Accepted'
                         print(str(x_) + ',' + str(y_))
@@ -1213,11 +1228,11 @@ class MuseCube:
                             # kine_im[y[i]][x[i]] = vel
                             # SN_im[y[i]][x[i]] = SN
                 else:
-                    if debug:
+                    if inspect:
                         print('Fit Rejected')
                         t = 'Rejected'
                         print(str(x_) + ',' + str(y_))
-                if debug:
+                if inspect:
                     plt.figure()
                     plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
                     plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
