@@ -824,10 +824,161 @@ class MuseCube:
         mask2d = mask_new_inverse
         return mask2d
 
-    def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
+    def compute_kinematics_voronoi_binning(self,x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
+                           cmap = 'jet', amplitude_threshold = 2., dwmax = 10.):
+        if isinstance(params, (int, float)):
+            params = [params, params, 0]
+        wv_line = wv_line_vac * (1 + z)
+        region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
+        spec_total = self.get_spec_from_region_string(region_string, mode='mean')
+        wv_t = spec_total.wavelength.value
+        fl_t = spec_total.flux.value
+        sig_t = spec_total.sig.value
+        sig_eff_t = sig_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        wv_eff_t = wv_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        fl_eff_t = fl_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        fl_left = fl_eff_t[:3]
+        fl_right = fl_eff_t[-3:]
+        intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+        if type == 'abs':
+            a_init = np.min(fl_eff_t) - intercept_init
+        if type == 'emi':
+            a_init = np.max(fl_eff_t) - intercept_init
+        slope_init = 0
+        sigma_init = wv_range_size / 3.
+        mean_init = wv_line
+        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = gaussian + line
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv_eff_t, fl_eff_t, weights=sig_eff_t / np.sum(sig_eff_t))
+        mean_total = model_fit[0].mean.value
+        sigma_total = model_fit[0].stddev.value
+        a_total = model_fit[0].amplitude.value
+        if debug:
+            print('a_total = ' + str(a_total) + '\n')
+            print('mean_total = ' + str(mean_total) + '\n')
+        table = Table.read(voronoi_output, format='ascii')
+        x = table['col1'].data
+        y = table['col2'].data
+        z = table['col3'].data
+        z_uni = np.unique(z)
+        wv = self.wavelength
+        kine_im = np.where(self.white_data == 0, np.nan, np.nan)
+        SN_im = np.where(self.white_data == 0, np.nan, np.nan)
+        for z_ in z_uni:
+            k = np.where(z == z_)
+            x_ = x[k]
+            y_ = y[k]
+            spec_list = []
+            for i, j in zip(x_, y_):
+                spec = self.get_spec_spaxel(i, j)
+                spec_list.append(spec)
+            fl = 0
+            sig = 0
+            for s in spec_list:
+                fl += s.flux.value
+                sig += (s.sig.value) ** 2
+            sig = np.sqrt(sig)
+            sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+            wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+            fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+            fl_left = fl_eff[:3]
+            fl_right = fl_eff[-3:]
+            intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+            if type == 'abs':
+                a_init = np.min(fl_eff) - intercept_init
+            if type == 'emi':
+                a_init = np.max(fl_eff) - intercept_init
+            slope_init = 0
+            sigma_init = sigma_total
+            mean_init = mean_total
+            gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+            line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+            model_init = gaussian + line
+            fitter = fitting.LevMarLSQFitter()
+            model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
+            m = fitter.fit_info['param_cov']
+            residual = model_fit(wv_eff) - fl_eff
+            noise = np.std(residual)
+            SN = np.median(fl_eff / sig_eff)
+
+            mean = model_fit[0].mean.value
+            amp = model_fit[0].amplitude.value
+            sig = model_fit[0].stddev.value
+            if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
+                            mean_total - mean) <= dwmax:
+                if debug:
+                    print('Fit Accepted')
+                    t = 'Accepted'
+                units = u.km / u.s
+                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
+                for i, j in zip(x_, y_):
+                    kine_im[j][i] = vel
+                    SN_im[j][i] = SN
+            else:
+                if debug:
+                    print('Fit Rejected')
+                    t = 'Rejected'
+            if debug:
+                plt.figure()
+                plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean_flux')
+                plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
+                plt.plot(wv_eff, model_fit(wv_eff), color='green', label='modeled flux')
+                plt.plot(wv_eff, residual, color='red', label='residual')
+                plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='bin sig')
+                plt.legend()
+                plt.title(t)
+                m = fitter.fit_info['param_cov']
+                if m is not None:
+                    print('Display Cov Matrix')
+                    plt.figure()
+                    plt.imshow(m, interpolation='none', vmin=0, vmax=15)
+                    plt.colorbar()
+                else:
+                    print('Cov Matrix undefined')
+                print('value of wv_dif = ' + str(mean_total - mean))
+                print('amplitude = ' + str(amp))
+                print('noise = ' + str(noise))
+                raw_input('Enter to continue...')
+
+        hdulist_kin = self.hdulist_white
+        hdulist_kin[1].data = kine_im
+        hdulist_kin.writeto('kinematics_im.fits', clobber=True)
+        fig_k = aplpy.FITSFigure('kinematics_im.fits', figure=plt.figure())
+        fig_k.show_colorscale(cmap=cmap)
+        fig_k.add_colorbar()
+        fig_k.colorbar.set_axis_label_text('dV (km s$^{-1}$)')
+
+        hdulist_SN = self.hdulist_white
+        hdulist_SN[1].data = SN_im
+        hdulist_SN.writeto('SN_im.fits', clobber=True)
+        fig_SN = aplpy.FITSFigure('SN_im.fits', figure=plt.figure())
+        fig_SN.show_colorscale(cmap=cmap)
+        fig_SN.add_colorbar()
+        fig_SN.colorbar.set_axis_label_text('SN')
+
+        xw, yw = self.p2w(x_c, y_c)
+        if isinstance(params, (int, float)):
+            r = params * self.pixelsize
+        else:
+            r = params[0] * self.pixelsize
+        r = r.to(u.deg)
+        fig_k.recenter(xw, yw, r.value)
+        fig_SN.recenter(xw, yw, r.value)
+        return kine_im
+
+
+
+
+
+
+
+    def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
                            cmap='jet', amplitude_threshold=2., dwmax=10., side=3):
         """
         Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
+        This function uses a UNIFORM binning to define the spatial resolution element.
         RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
         the wavelength range of interest and the needed spatial dimensions.
 
@@ -839,11 +990,11 @@ class MuseCube:
         :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
                               of the line wavelength
         :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
-        :param debug: If True, the fit for each spaxel will be shown
+        :param debug: If True, the fit for each resolution element will be shown
         :param z: Redshift of the source
         :param cmap: Output colormap
-        :param amplitude_threshold: float, sets the theshold for the minimum aplitude required for the fit to be accepted.
-                                    amplitude_threshold = 2 means that the amplitud should be at leat 2 times higher that the noise,
+        :param amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
+                                    amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
                                     defined as the std of the residuals.
         :param dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
                       to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
@@ -1005,10 +1156,10 @@ class MuseCube:
                 if debug:
                     plt.figure()
                     plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
-                    plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='spaxel flux')
+                    plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
                     plt.plot(wv_eff, model_fit(wv_eff), color='green', label='modeled flux')
                     plt.plot(wv_eff, residual, color='red', label='residual')
-                    plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='sigma')
+                    plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='bin sig')
                     plt.legend()
                     plt.title(t)
                     m = fitter.fit_info['param_cov']
@@ -1019,7 +1170,7 @@ class MuseCube:
                         plt.colorbar()
                     else:
                         print('Cov Matrix undefined')
-                    print('value of wv_dif = ' + str(mean_center - mean))
+                    print('value of wv_dif = ' + str(mean_total - mean))
                     print('amplitude = ' + str(amp))
                     print('noise = ' + str(noise))
                     raw_input('Enter to continue...')
