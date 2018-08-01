@@ -1798,7 +1798,9 @@ class MuseCube:
         """
         Function that collapses all wavelengths available to produce a new white image
         :param new_white_fitsname: Name of the new image
-        :return:
+        :param stat. Default = False. If True, the new white image will be done using the stat extension of the cube.
+        :param Save. Default = True. If False, the new returned image will not be saved in the hard disk
+        :return: white_image.
         """
         wave = self.wavelength
         n = len(wave)
