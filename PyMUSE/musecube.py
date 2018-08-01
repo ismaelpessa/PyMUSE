@@ -824,7 +824,7 @@ class MuseCube:
         mask2d = mask_new_inverse
         return mask2d
 
-    def create_voronoi_input(self,x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt'):
+    def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt'):
         """
         Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
         This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinmetics
@@ -849,8 +849,8 @@ class MuseCube:
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
         mask2d = self.get_new_2dmask(region_string)
         y, x = np.where(~mask2d)
-        self.get_image(wv_input=[wv_range],fitsname='white_voronoi.fits',save=True)
-        self.get_image(wv_input=[wv_range], fitsname='stat_voronoi.fits', save=True,stat=True)
+        self.get_image(wv_input=[wv_range], fitsname='white_voronoi.fits', save=True)
+        self.get_image(wv_input=[wv_range], fitsname='stat_voronoi.fits', save=True, stat=True)
         hdulist = fits.open('white_subsection.fits')
         white = hdulist[1].data
         hdulist = fits.open('stat_subsection.fits')
@@ -862,9 +862,9 @@ class MuseCube:
             f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
         f.close()
 
-
-    def compute_kinematics_voronoi_binning(self,x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
-                           cmap = 'jet', amplitude_threshold = 2., dwmax = 10.):
+    def compute_kinematics_voronoi_binning(self, x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35,
+                                           type='abs', debug=False, z=0,
+                                           cmap='jet', amplitude_threshold=2., dwmax=10.):
         """
                 Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
                 This function uses a VORONOI binning to define the spatial resolution element.
@@ -896,7 +896,7 @@ class MuseCube:
         if isinstance(params, (int, float)):
             params = [params, params, 0]
         wv_line = wv_line_vac * (1 + z)
-        region_string = self.ellipse_param_to_ds9reg_string(x_c,y_c,params[0],params[1],params[2])
+        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
         spec_total = self.get_spec_from_region_string(region_string, mode='mean')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
@@ -1035,14 +1035,9 @@ class MuseCube:
         fig_SN.recenter(xw, yw, r.value)
         return kine_im
 
-
-
-
-
-
-
-    def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
-                           cmap='jet', amplitude_threshold=2., dwmax=10., side=3):
+    def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs',
+                                           debug=False, z=0,
+                                           cmap='jet', amplitude_threshold=2., dwmax=10., side=3):
         """
         Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
         This function uses a UNIFORM binning to define the spatial resolution element.
