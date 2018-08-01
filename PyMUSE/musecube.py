@@ -827,6 +827,9 @@ class MuseCube:
     def compute_kinematics(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', debug=False, z=0,
                            cmap='jet', amplitude_threshold=2., dwmax=10., side=3):
         """
+        Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
+        RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
+        the wavelength range of interest and the needed spatial dimensions.
 
         :param x_c: float, x-coordinate of the center of the source
         :param y_c: float, y-coordinate of the center of the source
