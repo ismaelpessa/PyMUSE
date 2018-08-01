@@ -857,9 +857,9 @@ class MuseCube:
         y, x = np.where(~mask2d)
         self.get_image(wv_input=[wv_range], fitsname='white_voronoi.fits', save=True)
         self.get_image(wv_input=[wv_range], fitsname='stat_voronoi.fits', save=True, stat=True)
-        hdulist = fits.open('white_subsection.fits')
+        hdulist = fits.open('white_voronoi.fits')
         white = hdulist[1].data
-        hdulist = fits.open('stat_subsection.fits')
+        hdulist = fits.open('stat_voronoi.fits')
         stat = hdulist[1].data
         f = open(output_file, 'w')
         for i, j in zip(x, y):
@@ -897,7 +897,7 @@ class MuseCube:
                 :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
                                       of the line wavelength
                 :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
-                :param debug: If True, the fit for each resolution element will be shown
+                :param inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
                 :param z: Redshift of the source
                 :param cmap: Output colormap
                 :param amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
@@ -950,8 +950,8 @@ class MuseCube:
         SN_im = np.where(self.white_data == 0, np.nan, np.nan)
         for z_ in z_uni:
             k = np.where(bin_n == z_)
-            x_ = x[k]
-            y_ = y[k]
+            x_ = x[k].astype(int)
+            y_ = y[k].astype(int)
             n_spaxels = len(x_)
             spec_list = []
             for i, j in zip(x_, y_):
@@ -990,21 +990,16 @@ class MuseCube:
             mean = model_fit[0].mean.value
             amp = model_fit[0].amplitude.value
             sig = model_fit[0].stddev.value
-            if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
-                            mean_total - mean) <= dwmax:
-                if inspect:
+            deny = ''
+            if inspect:
+                if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
+                                mean_total - mean) <= dwmax:
                     print('Fit Accepted')
                     t = 'Accepted'
-                units = u.km / u.s
-                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
-                for i, j in zip(x_, y_):
-                    kine_im[j][i] = vel
-                    SN_im[j][i] = SN
-            else:
-                if inspect:
+                else:
                     print('Fit Rejected')
                     t = 'Rejected'
-            if inspect:
+
                 plt.figure()
                 plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean_flux')
                 plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
@@ -1024,7 +1019,20 @@ class MuseCube:
                 print('value of wv_dif = ' + str(mean_total - mean))
                 print('amplitude = ' + str(amp))
                 print('noise = ' + str(noise))
-                raw_input('Enter to continue...')
+                print('A fit which is accepted by default can be rejected by the user in the "inspect" mode\n')
+                print('\n')
+                deny=raw_input('Press "r" and Enter to manually reject this fit. Otherwise, just press Enter to continue\n')
+                deny=deny.lower()
+                if deny=='r':
+                    print('fit manually rejected by the user\n')
+            if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
+                            mean_total - mean) <= dwmax and deny!='r':
+                units = u.km / u.s
+                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
+                for i, j in zip(x_, y_):
+                    kine_im[j][i] = vel
+                    SN_im[j][i] = SN
+
 
         hdulist_kin = self.hdulist_white
         hdulist_kin[1].data = kine_im
@@ -1069,7 +1077,7 @@ class MuseCube:
         :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
                               of the line wavelength
         :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
-        :param debug: If True, the fit for each resolution element will be shown
+        :param inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
         :param z: Redshift of the source
         :param cmap: Output colormap
         :param amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
@@ -1213,25 +1221,17 @@ class MuseCube:
                 mean = model_fit[0].mean.value
                 amp = model_fit[0].amplitude.value
                 sig = model_fit[0].stddev.value
+                deny=''
                 if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
                                 mean_total - mean) <= dwmax:
-                    if inspect:
-                        print('Fit Accepted')
-                        t = 'Accepted'
-                        print(str(x_) + ',' + str(y_))
-                    units = u.km / u.s
-                    vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
-                    for i in xrange(int(x_ - radius), int(x_ + radius + 1)):
-                        for j in xrange(int(y_ - radius), int(y_ + radius + 1)):
-                            kine_im[j][i] = vel
-                            SN_im[j][i] = SN
-                            # kine_im[y[i]][x[i]] = vel
-                            # SN_im[y[i]][x[i]] = SN
+                    print('Fit Accepted')
+                    t = 'Accepted'
+                    print(str(x_) + ',' + str(y_))
                 else:
-                    if inspect:
-                        print('Fit Rejected')
-                        t = 'Rejected'
-                        print(str(x_) + ',' + str(y_))
+                    print('Fit Rejected')
+                    t = 'Rejected'
+                    print(str(x_) + ',' + str(y_))
+
                 if inspect:
                     plt.figure()
                     plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
@@ -1252,7 +1252,26 @@ class MuseCube:
                     print('value of wv_dif = ' + str(mean_total - mean))
                     print('amplitude = ' + str(amp))
                     print('noise = ' + str(noise))
-                    raw_input('Enter to continue...')
+                    print('A fit which is accepted by default can be rejected by the user in the "inspect" mode\n')
+                    print('\n')
+                    deny = raw_input(
+                        'Press "r" and Enter to manually reject this fit. Otherwise, just press Enter to continue\n')
+                    deny = deny.lower()
+                    if deny == 'r':
+                        print('fit manually rejected by the user\n')
+
+                if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
+                                mean_total - mean) <= dwmax and deny!='r':
+                    units = u.km / u.s
+                    vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
+                    for i in xrange(int(x_ - radius), int(x_ + radius + 1)):
+                        for j in xrange(int(y_ - radius), int(y_ + radius + 1)):
+                            kine_im[j][i] = vel
+                            SN_im[j][i] = SN
+                            # kine_im[y[i]][x[i]] = vel
+                            # SN_im[y[i]][x[i]] = SN
+
+
         hdulist_kin = self.hdulist_white
         hdulist_kin[1].data = kine_im
         hdulist_kin.writeto('kinematics_im.fits', clobber=True)

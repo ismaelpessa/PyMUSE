@@ -347,7 +347,7 @@ the main region and fit a gaussian + linear model, in order to fit and emi/abs l
     * side: side of the box that will contain the smaller regions inside of the main region. Defines the spatial resolution of the kinematics image and the S/N of the spectra used to compute the kinematics
     * amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)
     * dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.
-    * inspect: If true, the fit of each spatial resolution element will be shown, 1 by 1
+    * inspect: If true, the fit of each spatial resolution element will be shown, 1 by 1. The inspect mode allow the user to manually reject any fit.
 This function returns the kinematic image of the region, and saves the image in a .fits file
 IMPORTANT Select strong and spatially extended features.
 
@@ -370,7 +370,7 @@ deally, the aperture defined by x_c, y_c, params should be the same aperture bin
     * wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used to compute the kinematics
     * wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side of the line wavelength
     * type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
-    * inspect: If True, the fit for each resolution element will be shown
+    * inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
     * z: Redshift of the source
     * cmap: Output colormap
     * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
