@@ -1727,6 +1727,9 @@ class MuseCube:
                      The type of combination that will be done.
         :param n_figure: int
                          Figure to display the new image if it is saved
+        :param maskfile: str, Default = None
+                         Region file containing 1 more region to mask-in or mask-out
+        :param inverse_mask. Boolean, Default = True, If False, the mask will be reversed.
         :return:
         """
         if maskfile:
