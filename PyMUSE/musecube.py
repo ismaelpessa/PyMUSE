@@ -824,7 +824,7 @@ class MuseCube:
         mask2d = mask_new_inverse
         return mask2d
 
-    def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_voronoi=False,
+    def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_vorbin=False,
                              targetSN=20):
         """
         Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
@@ -844,9 +844,9 @@ class MuseCube:
                          To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
                          galaxy that contains the feature of interest
         :param output_file: str. Name of the output file (the new voronoi's input file name)
-        :param run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the
-                            generated vorbin input file (vorbin must be installed to do this)
-        :param targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins.
+        :param run_vorbin. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the
+                            generated vorbin input file (vorbin must be installed)
+        :param targetSN: If run_vorbin = True, targetSN will correspond to the required SN to generate de voronoi bins.
                          Higher targetSN will generate less bins, with a higher S/N each one.
         :return:
         """
@@ -867,18 +867,21 @@ class MuseCube:
             noise = np.sqrt(stat[j][i])
             f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
         f.close()
-        if run_voronoi:
-            from os import path
-            from vorbin.voronoi_2d_binning import voronoi_2d_binning
+        if run_vorbin:
+            try:
+                from vorbin.voronoi_2d_binning import voronoi_2d_binning
+            except ImportError:
+                raise ImportError("If run_voronoi=True, then the vorbin python package must be installed.")
             x, y, signal, noise = np.loadtxt(output_file).T
             binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
                                                                                       plot=1, quiet=0)
-            np.savetxt('voronoi_output.txt', np.column_stack([x, y, binNum]), fmt=b'%10.6f %10.6f %8i')
+            np.savetxt('_temp_vorbin.txt', np.column_stack([x, y, binNum]), fmt=b'%10.6f %10.6f %8i')
             plt.tight_layout()
             plt.pause(1)
 
-    def compute_kinematics_voronoi_binning(self, x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35,
+    def compute_kinematics_voronoi_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35,
                                            type='abs', inspect=False, z=0,
+                                           run_vorbin=False, vorbin_file=None, targetSN=20,
                                            cmap='jet', amplitude_threshold=2., dwmax=10.):
         """
                 Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
@@ -891,15 +894,17 @@ class MuseCube:
                 :param x_c: float, x-coordinate of the center of the source
                 :param y_c: float, y-coordinate of the center of the source
                 :param params: float, int or iterable, parameters of the extraction aperture
-                :param voronoi_output: Name of the voronoi output file.
-                :param wv_line_vac: float, vacuum wavelength of the emission/absorption line that will be used
+                :param wv_line_vac: float, vacuum wavelength in Angstroms of the emission/absorption line that will be used
                        to compute the kinematics
-                :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
+                :param wv_range_size: float, size of the windows (in Angstroms) that will be considered by the fit, at each side
                                       of the line wavelength
                 :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
-                :param inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
-                :param z: Redshift of the source
+                :param inspect: boolean, if True the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
+                :param z: float, redshift of the source
+                :param run_vorbin: boolean, if True, it runs vorbin internally
+                :param vorbin_file: str, if run_vorbin = False and the filename is given, then it uses this file to define the binning
                 :param cmap: Output colormap
+                :param targetSN: float, targeted S/N for each bin to define the voronoi grid
                 :param amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
                                             amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
                                             defined as the std of the residuals.
@@ -922,6 +927,8 @@ class MuseCube:
         fl_left = fl_eff_t[:3]
         fl_right = fl_eff_t[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
+        if type not in ['abs','emi']:
+            raise ValueError("Input type parameter not valid.")
         if type == 'abs':
             a_init = np.min(fl_eff_t) - intercept_init
         if type == 'emi':
@@ -940,7 +947,16 @@ class MuseCube:
         if inspect:
             print('a_total = ' + str(a_total) + '\n')
             print('mean_total = ' + str(mean_total) + '\n')
-        table = Table.read(voronoi_output, format='ascii')
+        if run_vorbin:
+            import pdb;pdb.set_trace()
+            wv_range = [wv_line - wv_range_size/2., wv_line + wv_range_size/2.]
+            self.create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='_temp_voronoi.txt',
+                                 run_vorbin=True, targetSN=targetSN)
+
+            table = Table.read('_temp_vorbin.txt', format='ascii')
+        else:
+            table = Table.read(vorbin_file, format='ascii')
+
         x = table['col1'].data
         y = table['col2'].data
         bin_n = table['col3'].data
