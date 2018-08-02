@@ -300,8 +300,8 @@ class MuseCube:
             hdulist.writeto(output_image_filename)
         return im_new
 
-    def create_homogeneous_sky_emission
-
+    def create_homogeneous_sky_emission:
+        pass
 
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
@@ -3281,7 +3281,11 @@ class MuseCube:
         return output_ranges
 
     def make_video(self, images, outimg=None, fps=2, size=None, is_color=True, format="XVID", outvid='image_video.avi', image_sum=None):
-        from cv2 import VideoWriter, VideoWriter_fourcc, imread, resize
+        try:
+            from cv2 import VideoWriter, VideoWriter_fourcc, imread, resize
+        except ImportError:
+            raise ImportError("Need cv2 installed to run this method.")
+
         fourcc = VideoWriter_fourcc(*format)
         vid = None
         for image in images:
