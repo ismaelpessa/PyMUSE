@@ -3185,7 +3185,7 @@ class MuseCube:
             print('z = ' + str(z))
             ranges = self.create_ranges(z, width=width)
             filename = 'emission_line_image_redshif_' + str(z) + '_'
-            image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True)
+            image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True, substract_cont=True)
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
