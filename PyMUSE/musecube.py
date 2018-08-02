@@ -949,7 +949,7 @@ class MuseCube:
             print('mean_total = ' + str(mean_total) + '\n')
         if run_vorbin:
             # import pdb;pdb.set_trace()
-            wv_range = [wv_line - wv_range_size/2., wv_line + wv_range_size/2.]
+            wv_range = [wv_line - wv_range_size, wv_line + wv_range_size]
             self.create_voronoi_input(x_c, y_c, params, wv_range, output_file='_temp_vorbin.txt',
                                  run_vorbin=True, targetSN=targetSN)
 
