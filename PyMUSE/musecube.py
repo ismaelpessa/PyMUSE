@@ -928,7 +928,7 @@ class MuseCube:
         fl_right = fl_eff_t[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
         if type not in ['abs','emi']:
-            raise ValueError("Input type parameter not valid.")
+            raise ValueError("Input `type={}` parameter not valid.".format(type))
         if type == 'abs':
             a_init = np.min(fl_eff_t) - intercept_init
         if type == 'emi':
