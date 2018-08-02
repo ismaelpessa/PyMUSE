@@ -948,6 +948,8 @@ class MuseCube:
         wv = self.wavelength
         kine_im = np.where(self.white_data == 0, np.nan, np.nan)
         SN_im = np.where(self.white_data == 0, np.nan, np.nan)
+        sig_im = np.where(self.white_data == 0, np.nan, np.nan)
+        std_im = np.where(self.white_data == 0, np.nan, np.nan)
         for z_ in z_uni:
             k = np.where(bin_n == z_)
             x_ = x[k].astype(int)
@@ -991,6 +993,10 @@ class MuseCube:
             amp = model_fit[0].amplitude.value
             sig = model_fit[0].stddev.value
             deny = ''
+            m = fitter.fit_info['param_cov']
+            sig_vel_fit=np.nan
+            if m is not None:
+                sig_vel_fit = np.sqrt(m[1][1])
             if inspect:
                 if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
                                 mean_total - mean) <= dwmax:
@@ -1008,7 +1014,6 @@ class MuseCube:
                 plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='bin sig')
                 plt.legend()
                 plt.title(t)
-                m = fitter.fit_info['param_cov']
                 if m is not None:
                     print('Display Cov Matrix')
                     plt.figure()
@@ -1029,9 +1034,13 @@ class MuseCube:
                             mean_total - mean) <= dwmax and deny!='r':
                 units = u.km / u.s
                 vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
+                sig_vel = ltu.dv_from_z((mean / wv_line_vac) - 1,((mean + sig_vel_fit) / wv_line_vac) - 1).to(units).value
+                std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1,((mean + sig) / wv_line_vac) - 1).to(units).value
                 for i, j in zip(x_, y_):
                     kine_im[j][i] = vel
                     SN_im[j][i] = SN
+                    sig_im[j][i] = np.abs(sig_vel)
+                    std_im[j][i] = np.abs(std_vel)
 
 
         hdulist_kin = self.hdulist_white
@@ -1048,7 +1057,23 @@ class MuseCube:
         fig_SN = aplpy.FITSFigure('SN_im.fits', figure=plt.figure())
         fig_SN.show_colorscale(cmap=cmap)
         fig_SN.add_colorbar()
-        fig_SN.colorbar.set_axis_label_text('SN')
+        fig_SN.colorbar.set_axis_label_text('S/N')
+
+        hdulist_sig_vel = self.hdulist_white
+        hdulist_sig_vel[1].data = sig_im
+        hdulist_sig_vel.writeto('sig_vel_im.fits', clobber=True)
+        fig_sig_vel= aplpy.FITSFigure('sig_vel_im.fits', figure=plt.figure())
+        fig_sig_vel.show_colorscale(cmap=cmap)
+        fig_sig_vel.add_colorbar()
+        fig_sig_vel.colorbar.set_axis_label_text('$\sigma_{v (cov matrix)}$ (km s$^{-1}$)')
+
+        hdulist_std_vel = self.hdulist_white
+        hdulist_std_vel[1].data = std_im
+        hdulist_std_vel.writeto('std_vel_im.fits', clobber=True)
+        fig_std_vel = aplpy.FITSFigure('std_vel_im.fits', figure=plt.figure())
+        fig_std_vel.show_colorscale(cmap=cmap)
+        fig_std_vel.add_colorbar()
+        fig_std_vel.colorbar.set_axis_label_text('$\sigma_{v (fit)}$ (km s$^{-1}$)')
 
         xw, yw = self.p2w(x_c, y_c)
         if isinstance(params, (int, float)):
@@ -1058,6 +1083,7 @@ class MuseCube:
         r = r.to(u.deg)
         fig_k.recenter(xw, yw, r.value)
         fig_SN.recenter(xw, yw, r.value)
+        fig_sig_vel.recenter(xw, yw, r.value)
         return kine_im
 
     def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs',
@@ -1168,8 +1194,9 @@ class MuseCube:
         ##get spaxel in mask2d
         y, x = np.where(~mask2d)
         kine_im = np.where(self.white_data == 0, np.nan, np.nan)
-        sigma_im = np.where(self.white_data == 0, np.nan, np.nan)
+        sig_im = np.where(self.white_data == 0, np.nan, np.nan)
         SN_im = np.where(self.white_data == 0, np.nan, np.nan)
+        std_im = np.where(self.white_data == 0, np.nan, np.nan)
 
         if side / 2. == int(side / 2):  # If even:
             radius = side / 2. - 0.5
@@ -1214,6 +1241,9 @@ class MuseCube:
                 fitter = fitting.LevMarLSQFitter()
                 model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
                 m = fitter.fit_info['param_cov']
+                sig_vel_fit=np.nan
+                if m is not None:
+                    sig_vel_fit = np.sqrt(m[1][1])
                 residual = model_fit(wv_eff) - fl_eff
                 noise = np.std(residual)
                 SN = np.median(fl_eff / sig_eff)
@@ -1264,10 +1294,14 @@ class MuseCube:
                                 mean_total - mean) <= dwmax and deny!='r':
                     units = u.km / u.s
                     vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
+                    sig_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig_vel_fit) / wv_line_vac) - 1).to(units).value
+                    std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value
                     for i in xrange(int(x_ - radius), int(x_ + radius + 1)):
                         for j in xrange(int(y_ - radius), int(y_ + radius + 1)):
                             kine_im[j][i] = vel
                             SN_im[j][i] = SN
+                            sig_im[j][i]= np.abs(sig_vel)
+                            std_im[j][i] = np.abs(std_vel)
                             # kine_im[y[i]][x[i]] = vel
                             # SN_im[y[i]][x[i]] = SN
 
@@ -1286,7 +1320,23 @@ class MuseCube:
         fig_SN = aplpy.FITSFigure('SN_im.fits', figure=plt.figure())
         fig_SN.show_colorscale(cmap=cmap)
         fig_SN.add_colorbar()
-        fig_SN.colorbar.set_axis_label_text('SN')
+        fig_SN.colorbar.set_axis_label_text('S/N')
+
+        hdulist_sig_vel = self.hdulist_white
+        hdulist_sig_vel[1].data = sig_im
+        hdulist_sig_vel.writeto('sig_vel_im.fits', clobber=True)
+        fig_sig_vel = aplpy.FITSFigure('sig_vel_im.fits', figure=plt.figure())
+        fig_sig_vel.show_colorscale(cmap=cmap)
+        fig_sig_vel.add_colorbar()
+        fig_sig_vel.colorbar.set_axis_label_text('$\sigma_{v (cov matrix)}$ (km s$^{-1}$)')
+
+        hdulist_std_vel = self.hdulist_white
+        hdulist_std_vel[1].data = std_im
+        hdulist_std_vel.writeto('std_vel_im.fits', clobber=True)
+        fig_std_vel = aplpy.FITSFigure('std_vel_im.fits', figure=plt.figure())
+        fig_std_vel.show_colorscale(cmap=cmap)
+        fig_std_vel.add_colorbar()
+        fig_std_vel.colorbar.set_axis_label_text('$\sigma_{v (fit)}$ (km s$^{-1}$)')
 
         xw, yw = self.p2w(x_c, y_c)
         if isinstance(params, (int, float)):
@@ -1296,6 +1346,9 @@ class MuseCube:
         r = r.to(u.deg)
         fig_k.recenter(xw, yw, r.value)
         fig_SN.recenter(xw, yw, r.value)
+        fig_sig_vel.recenter(xw, yw, r.value)
+        fig_std_vel.recenter(xw, yw, r.value)
+
         return kine_im
 
     def save_muselet_specs(self, filename, mode='sum', params=4, frac=0.1, npix=0, empirical_std=False,
