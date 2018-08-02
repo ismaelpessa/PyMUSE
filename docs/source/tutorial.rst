@@ -321,6 +321,12 @@ of each spatial resolution element. Smaller spatial resolution element grant a h
 of these elements. Larger spatial resolution elements reduces the spatial resolution, but enhances the S/N, leading to a better
 characterization of the velocity in each one of them.
 
+These functions will create 4 images:
+kinematics_im.fits: Contains the velocity calculated by the fit in each spatial resolution element where the fit was accepted.
+SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_range_size in each spatial resolution element where the fit was accepted.
+std_vel_im.fits: Contains the standard deviation of the Gaussian profile fitted to the spectrum in each spatial resolution element where the fit was accepted.
+sig_vel_im.fits: Contains the uncertainty for the velocity obtained. This value comes from the covariance matrix and is computed only for the spaxels where the fit was accepted and where the covariance matrix was well defined.
+
 RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
                 the wavelength range of interest and the needed spatial dimensions to contain the source.
 
@@ -355,13 +361,13 @@ Voronoi Binning:
 
 The function::
 
-    compute_kinematics_voronoi_binning(x_c, y_c, params, voronoi_output, wv_line_vac, wv_range_size=35,
-                                           type='abs', inspect=False, z=0,
+    compute_kinematics_voronoi_binning(x_c, y_c, params, wv_line_vac, wv_range_size=35,
+                                           type='abs', inspect=False, z=0, run_vorbin=False, vorbin_file=None,
                                            cmap='jet', amplitude_threshold=2., dwmax=10.)
 its similar, but the bining will be done according to the file with the name given by ``voronoi_output``.
 This function uses a VORONOI binning to define the spatial resolution element (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
 Function create_voronoi_input() can create the input for the voronoi code.
-deally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.
+Ideally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.
 
     * x_c: float, x-coordinate of the center of the source
     * y_c: float, y-coordinate of the center of the source
@@ -372,12 +378,11 @@ deally, the aperture defined by x_c, y_c, params should be the same aperture bin
     * type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
     * inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
     * z: Redshift of the source
+    * run_vorbin: boolean, if True, it runs vorbin internally
+    * vorbin_file: str, if run_vorbin = False and the filename is given, then it uses this file to define the binning
     * cmap: Output colormap
-    * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,
-defined as the std of the residuals.
-    * dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
-             to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
-             spectrum, the fit will be rejected
+    * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise, defined as the std of the residuals.
+    * dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated spectrum, the fit will be rejected
 
 To generate the voronoi input file, you can use::
 
@@ -398,14 +403,10 @@ This function will also generate the output voronoi file if rune_voronoi is set 
         * x-coordinate of the center of the aperture
         * y-coordinate of the center of the aperture
         * params: parameters that define the aperture, either a single radius or a [a,b,theta] set
-        * wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images
-                    To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
-                    galaxy that contains the feature of interest
+        * wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the galaxy that contains the feature of interest
         * output_file: str. Name of the output file (the new voronoi's input file name)
-        * run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the
-                       generated vorbin input file (vorbin must be installed to do this)
-        * targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins.
-                    Higher targetSN will generate less bins, with a higher S/N each one.
+        * run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the generated vorbin input file (vorbin must be installed to do this)
+        * targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins. Higher targetSN will generate less bins, with a higher S/N each one.
 
 
 
@@ -434,8 +435,7 @@ This is particularly recommended for kinematics analysis.
         * yc: y-coordinate of the center of the new cube
         * lx: half of the x-dimension of the new cube
         * ly: half of the y-dimension of the new cube
-        * wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where
-                    w_ini is the first wavelength element of the new cube and w_end is the last wavelength element
+        * wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where w_ini is the first wavelength element of the new cube and w_end is the last wavelength element
         * output_fitsname: String. The new fitsfile will be saved under this name
 
 Create Video

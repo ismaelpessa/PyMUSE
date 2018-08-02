@@ -891,6 +891,12 @@ class MuseCube:
                 the wavelength range of interest and the needed spatial dimensions.
                 Ideally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.
 
+                This function will create 4 images:
+                kinematics_im.fits: Contains the velocity calculated by the fit in each spatial resolution element where the fit was accepted.
+                SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_range_size in each spatial resolution element where the fit was accepted.
+                std_vel_im.fits: Contains the standard deviation of the Gaussian profile fitted to the spectrum in each spatial resolution element where the fit was accepted.
+                sig_vel_im.fits: Contains the uncertainty for the velocity obtained. This value comes from the covariance matrix and is computed only for the spaxels where the fit was accepted and where the covariance matrix was well defined.
+
                 :param x_c: float, x-coordinate of the center of the source
                 :param y_c: float, y-coordinate of the center of the source
                 :param params: float, int or iterable, parameters of the extraction aperture
@@ -1110,6 +1116,12 @@ class MuseCube:
         This function uses a UNIFORM binning to define the spatial resolution element.
         RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
         the wavelength range of interest and the needed spatial dimensions.
+
+        This function will create 4 images:
+        kinematics_im.fits: Contains the velocity calculated by the fit in each spatial resolution element where the fit was accepted.
+        SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_range_size in each spatial resolution element where the fit was accepted.
+        std_vel_im.fits: Contains the standard deviation of the Gaussian profile fitted to the spectrum in each spatial resolution element where the fit was accepted.
+        sig_vel_im.fits: Contains the uncertainty for the velocity obtained. This value comes from the covariance matrix and is computed only for the spaxels where the fit was accepted and where the covariance matrix was well defined.
 
         :param x_c: float, x-coordinate of the center of the source
         :param y_c: float, y-coordinate of the center of the source
