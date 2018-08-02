@@ -948,9 +948,9 @@ class MuseCube:
             print('a_total = ' + str(a_total) + '\n')
             print('mean_total = ' + str(mean_total) + '\n')
         if run_vorbin:
-            import pdb;pdb.set_trace()
+            # import pdb;pdb.set_trace()
             wv_range = [wv_line - wv_range_size/2., wv_line + wv_range_size/2.]
-            self.create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='_temp_voronoi.txt',
+            self.create_voronoi_input(x_c, y_c, params, wv_range, output_file='_temp_vorbin.txt',
                                  run_vorbin=True, targetSN=targetSN)
 
             table = Table.read('_temp_vorbin.txt', format='ascii')
