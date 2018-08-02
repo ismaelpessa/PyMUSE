@@ -175,3 +175,12 @@ def calculate_empirical_rms(spec, test=False):
         plt.legend()
         plt.show()
     return XSpectrum1D.from_tuple((wv, fl, sigma))
+
+
+def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_output=0):
+        neg_fluxes = input_image[np.where(input_image<floor)]
+        pos_fluxes = np.abs(neg_fluxes)
+        all_fluxes = np.concatenate((pos_fluxes,neg_fluxes))
+        std = np.std(all_fluxes)
+        im_new = np.where(input_image < nsig*std, floor_output, input_image)
+        return im_new
