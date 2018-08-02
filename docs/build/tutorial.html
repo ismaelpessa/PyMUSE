@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>1. Initializing &mdash; PyMUSE 1 documentation</title>
+    <title>1. Initializing &#8212; PyMUSE 1 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -23,6 +23,8 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="top" title="PyMUSE 1 documentation" href="index.html" />
     <link rel="next" title="1. Focus demo ADASS XXVII" href="demo.html" />
     <link rel="prev" title="Welcome to PyMUSE’s documentation!" href="index.html" /> 
@@ -40,7 +42,7 @@
         <li class="right" >
           <a href="index.html" title="Welcome to PyMUSE’s documentation!"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -379,6 +381,11 @@ This rebinning allows the user modulating the relation between the spatial resol
 of each spatial resolution element. Smaller spatial resolution element grant a higher spatial resolution, but a lower S/N in each one
 of these elements. Larger spatial resolution elements reduces the spatial resolution, but enhances the S/N, leading to a better
 characterization of the velocity in each one of them.</p>
+<p>These functions will create 4 images:
+kinematics_im.fits: Contains the velocity calculated by the fit in each spatial resolution element where the fit was accepted.
+SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_range_size in each spatial resolution element where the fit was accepted.
+std_vel_im.fits: Contains the standard deviation of the Gaussian profile fitted to the spectrum in each spatial resolution element where the fit was accepted.
+sig_vel_im.fits: Contains the uncertainty for the velocity obtained. This value comes from the covariance matrix and is computed only for the spaxels where the fit was accepted and where the covariance matrix was well defined.</p>
 <dl class="docutils">
 <dt>RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes</dt>
 <dd>the wavelength range of interest and the needed spatial dimensions to contain the source.</dd>
@@ -412,15 +419,15 @@ the main region and fit a gaussian + linear model, in order to fit and emi/abs l
 IMPORTANT Select strong and spatially extended features.</p>
 <p>Voronoi Binning:</p>
 <p>The function:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics_voronoi_binning</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">voronoi_output</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span>
-                                       <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics_voronoi_binning</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span>
+                                       <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">run_vorbin</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">vorbin_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                                        <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>its similar, but the bining will be done according to the file with the name given by <code class="docutils literal"><span class="pre">voronoi_output</span></code>.
 This function uses a VORONOI binning to define the spatial resolution element (see <a class="reference external" href="https://pypi.org/project/vorbin/#files">https://pypi.org/project/vorbin/#files</a> and <a class="reference external" href="http://www-astro.physics.ox.ac.uk/~mxc/software/">http://www-astro.physics.ox.ac.uk/~mxc/software/</a>)
 Function create_voronoi_input() can create the input for the voronoi code.
-deally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.</p>
+Ideally, the aperture defined by x_c, y_c, params should be the same aperture binned by the voronoi algorithm.</p>
 <blockquote>
 <div><ul class="simple">
 <li>x_c: float, x-coordinate of the center of the source</li>
@@ -432,23 +439,13 @@ deally, the aperture defined by x_c, y_c, params should be the same aperture bin
 <li>type: string, &#8220;emi&#8221; to fit an emission line or &#8220;abs&#8221; to fit an absorption line,</li>
 <li>inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.</li>
 <li>z: Redshift of the source</li>
+<li>run_vorbin: boolean, if True, it runs vorbin internally</li>
+<li>vorbin_file: str, if run_vorbin = False and the filename is given, then it uses this file to define the binning</li>
 <li>cmap: Output colormap</li>
-<li>amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise,</li>
+<li>amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise, defined as the std of the residuals.</li>
+<li>dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated spectrum, the fit will be rejected</li>
 </ul>
 </div></blockquote>
-<dl class="docutils">
-<dt>defined as the std of the residuals.</dt>
-<dd><ul class="first last">
-<li><dl class="first docutils">
-<dt>dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel</dt>
-<dd><p class="first last">to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
-spectrum, the fit will be rejected</p>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-</dl>
 <p>To generate the voronoi input file, you can use:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">create_voronoi_input</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_range</span><span class="p">,</span> <span class="n">output_file</span><span class="o">=</span><span class="s1">&#39;voronoi_input_test.txt&#39;</span><span class="p">,</span> <span class="n">run_voronoi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">targetSN</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 </pre></div>
@@ -464,34 +461,14 @@ Using this new images, the function will create an output file which has 4 colum
 4) Total sigma per spaxel (NO variance)</p>
 <p>This function will also generate the output voronoi file if rune_voronoi is set to True. This requires to have installed vorbin</p>
 <blockquote>
-<div><ul>
-<li><p class="first">x-coordinate of the center of the aperture</p>
-</li>
-<li><p class="first">y-coordinate of the center of the aperture</p>
-</li>
-<li><p class="first">params: parameters that define the aperture, either a single radius or a [a,b,theta] set</p>
-</li>
-<li><dl class="first docutils">
-<dt>wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images</dt>
-<dd><p class="first last">To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
-galaxy that contains the feature of interest</p>
-</dd>
-</dl>
-</li>
-<li><p class="first">output_file: str. Name of the output file (the new voronoi&#8217;s input file name)</p>
-</li>
-<li><dl class="first docutils">
-<dt>run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the</dt>
-<dd><p class="first last">generated vorbin input file (vorbin must be installed to do this)</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins.</dt>
-<dd><p class="first last">Higher targetSN will generate less bins, with a higher S/N each one.</p>
-</dd>
-</dl>
-</li>
+<div><ul class="simple">
+<li>x-coordinate of the center of the aperture</li>
+<li>y-coordinate of the center of the aperture</li>
+<li>params: parameters that define the aperture, either a single radius or a [a,b,theta] set</li>
+<li>wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the galaxy that contains the feature of interest</li>
+<li>output_file: str. Name of the output file (the new voronoi&#8217;s input file name)</li>
+<li>run_voronoi. Boolean. If True, vorbin will be imported and used to generate the vorbin output file from the generated vorbin input file (vorbin must be installed to do this)</li>
+<li>targetSN: If run_voronoi = True, targetSN will correspond to the required SN to generate de voronoi bins. Higher targetSN will generate less bins, with a higher S/N each one.</li>
 </ul>
 </div></blockquote>
 </div>
@@ -512,23 +489,13 @@ in pixels. The x and y dimension of the new cube will be 2lx and 2ly respectivel
 will be given by the values in wv_range, defined as [wv_ini,wv_end] in  Angstroms.</p>
 <dl class="docutils">
 <dt>This is particularly recommended for kinematics analysis.</dt>
-<dd><ul class="first last">
-<li><p class="first">x-coordinate of the center of the new cube</p>
-</li>
-<li><p class="first">yc: y-coordinate of the center of the new cube</p>
-</li>
-<li><p class="first">lx: half of the x-dimension of the new cube</p>
-</li>
-<li><p class="first">ly: half of the y-dimension of the new cube</p>
-</li>
-<li><dl class="first docutils">
-<dt>wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where</dt>
-<dd><p class="first last">w_ini is the first wavelength element of the new cube and w_end is the last wavelength element</p>
-</dd>
-</dl>
-</li>
-<li><p class="first">output_fitsname: String. The new fitsfile will be saved under this name</p>
-</li>
+<dd><ul class="first last simple">
+<li>x-coordinate of the center of the new cube</li>
+<li>yc: y-coordinate of the center of the new cube</li>
+<li>lx: half of the x-dimension of the new cube</li>
+<li>ly: half of the y-dimension of the new cube</li>
+<li>wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where w_ini is the first wavelength element of the new cube and w_end is the last wavelength element</li>
+<li>output_fitsname: String. The new fitsfile will be saved under this name</li>
 </ul>
 </dd>
 </dl>
@@ -605,8 +572,8 @@ will be given by the values in wv_range, defined as [wv_ini,wv_end] in  Angstrom
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
@@ -628,12 +595,12 @@ will be given by the values in wv_range, defined as [wv_ini,wv_end] in  Angstrom
         <li class="right" >
           <a href="index.html" title="Welcome to PyMUSE’s documentation!"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">PyMUSE 1 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+        &#169; Copyright 2017, Ismael Pessa, Cristobal Moya, Nicolas Tejos.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
     </div>
   </body>
 </html>
