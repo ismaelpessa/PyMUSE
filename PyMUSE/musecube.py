@@ -64,6 +64,7 @@ class MuseCube:
         self.white_data = fits.open(self.filename_white)[1].data
         self.hdulist_white = fits.open(self.filename_white)
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
+        self.white_data_orig = fits.open(self.filename_white)
         self.ivar_im = None
         self.smooth_im = None
         self.__npix = None
@@ -287,6 +288,23 @@ class MuseCube:
         if save:
             spec.write_to_fits(name + '.fits')
         return spec
+
+    def create_homogeneous_sky_image(self,nsig=3, save = True, output_image_filename = 'homogeneous_sky.fits'):
+        neg_fluxes = self.white_data_orig[np.where(self.white_data_orig<0)]
+        pos_fluxes = np.abs(neg_fluxes)
+        all_fluxes = np.concatenate((pos_fluxes,neg_fluxes))
+        std = np.std(neg_fluxes)
+        im_new = np.where(self.white_data_orig < nsig*std,0,self.white_data_orig)
+        if save:
+            hdulist = copy.deepcopy(self.hdulist_white)
+            hdulist[0].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_image'
+            hdulist[1].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_image'
+            hdulist[1].data = im_new
+            hdulist.writeto(output_image_filename)
+        return im_new
+
+
+
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
         """
