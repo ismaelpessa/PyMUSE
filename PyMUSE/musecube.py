@@ -289,12 +289,9 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def create_homogeneous_sky_image(self,nsig=3, save = True, output_image_filename = 'homogeneous_sky.fits'):
-        neg_fluxes = self.white_data_orig[np.where(self.white_data_orig<0)]
-        pos_fluxes = np.abs(neg_fluxes)
-        all_fluxes = np.concatenate((pos_fluxes,neg_fluxes))
-        std = np.std(neg_fluxes)
-        im_new = np.where(self.white_data_orig < nsig*std,0,self.white_data_orig)
+    def create_homogeneous_sky_white(self, nsig=3, floor_input=0, floor_output=0, save=True, output_image_filename = 'homogeneous_sky.fits'):
+
+        im_new = mcu.create_homogeneous_sky_image(self.white_data_orig, nsig=nsig, floor_input=floor_input, floor_output=floor_output)
         if save:
             hdulist = copy.deepcopy(self.hdulist_white)
             hdulist[0].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_image'
@@ -303,6 +300,7 @@ class MuseCube:
             hdulist.writeto(output_image_filename)
         return im_new
 
+    def create_homogeneous_sky_emission
 
 
 
@@ -3199,11 +3197,13 @@ class MuseCube:
         z_array = np.arange(z_ini, z_fin, dz)
         images_names = []
         fitsnames = []
+        image_sum = 0.
         for z in z_array:
             print('z = ' + str(z))
             ranges = self.create_ranges(z, width=width)
             filename = 'emission_line_image_redshif_' + str(z) + '_'
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True, substract_cont=True)
+            image_sum += image
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
@@ -3212,7 +3212,7 @@ class MuseCube:
             images_names.append(filename + '.png')
             fitsnames.append(filename + '.fits')
             plt.close(15)
-        video = self.make_video(images=images_names, outvid=outvid)
+        video = self.make_video(images=images_names, outvid=outvid, image_sum=image_sum)
         n_im = len(fitsnames)
         if erase:
             for i in xrange(n_im):
@@ -3280,7 +3280,7 @@ class MuseCube:
                 output_ranges.append(range)
         return output_ranges
 
-    def make_video(self, images, outimg=None, fps=2, size=None, is_color=True, format="XVID", outvid='image_video.avi'):
+    def make_video(self, images, outimg=None, fps=2, size=None, is_color=True, format="XVID", outvid='image_video.avi', image_sum=None):
         from cv2 import VideoWriter, VideoWriter_fourcc, imread, resize
         fourcc = VideoWriter_fourcc(*format)
         vid = None
@@ -3295,6 +3295,11 @@ class MuseCube:
             if size[0] != img.shape[1] and size[1] != img.shape[0]:
                 img = resize(img, size)
             vid.write(img)
+
+        # save image sum
+        if image_sum is not None:
+            self.__save2fits('sum_image_from_video.fits', image_sum, stat=False, type='white', n_figure=2, edit_header=[])
+
         vid.release()
         return vid
 
