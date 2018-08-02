@@ -300,8 +300,8 @@ class MuseCube:
             hdulist.writeto(output_image_filename)
         return im_new
 
-    def create_homogeneous_sky_emission:
-        pass
+    # def create_homogeneous_sky_emission:
+    #     pass
 
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
