@@ -300,8 +300,8 @@ class MuseCube:
             hdulist.writeto(output_image_filename)
         return im_new
 
-    # def create_homogeneous_sky_emission:
-    #     pass
+    def create_homogeneous_sky_emission(self, nsig=3, floor_input=0, floor_output=0, save=True, output_image_filename = 'homogeneous_emission.fits'):
+        #     pass
 
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
@@ -2142,7 +2142,7 @@ class MuseCube:
                 cont_image = (n + 1) * (cont_inf_image + cont_sup_image) / 2.
                 image = image - cont_image
             image_stacker = image_stacker + image
-        image_stacker = np.where(image_stacker < 0, 0, image_stacker)
+        # image_stacker = np.where(image_stacker < 0, 0, image_stacker)
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
@@ -3173,16 +3173,17 @@ class MuseCube:
         """
         return self.cube.data.shape
 
-    def create_movie_redshift_range(self, z_ini=0., z_fin=1., dz=0.001, width=30, outvid='emission_lines_video.avi',
-                                    erase=True):
+    def create_movie_redshift_range(self, z_ini=0., z_end=1., dz=0.001, width=30, outvid='emission_lines_video.avi',
+                                    erase=True, show_images=False):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
         :param z_ini: initial redshift
-        :param z_fin: final redshift
+        :param z_end: final redshift
         :param dz: delta redshift
         :param outvid: name of the final video
         :param width: width of the lines that will be collapsed, in Angstroms
         :param erase: If true, the individual frames to make the video will be erased after the video is produced
+        :param show_images: bool, if true, it shows the images as these are being computed
         :return:
         """
         OII = 3728.483
@@ -3190,11 +3191,11 @@ class MuseCube:
         n = len(wave)
         w_max = wave[n - 1 - 20]
         max_z_allowed = (w_max / OII) - 1.
-        if z_fin > max_z_allowed:
+        if z_end > max_z_allowed:
             print('maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
                 z_fin))
-            z_fin = max_z_allowed
-        z_array = np.arange(z_ini, z_fin, dz)
+            z_end = max_z_allowed
+        z_array = np.arange(z_ini, z_end, dz)
         images_names = []
         fitsnames = []
         image_sum = 0.
@@ -3203,7 +3204,8 @@ class MuseCube:
             ranges = self.create_ranges(z, width=width)
             filename = 'emission_line_image_redshif_' + str(z) + '_'
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True, substract_cont=True)
-            image_sum += image
+            image_aux = mcu.create_homogeneous_sky_image(image, nsig=3, floor_input=0, floor_output=0)
+            image_sum += image_aux
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
