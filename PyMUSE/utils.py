@@ -178,7 +178,7 @@ def calculate_empirical_rms(spec, test=False):
 
 
 def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_output=0):
-        neg_fluxes = input_image[np.where(input_image<floor)]
+        neg_fluxes = input_image[np.where(input_image<floor_input)]
         pos_fluxes = np.abs(neg_fluxes)
         all_fluxes = np.concatenate((pos_fluxes,neg_fluxes))
         std = np.std(all_fluxes)
