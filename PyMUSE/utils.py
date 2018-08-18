@@ -1,15 +1,14 @@
 """Utilities for MuseCube"""
 
+import aplpy
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.io import fits
-from linetools.spectra.xspectrum1d import XSpectrum1D
-from linetools import utils as ltu
-from scipy.interpolate import interp1d
-from scipy.ndimage import gaussian_filter
 from astropy import units as u
+from astropy.io import fits
 from astropy.modeling import models, fitting
-import aplpy
+from linetools import utils as ltu
+from linetools.spectra.xspectrum1d import XSpectrum1D
+from scipy.interpolate import interp1d
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -28,9 +27,10 @@ def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
     print("<FL_IVAR2> = {}".format(np.median(sp2.flux / sp2.sig ** 2)))
     print("<FL1>/<FL2> = {}".format(np.median(sp1.flux / sp2.flux)))
 
-def indexOf(array,element):
-    for i,j in enumerate(array):
-        if j==element:
+
+def indexOf(array, element):
+    for i, j in enumerate(array):
+        if j == element:
             return i
     return -1
 
@@ -66,6 +66,7 @@ def spec_to_redmonster_format(spec, fitsname, n_id=None, mag=None):
         hdu1.header[mag[0]] = mag[1]
     hdulist_new = fits.HDUList([hdu1, hdu2])
     hdulist_new.writeto(fitsname, clobber=True)
+
 
 def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o 4 o 5
     hdulist = fits.open(redmonster_file)
@@ -154,7 +155,7 @@ def calculate_empirical_rms(spec, test=False):
     fl_max = interpolated_max(wv)
     fl_min = interpolated_min(wv)
     # take the mid value
-    fl_mid = 0.5 * (fl_max + fl_min) # reference flux
+    fl_mid = 0.5 * (fl_max + fl_min)  # reference flux
 
     # the idea here is that these will be the intrinsic rms per pixel (both are the same though)
     max_mean_diff = np.abs(fl_mid - fl_max)
@@ -178,24 +179,29 @@ def calculate_empirical_rms(spec, test=False):
         plt.show()
     return XSpectrum1D.from_tuple((wv, fl, sigma))
 
-def get_effective_ranges(wv,fl,sig,wv_line,wv_range_size):
+
+def get_effective_ranges(wv, fl, sig, wv_line, wv_range_size):
     sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
     wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
     fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
     return wv_eff, fl_eff, sig_eff
 
-def gaussian_linear_model(wv,fl,sig,a_init,mean_init,sigma_init,slope_init,intercept_init):
+
+def gaussian_linear_model(wv, fl, sig, a_init, mean_init, sigma_init, slope_init, intercept_init):
     gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
     line = models.Linear1D(slope=slope_init, intercept=intercept_init)
     model_init = gaussian + line
     fitter = fitting.LevMarLSQFitter()
     model_fit = fitter(model_init, wv, fl, weights=sig / np.sum(sig))
     return model_fit, fitter
-def accept_model(amp,sig,mean,a_total,sigma_total,mean_total,amplitude_threshold,noise,dwmax,deny):
-    return abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
-                    mean_total - mean) <= dwmax and deny != 'r'
 
-def save_image_kinematics(hdulist,data,new_image_name,cmap,cb_label):
+
+def accept_model(amp, sig, mean, a_total, sigma_total, mean_total, amplitude_threshold, noise, dwmax, deny):
+    return abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
+        mean_total - mean) <= dwmax and deny != 'r'
+
+
+def save_image_kinematics(hdulist, data, new_image_name, cmap, cb_label):
     hdulist_new = hdulist
     hdulist_new[1].data = data
     hdulist_new.writeto(new_image_name, clobber=True)
@@ -207,9 +213,9 @@ def save_image_kinematics(hdulist,data,new_image_name,cmap,cb_label):
 
 
 def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_output=0):
-        neg_fluxes = input_image[np.where(input_image<floor_input)]
-        pos_fluxes = np.abs(neg_fluxes)
-        all_fluxes = np.concatenate((pos_fluxes,neg_fluxes))
-        std = np.std(all_fluxes)
-        im_new = np.where(input_image < nsig*std, floor_output, input_image)
-        return im_new
+    neg_fluxes = input_image[np.where(input_image < floor_input)]
+    pos_fluxes = np.abs(neg_fluxes)
+    all_fluxes = np.concatenate((pos_fluxes, neg_fluxes))
+    std = np.std(all_fluxes)
+    im_new = np.where(input_image < nsig * std, floor_output, input_image)
+    return im_new
