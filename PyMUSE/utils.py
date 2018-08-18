@@ -8,6 +8,8 @@ from linetools import utils as ltu
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter
 from astropy import units as u
+from astropy.modeling import models, fitting
+import aplpy
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -175,6 +177,33 @@ def calculate_empirical_rms(spec, test=False):
         plt.legend()
         plt.show()
     return XSpectrum1D.from_tuple((wv, fl, sigma))
+
+def get_effective_ranges(wv,fl,sig,wv_line,wv_range_size):
+    sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+    wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+    fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+    return wv_eff, fl_eff, sig_eff
+
+def gaussian_linear_model(wv,fl,sig,a_init,mean_init,sigma_init,slope_init,intercept_init):
+    gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
+    line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+    model_init = gaussian + line
+    fitter = fitting.LevMarLSQFitter()
+    model_fit = fitter(model_init, wv, fl, weights=sig / np.sum(sig))
+    return model_fit, fitter
+def accept_model(amp,sig,mean,a_total,sigma_total,mean_total,amplitude_threshold,noise,dwmax,deny):
+    return abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
+                    mean_total - mean) <= dwmax and deny != 'r'
+
+def save_image_kinematics(hdulist,data,new_image_name,cmap,cb_label):
+    hdulist_new = hdulist
+    hdulist_new[1].data = data
+    hdulist_new.writeto(new_image_name, clobber=True)
+    fig = aplpy.FITSFigure(new_image_name, figure=plt.figure())
+    fig.show_colorscale(cmap=cmap)
+    fig.add_colorbar()
+    fig.colorbar.set_axis_label_text(cb_label)
+    return hdulist_new, fig
 
 
 def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_output=0):
