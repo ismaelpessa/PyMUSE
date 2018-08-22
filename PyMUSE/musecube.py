@@ -901,7 +901,8 @@ class MuseCube:
     def compute_kinematics_voronoi_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35,
                                            type='abs', inspect=False, z=0,
                                            run_vorbin=False, vorbin_file=None, targetSN=20,
-                                           cmap='jet', amplitude_threshold=2., dwmax=10.,k_init=1, k_bounds=[0.1,10],doublet = False):
+                                           cmap='jet', amplitude_threshold=2., dwmax=10., k_init=1, k_bounds=[0.1, 10],
+                                           doublet=False):
         """
                 Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
                 This function uses a VORONOI binning to define the spatial resolution element.
@@ -955,7 +956,8 @@ class MuseCube:
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t = spec_total.sig.value
-        wv_eff_t, fl_eff_t, sig_eff_t = mcu.get_effective_ranges(wv_t, fl_t, sig_t, wv_line, wv_range_size, doublet=doublet)
+        wv_eff_t, fl_eff_t, sig_eff_t = mcu.get_effective_ranges(wv_t, fl_t, sig_t, wv_line, wv_range_size,
+                                                                 doublet=doublet)
         fl_left = fl_eff_t[:3]
         fl_right = fl_eff_t[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
@@ -969,25 +971,24 @@ class MuseCube:
         sigma_init = wv_range_size / 3.
 
         model_fit, fitter = mcu.gaussian_linear_model(wv_eff_t, fl_eff_t, sig_eff_t, a_init, wv_line_vac, sigma_init,
-                                                      slope_init, intercept_init,k_init=k_init,k_bounds=k_bounds,z_init=z,doublet=doublet)
+                                                      slope_init, intercept_init, k_init=k_init, k_bounds=k_bounds,
+                                                      z_init=z, doublet=doublet)
 
         z_total = model_fit[0].z.value
         a_total = model_fit[0].amplitude.value
         mean_total = (1 + z_total) * wv_line_vac
         if doublet:
-            sigma_total=(model_fit[0].stddev1.value+model_fit[0].stddev2.value)/2
+            sigma_total = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
             k_init = model_fit[0].k.value
         else:
             sigma_total = model_fit[0].stddev.value
-
-
 
         if inspect:
             print('a_total = ' + str(a_total) + '\n')
             print('z_total = ' + str(z_total) + '\n')
         if run_vorbin:
             if doublet:
-                wv_range=[np.mean(wv_line) - wv_range_size, np.mean(wv_line) + wv_range_size]
+                wv_range = [np.mean(wv_line) - wv_range_size, np.mean(wv_line) + wv_range_size]
             else:
                 wv_range = [wv_line - wv_range_size, wv_line + wv_range_size]
             self.create_voronoi_input(x_c, y_c, params, wv_range, output_file='_temp_vorbin.txt',
@@ -1023,7 +1024,7 @@ class MuseCube:
             fl = fl / n_spaxels
             sig = np.sqrt(sig) / n_spaxels
 
-            wv_eff, fl_eff, sig_eff = mcu.get_effective_ranges(wv, fl, sig, wv_line, wv_range_size, doublet = doublet)
+            wv_eff, fl_eff, sig_eff = mcu.get_effective_ranges(wv, fl, sig, wv_line, wv_range_size, doublet=doublet)
 
             fl_left = fl_eff[:3]
             fl_right = fl_eff[-3:]
@@ -1037,7 +1038,8 @@ class MuseCube:
             z_init = z_total
 
             model_fit, fitter = mcu.gaussian_linear_model(wv_eff, fl_eff, sig_eff, a_init, wv_line_vac, sigma_init,
-                                                          slope_init, intercept_init,k_init=k_init,k_bounds=k_bounds,z_init=z_init,doublet=doublet)
+                                                          slope_init, intercept_init, k_init=k_init, k_bounds=k_bounds,
+                                                          z_init=z_init, doublet=doublet)
 
             residual = model_fit(wv_eff) - fl_eff
             noise = np.std(residual)
@@ -1045,13 +1047,14 @@ class MuseCube:
             z_model = model_fit[0].z.value
             mean = (1 + z_model) * wv_line_vac
             if doublet:
-                amp = np.max(np.array([abs(model_fit[0].amplitude.value),abs(model_fit[0].amplitude.value/model_fit[0].k.value)]))
+                amp = np.max(np.array(
+                    [abs(model_fit[0].amplitude.value), abs(model_fit[0].amplitude.value / model_fit[0].k.value)]))
                 wv_offset = np.max(np.abs(mean_total - mean))
                 sig = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
             else:
                 amp = model_fit[0].amplitude.value
                 sig = model_fit[0].stddev.value
-                wv_offset=np.abs(mean_total-mean)
+                wv_offset = np.abs(mean_total - mean)
             deny = ''
             m = fitter.fit_info['param_cov']
             sig_z_fit = np.nan
@@ -1059,7 +1062,7 @@ class MuseCube:
                 sig_z_fit = np.sqrt(m[0][0])
             if inspect:
                 if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
-                                    deny,doublet=doublet):
+                                    deny, doublet=doublet):
                     print('Fit Accepted')
                     t = 'Accepted'
                 else:
@@ -1069,7 +1072,7 @@ class MuseCube:
                 plt.figure()
                 plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean_flux')
                 plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
-                mcu.plot_Gauss_plus_linear_model(model_fit,wv_eff,doublet=doublet)
+                mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff, doublet=doublet)
                 plt.plot(wv_eff, residual, color='red', label='Residual')
                 plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='bin sig')
                 plt.legend()
@@ -1092,12 +1095,13 @@ class MuseCube:
                 if deny == 'r':
                     print('fit manually rejected by the user\n')
             if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
-                                deny,doublet=doublet):
+                                deny, doublet=doublet):
                 units = u.km / u.s
                 vel = ltu.dv_from_z(z_model, z).to(units).value
                 sig_vel = ltu.dv_from_z(z_model + sig_z_fit, z_model).to(units).value
                 if doublet:
-                    std_vel = np.mean(ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value)
+                    std_vel = np.mean(
+                        ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value)
                 else:
                     std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value
                 for i, j in zip(x_, y_):
@@ -1128,7 +1132,8 @@ class MuseCube:
 
     def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs',
                                            inspect=False, z=0,
-                                           cmap='jet', amplitude_threshold=2., dwmax=10., side=3,k_init=1, k_bounds=[0.1,10],doublet = False):
+                                           cmap='jet', amplitude_threshold=2., dwmax=10., side=3, k_init=1,
+                                           k_bounds=[0.1, 10], doublet=False):
         """
         Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
         This function uses a UNIFORM binning to define the spatial resolution element.
@@ -1182,7 +1187,8 @@ class MuseCube:
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t = spec_total.sig.value
-        wv_eff_t, fl_eff_t, sig_eff_t = mcu.get_effective_ranges(wv_t, fl_t, sig_t, wv_line, wv_range_size,doublet=doublet)
+        wv_eff_t, fl_eff_t, sig_eff_t = mcu.get_effective_ranges(wv_t, fl_t, sig_t, wv_line, wv_range_size,
+                                                                 doublet=doublet)
         fl_left = fl_eff_t[:3]
         fl_right = fl_eff_t[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
@@ -1239,7 +1245,7 @@ class MuseCube:
                 wv = spec.wavelength.value
                 fl = spec.flux.value
                 sig = spec_total.sig.value
-                wv_eff, fl_eff, sig_eff = mcu.get_effective_ranges(wv, fl, sig, wv_line, wv_range_size,doublet=doublet)
+                wv_eff, fl_eff, sig_eff = mcu.get_effective_ranges(wv, fl, sig, wv_line, wv_range_size, doublet=doublet)
                 fl_left = fl_eff[:3]
                 fl_right = fl_eff[-3:]
                 intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
@@ -1287,7 +1293,7 @@ class MuseCube:
                     plt.figure()
                     plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean flux')
                     plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
-                    mcu.plot_Gauss_plus_linear_model(model_fit,wv_eff,doublet=doublet)
+                    mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff, doublet=doublet)
                     plt.plot(wv_eff, residual, color='red', label='residual')
                     plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='bin sig')
                     plt.legend()

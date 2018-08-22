@@ -327,8 +327,7 @@ SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_
 std_vel_im.fits: Contains the standard deviation of the Gaussian profile fitted to the spectrum in each spatial resolution element where the fit was accepted.
 sig_vel_im.fits: Contains the uncertainty for the velocity obtained. This value comes from the covariance matrix and is computed only for the spaxels where the fit was accepted and where the covariance matrix was well defined.
 
-RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
-                the wavelength range of interest and the needed spatial dimensions to contain the source.
+RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes the wavelength range of interest and the needed spatial dimensions to contain the source.
 
 
 Uniform Binning:
@@ -336,7 +335,7 @@ Uniform Binning:
 The function::
 
     compute_kinematics_uniform_binning(x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', inspect=False, z=0,
-                           cmap='jet', amplitude_threshold=2., dwmax=10., side = 3)
+                           cmap='jet', amplitude_threshold=2., dwmax=10., side = 3,k_init=1, k_bounds=[0.1,10],doublet = False)
 
 calculates de kinematics of the region defined by (x_c,y_c,params) in spaxels. It rebins the aperture in smaller boxes, that will define the spatial resolution.
 The size of each one of these boxes will be given by the keyword ``side``. The method extract the 1-D spectrum of smaller regions within
@@ -366,7 +365,7 @@ The function::
 
     compute_kinematics_voronoi_binning(x_c, y_c, params, wv_line_vac, wv_range_size=35,
                                            type='abs', inspect=False, z=0, run_vorbin=False, vorbin_file=None,
-                                           cmap='jet', amplitude_threshold=2., dwmax=10.)
+                                           cmap='jet', amplitude_threshold=2., dwmax=10.,k_init=1, k_bounds=[0.1,10],doublet = False)
 its similar, but the bining will be done according to the file with the name given by ``voronoi_output``.
 This function uses a VORONOI binning to define the spatial resolution element (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
 Function create_voronoi_input() can create the input for the voronoi code.
