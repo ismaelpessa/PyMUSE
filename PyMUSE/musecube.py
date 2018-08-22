@@ -1076,7 +1076,6 @@ class MuseCube:
                     t = 'Accepted'
                 else:
                     print('Fit Rejected')
-                    import pdb; pdb.set_trace()
                     t = 'Rejected'
 
                 plt.figure()
