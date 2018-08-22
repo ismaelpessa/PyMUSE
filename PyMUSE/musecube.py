@@ -984,8 +984,14 @@ class MuseCube:
             sigma_total = model_fit[0].stddev.value
 
         if inspect:
+            plt.figure()
+            plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', label='data mean aperture')
+            mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff_t, doublet=doublet)
+            plt.title('Initial Model')
+            plt.legend()
             print('a_total = ' + str(a_total) + '\n')
             print('z_total = ' + str(z_total) + '\n')
+            print('sigma_total = '+str(sigma_total))
         if run_vorbin:
             if doublet:
                 wv_range = [np.mean(wv_line) - wv_range_size, np.mean(wv_line) + wv_range_size]
@@ -1070,6 +1076,7 @@ class MuseCube:
                     t = 'Accepted'
                 else:
                     print('Fit Rejected')
+                    import pdb; pdb.set_trace()
                     t = 'Rejected'
 
                 plt.figure()
@@ -1090,6 +1097,7 @@ class MuseCube:
                 print('value of wv_dif = ' + str(wv_offset))
                 print('amplitude = ' + str(amp))
                 print('noise = ' + str(noise))
+                print('std = ' + str(sig))
                 print('A fit which is accepted by default can be rejected by the user in the "inspect" mode\n')
                 print('\n')
                 deny = raw_input(
@@ -1214,8 +1222,14 @@ class MuseCube:
             sigma_total = model_fit[0].stddev.value
 
         if inspect:
+            plt.figure()
+            plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', label='data mean aperture')
+            mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff_t, doublet=doublet)
+            plt.title('Initial Model')
             print('a_total = ' + str(a_total) + '\n')
             print('z_total = ' + str(z_total) + '\n')
+            print('sigma_total = ' + str(sigma_total))
+
 
         mask2d = self.get_new_2dmask(region_string)
         ##get spaxel in mask2d
@@ -1317,6 +1331,7 @@ class MuseCube:
                     print('value of wv_dif = ' + str(wv_offset))
                     print('amplitude = ' + str(amp))
                     print('noise = ' + str(noise))
+                    print('std = ' + str(sig))
                     print('A fit which is accepted by default can be rejected by the user in the "inspect" mode\n')
                     print('\n')
                     deny = raw_input(
