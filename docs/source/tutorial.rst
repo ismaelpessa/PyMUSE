@@ -354,6 +354,9 @@ the main region and fit a gaussian + linear model, in order to fit and emi/abs l
     * amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)
     * dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.
     * inspect: If true, the fit of each spatial resolution element will be shown, 1 by 1. The inspect mode allow the user to manually reject any fit.
+    * doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile. wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.
+    * k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features. a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined by k_bounds.
+    * k_bounds: iterable of length = 2. range of possible values for k.
 This function returns the kinematic image of the region, and saves the image in a .fits file
 IMPORTANT Select strong and spatially extended features.
 
@@ -383,6 +386,9 @@ Ideally, the aperture defined by x_c, y_c, params should be the same aperture bi
     * cmap: Output colormap
     * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise, defined as the std of the residuals.
     * dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated spectrum, the fit will be rejected
+    * doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile. wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.
+    * k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features. a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined by k_bounds.
+    * k_bounds: iterable of length = 2. range of possible values for k.
 
 To generate the voronoi input file, you can use::
 

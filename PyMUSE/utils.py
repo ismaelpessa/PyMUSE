@@ -9,6 +9,7 @@ from astropy.modeling import models, fitting
 from linetools import utils as ltu
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from scipy.interpolate import interp1d
+from astropy.modeling.models import custom_model
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -180,25 +181,64 @@ def calculate_empirical_rms(spec, test=False):
     return XSpectrum1D.from_tuple((wv, fl, sigma))
 
 
-def get_effective_ranges(wv, fl, sig, wv_line, wv_range_size):
+def get_effective_ranges(wv, fl, sig, wv_line, wv_range_size, doublet = False):
+    if doublet:
+        wv_line = np.mean(wv_line)
     sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
     wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
     fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
     return wv_eff, fl_eff, sig_eff
 
 
-def gaussian_linear_model(wv, fl, sig, a_init, mean_init, sigma_init, slope_init, intercept_init):
-    gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
-    line = models.Linear1D(slope=slope_init, intercept=intercept_init)
-    model_init = gaussian + line
-    fitter = fitting.LevMarLSQFitter()
-    model_fit = fitter(model_init, wv, fl, weights=sig / np.sum(sig))
-    return model_fit, fitter
+def plot_Gauss_plus_linear_model(model,wv,doublet=False):
+    if doublet:
+        plot_2Gauss_plus_linear_model(model,wv)
+    else:
+        plt.plot(wv,model(wv),label = 'Gaussian Model',color='black')
+
+def plot_2Gauss_plus_linear_model(model,wv):
+    line = models.Linear1D(slope=model.slope_1.value, intercept=model.intercept_1.value)
+    G1 = model.amplitude_0.value*np.exp(-0.5*((wv-model.wv_vac1_0.value*(1+model[0].z.value))/model.stddev1_0.value)**2)
+    G2 = (model.amplitude_0.value/model.k_0.value)* np.exp(-0.5 * ((wv - model.wv_vac2_0.value*(1+model[0].z.value)) / model.stddev2_0.value) ** 2)
+    plt.plot(wv, model(wv), label='2 Gaussian Model',color='black')
+    plt.plot(wv,G1+line(wv),label='Gaussian #1',ls='--')
+    plt.plot(wv, G2 + line(wv), label='Gaussian #2',ls='--')
 
 
-def accept_model(amp, sig, mean, a_total, sigma_total, mean_total, amplitude_threshold, noise, dwmax, deny):
-    return abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
-        mean_total - mean) <= dwmax and deny != 'r'
+
+
+@custom_model
+def doublet_Gauss_fit(x,z=0,amplitude=200,stddev1=1,stddev2=1, wv_vac1=5000,wv_vac2=10000,k=1):
+    return amplitude*np.exp(-0.5 * ((x - wv_vac1*(1+z)) / stddev1)**2) + (amplitude/k)*np.exp(-0.5 * ((x - wv_vac2*(1+z)) / stddev2)**2)
+
+@custom_model
+def single_Gauss_fit(x,z=0,amplitude=200,stddev=1, wv_vac1=5000):
+    return amplitude * np.exp(-0.5 * ((x - wv_vac1 * (1 + z)) / stddev) ** 2)
+
+
+
+def gaussian_linear_model(wv, fl, sig, a_init, wv_line_vac, sigma_init, slope_init, intercept_init, k_init, k_bounds, z_init, doublet = False):
+    if doublet:
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = doublet_Gauss_fit(z=z_init, amplitude=a_init/2., stddev1=sigma_init, stddev2=sigma_init, wv_vac1=wv_line_vac[0], wv_vac2=wv_line_vac[1],
+                             k=k_init) + line
+        model_init.fixed['wv_vac1_0'] = True
+        model_init.fixed['wv_vac2_0'] = True
+        model_init.bounds['k_0'] = k_bounds
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv, fl)
+        return model_fit,fitter
+    else:
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = single_Gauss_fit(z=z_init, amplitude=a_init, stddev=sigma_init, wv_vac1=wv_line_vac) + line
+        model_init.fixed['wv_vac1_0']=True
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv, fl, weights=sig / np.sum(sig))
+        return model_fit, fitter
+
+
+def accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax, deny,doublet = False):
+    return abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and wv_offset <= dwmax and deny != 'r'
 
 
 def save_image_kinematics(hdulist, data, new_image_name, cmap, cb_label):
