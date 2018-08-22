@@ -1047,8 +1047,11 @@ class MuseCube:
             z_model = model_fit[0].z.value
             mean = (1 + z_model) * wv_line_vac
             if doublet:
-                amp = np.max(np.array(
-                    [abs(model_fit[0].amplitude.value), abs(model_fit[0].amplitude.value / model_fit[0].k.value)]))
+                if type=='abs':
+                    amp = np.min(np.array([model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
+                else:
+                    amp = np.max(
+                        np.array([model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
                 wv_offset = np.max(np.abs(mean_total - mean))
                 sig = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
             else:
@@ -1266,8 +1269,13 @@ class MuseCube:
                 z_model = model_fit[0].z.value
                 mean = (1 + z_model) * wv_line_vac
                 if doublet:
-                    amp = np.max(np.array(
-                        [abs(model_fit[0].amplitude.value), abs(model_fit[0].amplitude.value / model_fit[0].k.value)]))
+                    if type == 'abs':
+                        amp = np.min(np.array(
+                            [model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
+                    else:
+                        amp = np.max(
+                            np.array(
+                                [model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
                     wv_offset = np.max(np.abs(mean_total - mean))
                     sig = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
                 else:
