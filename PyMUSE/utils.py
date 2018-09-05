@@ -96,7 +96,7 @@ def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o
 def get_spec(specfit):
     hdulist = fits.open(specfit)
     flux = hdulist[0].data[0]
-    er = hdulist[1].data[0]
+    er = 1./np.sqrt(hdulist[1].data[0])
     n = len(flux)
     COEFF0 = hdulist[0].header['COEFF0']
     COEFF1 = hdulist[0].header['COEFF1']
