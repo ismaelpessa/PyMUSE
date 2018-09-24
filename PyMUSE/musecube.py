@@ -245,8 +245,8 @@ class MuseCube:
         data_white = self.white_data_orig
         center_x = center[0]
         center_y = center[1]
-        for i in xrange(center_x - halfsize - 1, center_x + halfsize):
-            for j in xrange(center_y - halfsize - 1, center_y + halfsize):
+        for i in range(center_x - halfsize - 1, center_x + halfsize):
+            for j in range(center_y - halfsize - 1, center_y + halfsize):
                 i2 = i - (center_x - halfsize)
                 j2 = j - (center_y - halfsize)
                 image[j2][i2] = data_white[j - 1][i - 1]
@@ -626,7 +626,7 @@ class MuseCube:
                 self.wfrac_show_spaxels(frac=frac, mask2d=mask2d, smoothed_white=smoothed_white)
         warn = False
         mask = new_2dmask
-        for wv_ii in xrange(n):
+        for wv_ii in range(n):
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
@@ -1350,8 +1350,8 @@ class MuseCube:
                     else:
                         std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(
                             units).value
-                    for i in xrange(int(x_ - radius), int(x_ + radius + 1)):
-                        for j in xrange(int(y_ - radius), int(y_ + radius + 1)):
+                    for i in range(int(x_ - radius), int(x_ + radius + 1)):
+                        for j in range(int(y_ - radius), int(y_ + radius + 1)):
                             kine_im[j][i] = vel
                             SN_im[j][i] = SN
                             sig_im[j][i] = np.abs(sig_vel)
@@ -1405,7 +1405,7 @@ class MuseCube:
         if ids == 'all':
             ids = fits_table['ID'].data.data
         n = len(ids)
-        for i in xrange(n):
+        for i in range(n):
             j = np.where(ids[i] == ID)[0][0]
             x_world = RA[j]
             y_world = DEC[j]
@@ -1443,7 +1443,7 @@ class MuseCube:
         r = pyregion.open(regfile)
         n = len(r)
         self.reload_canvas()
-        for i in xrange(n):
+        for i in range(n):
             id_ = id_start + i
             r_i = pyregion.ShapeList([r[i]])
             # check size of r_i for ellipses
@@ -1553,7 +1553,7 @@ class MuseCube:
         if len(keywords_list) != len(values_list):
             raise ValueError('Dimensions of keywords_list and values-list does not match')
         n = len(values_list)
-        for i in xrange(n):
+        for i in range(n):
             keyword = keywords_list[i]
             value = values_list[i]
             hdu_element.header[keyword] = value
@@ -1724,7 +1724,7 @@ class MuseCube:
         n = len(x)
         im_white = smoothed_white[~mask2d]
         fl_limit = np.percentile(im_white, (1. - frac) * 100.)
-        for i in xrange(n):
+        for i in range(n):
             if smoothed_white[y[i]][x[i]] >= fl_limit:
                 plt.figure(self.n)
                 plt.plot(x[i] + 1, y[i] + 1, 'o', color='Blue')
@@ -1798,7 +1798,7 @@ class MuseCube:
                                    b_world_new)
             a_world = a_world_new
             b_world = b_world_new
-            for i in xrange(n):
+            for i in range(n):
                 params_wcs = [a_world[i], b_world[i], theta[i]]
                 x_pix[i], y_pix[i], params = self.ellipse_params_to_pixel(x_world[i], y_world[i], params=params_wcs)
                 a[i] = params[0]
@@ -1812,7 +1812,7 @@ class MuseCube:
             id2 = []
             mag2 = []
             ly, lx = self.white_data.shape
-            for i in xrange(n):
+            for i in range(n):
                 if x_pix[i] >= border_thresh and y_pix[i] >= border_thresh and x_pix[i] <= lx - border_thresh and y_pix[
                     i] <= ly - border_thresh:
                     x2.append(x_pix[i])
@@ -1840,7 +1840,7 @@ class MuseCube:
             plt.text(x_pix[j], y_pix[j], id[j], color='Red')
             return
 
-        for i in xrange(n):
+        for i in range(n):
             color = 'Green'
             if flags[i] > flag_threshold:
                 color = 'Red'
@@ -1857,7 +1857,7 @@ class MuseCube:
             flag_threshold=flag_threshold, wcs_coords=wcs_coords, mag_sex=mag_sex, border_thresh=border_thresh)
         self.reload_canvas()
         n = len(x_pix)
-        for i in xrange(n):
+        for i in range(n):
             if flags[i] <= flag_threshold:
                 x_world, y_world = self.p2w(x_pix[i], y_pix[i])
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
@@ -1910,7 +1910,7 @@ class MuseCube:
 
         images_names = []
         fitsnames = []
-        for i in xrange(initial_wavelength, final_wavelength):
+        for i in range(initial_wavelength, final_wavelength):
             wavelength_range = (i, i + width)
             filename = 'colapsed_image_' + str(i) + '_'
             im = self.get_image(wv_input=[wavelength_range], fitsname=filename + '.fits', type='sum', save='True')
@@ -1924,7 +1924,7 @@ class MuseCube:
         video = self.make_video(images=images_names, outvid=outvid)
         n_im = len(fitsnames)
         if erase:
-            for i in xrange(n_im):
+            for i in range(n_im):
                 fits_im = fitsnames[i]
                 png_im = images_names[i]
                 command_fits = 'rm ' + fits_im
@@ -2071,11 +2071,11 @@ class MuseCube:
             r = pyregion.open(maskfile)
             n = len(r)
             masks = []
-            for i in xrange(n):
+            for i in range(n):
                 masks.append(self.region_2dmask(pyregion.ShapeList([r[i]])))
 
             mask_final = masks[0]
-            for i in xrange(n):
+            for i in range(n):
                 mask_final = np.logical_and(mask_final, masks[i])
             if inverse_mask:
                 mask_final = np.where(~mask_final, True, False)
@@ -3014,9 +3014,9 @@ class MuseCube:
         matrix_y = np.zeros_like(self.white_data)
         n = self.white_data.shape[0]
         m = self.white_data.shape[1]
-        for i in xrange(m):
+        for i in range(m):
             matrix_x[:, i] = i
-        for j in xrange(n):
+        for j in range(n):
             matrix_y[j, :] = j
         ###########
 
@@ -3201,7 +3201,7 @@ class MuseCube:
         video = self.make_video(images=images_names, outvid=outvid, image_sum=image_sum)
         n_im = len(fitsnames)
         if erase:
-            for i in xrange(n_im):
+            for i in range(n_im):
                 fits_im = fitsnames[i]
                 png_im = images_names[i]
                 command_fits = 'rm ' + fits_im
