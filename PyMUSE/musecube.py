@@ -111,12 +111,18 @@ class MuseCube:
 
             # These loops remove the third dimension from the header's keywords. This is neccesary in order to
             # create the white image and preserve the cube astrometry
+            l = []
             for i in w_header_0.keys():
                 if '3' in i:
-                    del w_header_0[i]
+                    l.append(i)
+            for i in l:
+                del w_header_0[i]
+            l = []
             for i in w_header_1.keys():
                 if '3' in i:
-                    del w_header_1[i]
+                    l.append(i)
+            for i in l:
+                del w_header_1[i]
 
             # prepare the header
             hdu = fits.HDUList()
@@ -1942,6 +1948,10 @@ class MuseCube:
         inds = [np.argmin(np.fabs(wv_ii - self.wavelength)) for wv_ii in wv_array]
         inds = np.unique(inds)
         return inds
+
+    def trim_cube_edges(self, dx, dy, output_fitsname = 'trimed_cube.fits'):
+        return
+
 
     def get_subsection_cube(self, xc, yc, lx, ly, wv_range, output_fitsname='cube_subsec.fits'):
         """
