@@ -1950,7 +1950,13 @@ class MuseCube:
         return inds
 
     def trim_cube_edges(self, dx, dy, output_fitsname = 'trimed_cube.fits'):
-        return
+        yc = int(self.cube.shape[1]/2)
+        xc = int(self.cube.shape[2]/2)
+        wv_range = [self.wavelength[0],self.wavelength[len(self.wavelength)-1]]
+        ly = yc-dy
+        lx = xc-dx
+        self.get_subsection_cube(xc,yc,lx,ly,wv_range, output_fitsname=output_fitsname)
+
 
 
     def get_subsection_cube(self, xc, yc, lx, ly, wv_range, output_fitsname='cube_subsec.fits'):
