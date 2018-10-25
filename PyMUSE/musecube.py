@@ -18,6 +18,7 @@ from astropy.table import Table
 from astropy.utils import isiterable
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.utils import name_from_coord
+import matplotlib
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
@@ -311,7 +312,6 @@ class MuseCube:
 
     # def create_homogeneous_sky_emission:
     #     pass
-
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
         """
@@ -997,7 +997,7 @@ class MuseCube:
             plt.legend()
             print('a_total = ' + str(a_total) + '\n')
             print('z_total = ' + str(z_total) + '\n')
-            print('sigma_total = '+str(sigma_total))
+            print('sigma_total = ' + str(sigma_total))
         if run_vorbin:
             if doublet:
                 wv_range = [np.mean(wv_line) - wv_range_size, np.mean(wv_line) + wv_range_size]
@@ -1059,8 +1059,9 @@ class MuseCube:
             z_model = model_fit[0].z.value
             mean = (1 + z_model) * wv_line_vac
             if doublet:
-                if type=='abs':
-                    amp = np.min(np.array([model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
+                if type == 'abs':
+                    amp = np.min(
+                        np.array([model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
                 else:
                     amp = np.max(
                         np.array([model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
@@ -1234,7 +1235,6 @@ class MuseCube:
             print('a_total = ' + str(a_total) + '\n')
             print('z_total = ' + str(z_total) + '\n')
             print('sigma_total = ' + str(sigma_total))
-
 
         mask2d = self.get_new_2dmask(region_string)
         ##get spaxel in mask2d
@@ -1741,12 +1741,22 @@ class MuseCube:
         plt.imshow(complete_mask, alpha=alpha)
         self.draw_pyregion(region_string)
 
-    def get_new_2dmask(self, region_string):
+    def get_new_2dmask(self, region_string, xy_list=None):
         """Creates a 2D mask for the white image that mask out spaxel that are outside
         the region defined by region_string"""
 
         from pyregion.region_to_filter import as_region_filter
         im_aux = np.ones_like(self.white_data)
+        if xy_list is not None:
+            x = xy_list[0]
+            y = xy_list[1]
+            n = len(x)
+            for i in range(n):
+                im_aux[y[i]][x[i]] = 0
+            im_aux = np.where(im_aux == 1, True, False)
+            mask = im_aux
+            return mask
+
         hdu_aux = self.hdulist_white_temp[1]
         hdu_aux.data = im_aux
         hdulist = self.hdulist_white
@@ -1855,6 +1865,73 @@ class MuseCube:
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
+    def save_vorbins_specs(self, vorbin_filename, mode='sum', npix=0, frac=0.1, empirical_std=False,
+                           redmonster_format=False):
+        x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
+        n = len(label_list)
+        for i in range(n):
+            x_bin = x_list[i].astype(int)
+            y_bin = y_list[i].astype(int)
+            x_c = np.mean(x_bin)
+            y_c = np.mean(y_bin)
+            x_w, y_w = self.p2w(x_c, y_c)
+            label_bin = label_list[i].astype(int)
+            mask2d = self.get_new_2dmask(region_string=None, xy_list=[x_bin, y_bin])
+            spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
+            plt.figure(3)
+            plt.plot(spec.wavelength, spec.flux)
+            cmap_rand = matplotlib.colors.ListedColormap(np.random.rand(256, 3))
+            mask2d_plot = np.where(mask2d, np.nan, 100)
+            plt.figure(self.n)
+            plt.imshow(mask2d_plot, cmap=cmap_rand)
+            if empirical_std:
+                spec = mcu.calculate_empirical_rms(spec)
+            spec = self.spec_to_vacuum(spec)
+
+            str_id = str(i).zfill(3)
+            spec_fits_name = str_id + '_' + vorbin_filename
+            if redmonster_format:
+                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits')
+                spec_fits_name+='_RMF.fits'
+            else:
+                spec.write_to_fits(spec_fits_name + '.fits')
+                spec_fits_name+='.fits'
+            m = len(x_bin)
+            x_string = ''
+            y_string = ''
+            ra_string = ''
+            dec_string = ''
+            for j in range(m):
+                x_string += str(x_bin[j])+','
+                y_string += str(y_bin[j]) + ','
+                ra,dec = self.p2w(x_bin[j],y_bin[j])
+                ra_string+=str(round(ra,6))+','
+                dec_string += str(round(dec,6)) + ','
+
+            x_string = x_string[:-1]
+            y_string = y_string[:-1]
+            ra_string = ra_string[:-1]
+            dec_string = dec_string[:-1]
+            hdulist = fits.open(spec_fits_name)
+            hdulist[0].header['X_COORDS_VOR_BIN'] = x_string
+            hdulist[0].header['Y_COORDS_VOR_BIN'] = y_string
+            hdulist[0].header['RA_COORDS_VOR_BIN'] = ra_string
+            hdulist[0].header['DEC_COORDS_VOR_BIN'] = dec_string
+
+            hdulist[0].header['X_COORD_CENTER'] = x_c
+            hdulist[0].header['Y_COORD_CENTER'] = y_c
+            hdulist[0].header['RA_COORD_CENTER'] = x_w
+            hdulist[0].header['DEC_COORD_CENTER'] = y_w
+
+            hdulist[0].header['CUBE_FILENAME'] = self.filename
+            hdulist[0].header['VORONOI_FILENAME'] = vorbin_filename
+
+            hdulist.writeto(spec_fits_name,overwrite=True)
+
+
+
+
+
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2, wcs_coords=False,
                               mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1, mag_sex='MAG_AUTO', border_thresh=1):
@@ -1949,15 +2026,13 @@ class MuseCube:
         inds = np.unique(inds)
         return inds
 
-    def trim_cube_edges(self, dx, dy, output_fitsname = 'trimed_cube.fits'):
-        yc = int(self.cube.shape[1]/2)
-        xc = int(self.cube.shape[2]/2)
-        wv_range = [self.wavelength[0],self.wavelength[len(self.wavelength)-1]]
-        ly = yc-dy
-        lx = xc-dx
-        self.get_subsection_cube(xc,yc,lx,ly,wv_range, output_fitsname=output_fitsname)
-
-
+    def trim_cube_edges(self, dx, dy, output_fitsname='trimed_cube.fits'):
+        yc = int(self.cube.shape[1] / 2)
+        xc = int(self.cube.shape[2] / 2)
+        wv_range = [self.wavelength[0], self.wavelength[len(self.wavelength) - 1]]
+        ly = yc - dy
+        lx = xc - dx
+        self.get_subsection_cube(xc, yc, lx, ly, wv_range, output_fitsname=output_fitsname)
 
     def get_subsection_cube(self, xc, yc, lx, ly, wv_range, output_fitsname='cube_subsec.fits'):
         """

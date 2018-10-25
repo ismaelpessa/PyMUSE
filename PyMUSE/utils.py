@@ -10,6 +10,7 @@ from astropy.modeling.models import custom_model
 from linetools import utils as ltu
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from scipy.interpolate import interp1d
+from astropy.table import Table
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -140,6 +141,31 @@ def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=1):
     plt.legend()
     plt.show()
     return w_spec, f_spec, er_spec
+
+def read_vorbin_output(vorbin_filename):
+    T = Table.read(vorbin_filename,format = 'ascii')
+    x = T['col1'].data
+    y = T['col2'].data
+    label = T['col3'].data
+    z = np.unique(label)
+    n = len(z)
+    x_output = []
+    y_output = []
+    label_output = []
+    for i in range(n):
+        lab = z[i]
+        cond = np.where(label==lab)
+        x_bin = x[cond]
+        y_bin = y[cond]
+        x_output.append(x_bin)
+        y_output.append(y_bin)
+        label_output.append(lab)
+    return np.array(x_output),np.array(y_output),np.array(label_output)
+
+
+
+
+
 
 
 def calculate_empirical_rms(spec, test=False):
