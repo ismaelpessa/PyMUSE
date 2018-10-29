@@ -1915,8 +1915,8 @@ class MuseCube:
             hdulist = fits.open(spec_fits_name)
             hdulist[0].header['X_COORDS_VOR_BIN'] = x_string
             hdulist[0].header['Y_COORDS_VOR_BIN'] = y_string
-            hdulist[0].header['RA_COORDS_VOR_BIN'] = ra_string
-            hdulist[0].header['DEC_COORDS_VOR_BIN'] = dec_string
+            #hdulist[0].header['RA_COORDS_VOR_BIN'] = ra_string
+            #hdulist[0].header['DEC_COORDS_VOR_BIN'] = dec_string
 
             hdulist[0].header['X_COORD_CENTER'] = x_c
             hdulist[0].header['Y_COORD_CENTER'] = y_c
