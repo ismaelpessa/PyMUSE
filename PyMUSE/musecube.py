@@ -1866,7 +1866,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_vorbins_specs(self, vorbin_filename, mode='sum', npix=0, frac=0.1, empirical_std=False,
-                           redmonster_format=False):
+                           redmonster_format=False,n_figure = 2, plot_only = True):
         x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
         n = len(label_list)
         for i in range(n):
@@ -1875,58 +1875,58 @@ class MuseCube:
             x_c = np.mean(x_bin)
             y_c = np.mean(y_bin)
             x_w, y_w = self.p2w(x_c, y_c)
-            label_bin = label_list[i].astype(int)
             mask2d = self.get_new_2dmask(region_string=None, xy_list=[x_bin, y_bin])
-            spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
-            plt.figure(3)
-            plt.plot(spec.wavelength, spec.flux)
             cmap_rand = matplotlib.colors.ListedColormap(np.random.rand(256, 3))
             mask2d_plot = np.where(mask2d, np.nan, 100)
             plt.figure(self.n)
             plt.imshow(mask2d_plot, cmap=cmap_rand)
-            if empirical_std:
-                spec = mcu.calculate_empirical_rms(spec)
-            spec = self.spec_to_vacuum(spec)
+            if ~plot_only:
+                spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
+                plt.figure(n_figure)
+                plt.plot(spec.wavelength, spec.flux)
+                if empirical_std:
+                    spec = mcu.calculate_empirical_rms(spec)
+                spec = self.spec_to_vacuum(spec)
 
-            str_id = str(i).zfill(3)
-            spec_fits_name = str_id + '_' + vorbin_filename
-            if redmonster_format:
-                mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits')
-                spec_fits_name+='_RMF.fits'
-            else:
-                spec.write_to_fits(spec_fits_name + '.fits')
-                spec_fits_name+='.fits'
-            m = len(x_bin)
-            x_string = ''
-            y_string = ''
-            ra_string = ''
-            dec_string = ''
-            for j in range(m):
-                x_string += str(x_bin[j])+','
-                y_string += str(y_bin[j]) + ','
-                ra,dec = self.p2w(x_bin[j],y_bin[j])
-                ra_string+=str(round(ra,6))+','
-                dec_string += str(round(dec,6)) + ','
+                str_id = str(i).zfill(3)
+                spec_fits_name = str_id + '_' + vorbin_filename
+                if redmonster_format:
+                    mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits')
+                    spec_fits_name+='_RMF.fits'
+                else:
+                    spec.write_to_fits(spec_fits_name + '.fits')
+                    spec_fits_name+='.fits'
+                m = len(x_bin)
+                x_string = ''
+                y_string = ''
+                ra_string = ''
+                dec_string = ''
+                for j in range(m):
+                    x_string += str(x_bin[j])+','
+                    y_string += str(y_bin[j]) + ','
+                    ra,dec = self.p2w(x_bin[j],y_bin[j])
+                    ra_string+=str(round(ra,6))+','
+                    dec_string += str(round(dec,6)) + ','
 
-            x_string = x_string[:-1]
-            y_string = y_string[:-1]
-            ra_string = ra_string[:-1]
-            dec_string = dec_string[:-1]
-            hdulist = fits.open(spec_fits_name)
-            hdulist[0].header['X_COORDS_VOR_BIN'] = x_string
-            hdulist[0].header['Y_COORDS_VOR_BIN'] = y_string
-            #hdulist[0].header['RA_COORDS_VOR_BIN'] = ra_string
-            #hdulist[0].header['DEC_COORDS_VOR_BIN'] = dec_string
+                x_string = x_string[:-1]
+                y_string = y_string[:-1]
+                ra_string = ra_string[:-1]
+                dec_string = dec_string[:-1]
+                hdulist = fits.open(spec_fits_name)
+                hdulist[0].header['X_COORDS_VOR_BIN'] = x_string
+                hdulist[0].header['Y_COORDS_VOR_BIN'] = y_string
+                #hdulist[0].header['RA_COORDS_VOR_BIN'] = ra_string
+                #hdulist[0].header['DEC_COORDS_VOR_BIN'] = dec_string
 
-            hdulist[0].header['X_COORD_CENTER'] = x_c
-            hdulist[0].header['Y_COORD_CENTER'] = y_c
-            hdulist[0].header['RA_COORD_CENTER'] = x_w
-            hdulist[0].header['DEC_COORD_CENTER'] = y_w
+                hdulist[0].header['X_COORD_CENTER'] = x_c
+                hdulist[0].header['Y_COORD_CENTER'] = y_c
+                hdulist[0].header['RA_COORD_CENTER'] = x_w
+                hdulist[0].header['DEC_COORD_CENTER'] = y_w
 
-            hdulist[0].header['CUBE_FILENAME'] = self.filename
-            hdulist[0].header['VORONOI_FILENAME'] = vorbin_filename
+                hdulist[0].header['CUBE_FILENAME'] = self.filename
+                hdulist[0].header['VORONOI_FILENAME'] = vorbin_filename
 
-            hdulist.writeto(spec_fits_name,overwrite=True)
+                hdulist.writeto(spec_fits_name,overwrite=True)
 
 
 
