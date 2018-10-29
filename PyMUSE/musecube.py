@@ -1882,6 +1882,8 @@ class MuseCube:
             plt.imshow(mask2d_plot, cmap=cmap_rand)
             if not plot_only:
                 spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
+                sn = np.median(spec.flux/spec.sig)
+                print('S/N = '+str(sn))
                 plt.figure(n_figure)
                 plt.plot(spec.wavelength, spec.flux)
                 if empirical_std:
