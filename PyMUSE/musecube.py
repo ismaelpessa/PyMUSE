@@ -1880,7 +1880,7 @@ class MuseCube:
             mask2d_plot = np.where(mask2d, np.nan, 100)
             plt.figure(self.n)
             plt.imshow(mask2d_plot, cmap=cmap_rand)
-            if ~plot_only:
+            if not plot_only:
                 spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
                 plt.figure(n_figure)
                 plt.plot(spec.wavelength, spec.flux)
