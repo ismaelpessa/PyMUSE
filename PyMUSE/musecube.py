@@ -850,7 +850,7 @@ class MuseCube:
         return mask2d
 
     def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_vorbin=False,
-                             targetSN=20):
+                             targetSN=20, pixelsize=None):
         """
         Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
         This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinematics
@@ -875,31 +875,50 @@ class MuseCube:
                          Higher targetSN will generate less bins, with a higher S/N each one.
         :return:
         """
-        if isinstance(params, (int, float)):
-            params = [params, params, 0]
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
-        mask2d = self.get_new_2dmask(region_string)
-        y, x = np.where(~mask2d)
         self.get_image(wv_input=[wv_range], fitsname='white_voronoi.fits', save=True)
         self.get_image(wv_input=[wv_range], fitsname='stat_voronoi.fits', save=True, stat=True)
+        if params != 'cube':
+            if isinstance(params, (int, float)):
+                params = [params, params, 0]
+            region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
+            mask2d = self.get_new_2dmask(region_string)
+        else:
+            if pixelsize is None:
+                pixelsize = 1
+            mask2d = np.ones_like(self.white_data)
+            mask2d = np.where(mask2d == 1, False, False)
+        y, x = np.where(~mask2d)
         hdulist = fits.open('white_voronoi.fits')
         white = hdulist[1].data
         hdulist = fits.open('stat_voronoi.fits')
         stat = hdulist[1].data
+
+        if np.isinf(np.max(stat)):
+            stat = np.where(np.isinf(stat), np.max(stat[np.where(~np.isinf(stat))]), stat)
+        if np.isinf(np.max(white)):
+            white = np.where(np.isinf(white), np.max(white[np.where(~np.isinf(white))]), white)
+
         f = open(output_file, 'w')
         for i, j in zip(x, y):
             flux = white[j][i]
             noise = np.sqrt(stat[j][i])
-            f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
+            if noise > 0 and flux > 0:
+                f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
         f.close()
+
         if run_vorbin:
             try:
                 from vorbin.voronoi_2d_binning import voronoi_2d_binning
             except ImportError:
-                raise ImportError("If run_voronoi=True, then the vorbin python package must be installed.")
+                raise ImportError("If run_vorbin=True, then the vorbin python package must be installed.")
             x, y, signal, noise = np.loadtxt(output_file).T
-            binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
-                                                                                      plot=1, quiet=0)
+            if pixelsize is not None:
+                binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
+                                                                                          plot=1, quiet=0,
+                                                                                          pixelsize=pixelsize)
+            else:
+                binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
+                                                                                          plot=1, quiet=0)
             np.savetxt('_temp_vorbin.txt', np.column_stack([x, y, binNum]), fmt=b'%10.6f %10.6f %8i')
             plt.tight_layout()
             plt.pause(1)
@@ -1866,7 +1885,7 @@ class MuseCube:
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
     def save_vorbins_specs(self, vorbin_filename, mode='sum', npix=0, frac=0.1, empirical_std=False,
-                           redmonster_format=False,n_figure = 2, plot_only = True):
+                           redmonster_format=False, n_figure=2, plot_only=True):
         x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
         n = len(label_list)
         for i in range(n):
@@ -1882,8 +1901,8 @@ class MuseCube:
             plt.imshow(mask2d_plot, cmap=cmap_rand)
             if not plot_only:
                 spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
-                sn = np.median(spec.flux/spec.sig)
-                print('S/N = '+str(sn))
+                sn = np.median(spec.flux / spec.sig)
+                print('S/N = ' + str(sn))
                 plt.figure(n_figure)
                 plt.plot(spec.wavelength, spec.flux)
                 if empirical_std:
@@ -1894,45 +1913,33 @@ class MuseCube:
                 spec_fits_name = str_id + '_' + vorbin_filename
                 if redmonster_format:
                     mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits')
-                    spec_fits_name+='_RMF.fits'
+                    spec_fits_name += '_RMF.fits'
                 else:
                     spec.write_to_fits(spec_fits_name + '.fits')
-                    spec_fits_name+='.fits'
+                    spec_fits_name += '.fits'
                 m = len(x_bin)
-                x_string = ''
-                y_string = ''
-                ra_string = ''
-                dec_string = ''
-                for j in range(m):
-                    x_string += str(x_bin[j])+','
-                    y_string += str(y_bin[j]) + ','
-                    ra,dec = self.p2w(x_bin[j],y_bin[j])
-                    ra_string+=str(round(ra,6))+','
-                    dec_string += str(round(dec,6)) + ','
-
-                x_string = x_string[:-1]
-                y_string = y_string[:-1]
-                ra_string = ra_string[:-1]
-                dec_string = dec_string[:-1]
                 hdulist = fits.open(spec_fits_name)
-                hdulist[0].header['X_COORDS_VOR_BIN'] = x_string
-                hdulist[0].header['Y_COORDS_VOR_BIN'] = y_string
-                #hdulist[0].header['RA_COORDS_VOR_BIN'] = ra_string
-                #hdulist[0].header['DEC_COORDS_VOR_BIN'] = dec_string
+                for j in range(m):
+                    ra, dec = self.p2w(x_bin[j], y_bin[j])
+                    kwrd_ra = 'RA_' + str(j)
+                    kwrd_dec = 'DEC_' + str(j)
+                    kwrd_x = 'X_' + str(j)
+                    kwrd_y = 'Y_' + str(j)
+                    hdulist[0].header[kwrd_ra] = str(round(ra, 6))
+                    hdulist[0].header[kwrd_dec] = str(round(dec, 6))
+                    hdulist[0].header[kwrd_x] = str(x_bin[j])
+                    hdulist[0].header[kwrd_y] = str(y_bin[j])
 
                 hdulist[0].header['X_COORD_CENTER'] = x_c
                 hdulist[0].header['Y_COORD_CENTER'] = y_c
                 hdulist[0].header['RA_COORD_CENTER'] = x_w
                 hdulist[0].header['DEC_COORD_CENTER'] = y_w
+                hdulist[0].header['N_SPAXELS'] = str(m)
 
                 hdulist[0].header['CUBE_FILENAME'] = self.filename
                 hdulist[0].header['VORONOI_FILENAME'] = vorbin_filename
 
-                hdulist.writeto(spec_fits_name,overwrite=True)
-
-
-
-
+                hdulist.writeto(spec_fits_name, overwrite=True)
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2, wcs_coords=False,
