@@ -850,7 +850,7 @@ class MuseCube:
         return mask2d
 
     def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_vorbin=False,
-                             targetSN=20, pixelsize=None):
+                             targetSN=20, pixelsize=None, cvt = True):
         """
         Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
         This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinematics
@@ -916,10 +916,10 @@ class MuseCube:
             if pixelsize is not None:
                 binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
                                                                                           plot=1, quiet=0,
-                                                                                          pixelsize=pixelsize)
+                                                                                          pixelsize=pixelsize, cvt=cvt)
             else:
                 binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
-                                                                                          plot=1, quiet=0)
+                                                                                          plot=1, quiet=0, cvt=cvt)
             np.savetxt('_temp_vorbin.txt', np.column_stack([x, y, binNum]), fmt=b'%10.6f %10.6f %8i')
             plt.tight_layout()
             plt.pause(1)
