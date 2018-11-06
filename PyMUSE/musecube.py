@@ -912,6 +912,7 @@ class MuseCube:
             except ImportError:
                 raise ImportError("If run_vorbin=True, then the vorbin python package must be installed.")
             x, y, signal, noise = np.loadtxt(output_file).T
+            plt.figure()
             if pixelsize is not None:
                 binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
                                                                                           plot=1, quiet=0,
@@ -1884,6 +1885,23 @@ class MuseCube:
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id, mag
 
+    def plot_vorbins(self, vorbin_filename, cmap = 'gist_rainbow'):
+        x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
+        n = len(label_list)
+        masks = np.zeros_like(self.white_data)
+        for i in range(n):
+            x_bin = x_list[i].astype(int)
+            y_bin = y_list[i].astype(int)
+            mask2d = self.get_new_2dmask(region_string=None, xy_list=[x_bin, y_bin])
+            value = np.random.uniform(1,10*n)
+            mask2d_plot = np.where(mask2d, 0, value)
+            masks = masks + mask2d_plot
+        masks = np.where(masks==0,np.nan,masks)
+        plt.figure(self.n)
+        plt.imshow(masks, cmap=cmap)
+
+
+
     def save_vorbins_specs(self, vorbin_filename, mode='sum', npix=0, frac=0.1, empirical_std=False,
                            redmonster_format=False, n_figure=2, plot_only=True):
         x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
@@ -1925,8 +1943,8 @@ class MuseCube:
                     kwrd_dec = 'DEC_' + str(j)
                     kwrd_x = 'X_' + str(j)
                     kwrd_y = 'Y_' + str(j)
-                    hdulist[0].header[kwrd_ra] = str(round(ra, 6))
-                    hdulist[0].header[kwrd_dec] = str(round(dec, 6))
+                    hdulist[0].header[kwrd_ra] = str(ra)
+                    hdulist[0].header[kwrd_dec] = str(dec)
                     hdulist[0].header[kwrd_x] = str(x_bin[j])
                     hdulist[0].header[kwrd_y] = str(y_bin[j])
 
