@@ -444,7 +444,7 @@ class MuseCube:
         from PyMUSE.roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r', fig=current_fig)
-        raw_input("MuseCube: Please select points with left click. Right click and Enter to continue...")
+        input("MuseCube: Please select points with left click. Right click and Enter to continue...")
         print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
