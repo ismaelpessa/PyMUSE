@@ -864,7 +864,7 @@ class MuseCube:
         This function will also generate the output voronoi file if rune_voronoi is set to True. This requires to have installed vorbin
         :param x_c: x-coordinate of the center of the aperture
         :param y_c: y-coordinate of the center of the aperture
-        :param params: parameters that define the aperture, either a single radius or a [a,b,theta] set
+        :param params: parameters that define the aperture, either a single radius or a [a,b,theta] set. If params == 'cube' the voronoi input file will be created for the entire white image (in the wv_range defined by the user)
         :param wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images
                          To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
                          galaxy that contains the feature of interest
@@ -875,6 +875,9 @@ class MuseCube:
                          Higher targetSN will generate less bins, with a higher S/N each one.
         :return:
         """
+
+        waves = self.wavelength[np.where(np.logical_and(self.wavelength>=wv_range[0],self.wavelength<=wv_range[1]))]
+        n = len(waves)
         self.get_image(wv_input=[wv_range], fitsname='white_voronoi.fits', save=True)
         self.get_image(wv_input=[wv_range], fitsname='stat_voronoi.fits', save=True, stat=True)
         if params != 'cube':
@@ -900,7 +903,7 @@ class MuseCube:
 
         f = open(output_file, 'w')
         for i, j in zip(x, y):
-            flux = white[j][i]
+            flux = white[j][i]/np.sqrt(n)
             noise = np.sqrt(stat[j][i])
             if noise > 0 and flux > 0:
                 f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
