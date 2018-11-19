@@ -850,7 +850,7 @@ class MuseCube:
         return mask2d
 
     def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_vorbin=False,
-                             targetSN=20, pixelsize=None, cvt = True):
+                             targetSN=20, pixelsize=None, cvt = True, bin_minimum_size = 1):
         """
         Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
         This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinematics
@@ -873,6 +873,9 @@ class MuseCube:
                             generated vorbin input file (vorbin must be installed)
         :param targetSN: If run_vorbin = True, targetSN will correspond to the required SN to generate de voronoi bins.
                          Higher targetSN will generate less bins, with a higher S/N each one.
+        :param cvt: Passed to vorbin
+        :param pixelsize: Passed to vorbin
+        :param bin_minimum_size: Minimum number of spaxel that will have each Voronoi bin.
         :return:
         """
 
@@ -905,6 +908,9 @@ class MuseCube:
         for i, j in zip(x, y):
             flux = white[j][i]/np.sqrt(n)
             noise = np.sqrt(stat[j][i])
+            if bin_minimum_size>1:
+                if flux>targetSN*noise/np.sqrt(bin_minimum_size):
+                    flux = targetSN*noise/np.sqrt(bin_minimum_size)
             if noise > 0 and flux > 0:
                 f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
         f.close()
