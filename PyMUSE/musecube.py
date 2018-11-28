@@ -259,7 +259,7 @@ class MuseCube:
                 image[j2][i2] = data_white[j - 1][i - 1]
         return image
 
-    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4, n_figure=2, save=False):
+    def get_gaussian_seeing_weighted_spec(self, x_c, y_c, radius, seeing=4, n_figure=2, save=False, meta=None):
         """
         Function to extract the spectrum of a circular aperture defined by x_c, y_c and radius in spaxel space.
         The spectrum is weighted by a 2d gaussian centered at the center of the aperture, with a std = seeing in spaxels
@@ -283,7 +283,7 @@ class MuseCube:
             weigths = weigths / np.nansum(weigths)
             fl[wv_ii] = np.nansum(self.cube[wv_ii] * weigths)
             sig[wv_ii] = np.sqrt(np.nansum(self.stat[wv_ii] * (weigths ** 2)))
-        spec = XSpectrum1D.from_tuple((w, fl, sig))
+        spec = XSpectrum1D.from_tuple((w, fl, sig), meta=meta)
         spec = self.spec_to_vacuum(spec)
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
@@ -311,7 +311,7 @@ class MuseCube:
         return im_new
 
 
-    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
+    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False, meta=None):
         """
         Gets the spectrum of a single spaxel (xy) of the MuseCube
         :param x: x coordinate of the spaxel
@@ -333,7 +333,7 @@ class MuseCube:
         spec = np.where(np.isnan(spec), 0, spec)
         sigma = np.where(np.isnan(spec), 99., sigma)
 
-        spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma))
+        spec = XSpectrum1D.from_tuple((self.wavelength, spec, sigma), meta=meta)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
@@ -572,7 +572,7 @@ class MuseCube:
         patch = patch_list[0]
         ax.add_patch(patch)
 
-    def spec_from_minicube_mask(self, new_2dmask, mode='wwm', npix=0, frac=0.1):
+    def spec_from_minicube_mask(self, new_2dmask, mode='wwm', npix=0, frac=0.1, meta=None):
         """Given a 2D mask, this function provides a combined spectrum
         of all non-masked voxels.
 
@@ -592,6 +592,9 @@ class MuseCube:
               * `wwm_ivar` - Weghts given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
+        meta : dict
+            Dictionary with metadata that will be passed to the XSpectrum1D object
+
         Returns
         -------
         An XSpectrum1D object (from linetools) with the combined spectrum.
@@ -737,7 +740,7 @@ class MuseCube:
             er = er * abs(norm)
             print('normalization factor relative to total flux = ' + str(norm))
 
-        return XSpectrum1D.from_tuple((self.wavelength, fl, er))
+        return XSpectrum1D.from_tuple((self.wavelength, fl, er), meta=meta)
 
     def get_spec_and_image(self, center, halfsize=15, n_figure=3, mode='wwm', coord_system='pix', npix=0, frac=0.1,
                            save=False, empirical_std=False):
@@ -1454,16 +1457,16 @@ class MuseCube:
                 spec.write_to_fits(spec_fits_name + '.fits')
             print('ID = ' + str_id + ' Ready!!')
 
-    def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False, redmonster_format=True,
-                              id_start=1, coord_name=False, debug=False, a_min=3.5):
+    def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False,
+                              redmonster_format=False, id_start=1, coord_name=False, debug=False, a_min=3.5):
         """
         Function used to save a set of spectra given by a DS9 regionfile "regfile"
         :param regfile: str. Name of the DS9 region file
-        :param mode: str.  Default = 'wwm'. see more modes and details in self.spec_from_minicube_mask()
+        :param mode: str.  Default = 'wwm'. See more modes and details in self.spec_from_minicube_mask()
         :param frac. FLoat, default = 0.1
-                     Parameter needed for wfrac mode
+                     Parameter needed for `wfrac` mode
         :param npix: int. Default = 0
-            Standard deviation of the gaussian filter to smooth (Only in wwm methods)
+            Standard deviation of the gaussian filter to smooth (only in `wwm` methods)
         :param empirical_std: boolean. Default = False.
             If True, the errors of the spectrum will be determined empirically
         :param redmonster_format: If True, the specta will be saved in a redeable format for redmonster software
@@ -1473,12 +1476,14 @@ class MuseCube:
         :param id_start: int. Default = 1
                 Initial id assigned to diferent spectra
         """
+        meta = None  # this can eventually be a dictionary with metadata to pass to the XSpectrum1D object
         r = pyregion.open(regfile)
         n = len(r)
         self.reload_canvas()
         for i in range(n):
             id_ = id_start + i
             r_i = pyregion.ShapeList([r[i]])
+
             # check size of r_i for ellipses
             if r_i[0].name == 'ellipse':
                 if r_i[0].coord_list[2] < a_min:
@@ -1489,10 +1494,17 @@ class MuseCube:
                 if r_i[0].coord_list[2] < 1:
                     print("Circle region has radius < 1. Skipping it.")
                     continue
+            # import pdb; pdb.set_trace()
+            if r_i[0].comment != '':  # if there is a comment in the Ds9 region, pass it on
+                text_i = r_i[0].comment
+                text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
+                meta = dict()
+                meta['headers'] = [dict()]  # has to be list because of linetools likes it this way
+                meta['headers'][0]['PyMUSE COMMENT'] = 'Ds9 region text: '+ text_i
             self.draw_region(r_i)
             mask2d = self.region_2dmask(r_i)
             ##Get spec
-            spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
+            spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac, meta=meta)
             if empirical_std:
                 spec = mcu.calculate_empirical_rms(spec)
             spec = self.spec_to_vacuum(spec)
@@ -3090,7 +3102,7 @@ class MuseCube:
         return data
 
     def get_gaussian_profile_weighted_spec(self, x_c=None, y_c=None, params=None, region_string_=None,
-                                           coord_system='pix'):
+                                           coord_system='pix', meta=None):
         """
         Function that extract the spectrum from an aperture defined either by elliptical parameters or  by an elliptical region defined by region_string in ds9 format
         :param x_c: x_coordinate of the center of the aperture
@@ -3172,7 +3184,7 @@ class MuseCube:
         norm = np.sum(fl_sum) / np.sum(fl)
         fl = fl * norm
         sig = sig * norm
-        return XSpectrum1D.from_tuple((w, fl, sig))
+        return XSpectrum1D.from_tuple((w, fl, sig), meta=meta)
 
     def determinate_seeing_from_white(self, xc, yc, halfsize):
         """
