@@ -301,8 +301,7 @@ class MuseCube:
         return im_new
 
     def create_homogeneous_sky_emission(self, nsig=3, floor_input=0, floor_output=0, save=True, output_image_filename = 'homogeneous_emission.fits'):
-        #     pass
-
+        pass
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
         """
