@@ -386,14 +386,11 @@ kinematics_im.fits: Contains the velocity calculated by the fit in each spatial 
 SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_range_size in each spatial resolution element where the fit was accepted.
 std_vel_im.fits: Contains the standard deviation of the Gaussian profile fitted to the spectrum in each spatial resolution element where the fit was accepted.
 sig_vel_im.fits: Contains the uncertainty for the velocity obtained. This value comes from the covariance matrix and is computed only for the spaxels where the fit was accepted and where the covariance matrix was well defined.</p>
-<dl class="docutils">
-<dt>RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes</dt>
-<dd>the wavelength range of interest and the needed spatial dimensions to contain the source.</dd>
-</dl>
+<p>RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes the wavelength range of interest and the needed spatial dimensions to contain the source.</p>
 <p>Uniform Binning:</p>
 <p>The function:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics_uniform_binning</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                       <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">,</span> <span class="n">side</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
+                       <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">,</span> <span class="n">side</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span><span class="n">k_init</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">k_bounds</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span><span class="n">doublet</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>calculates de kinematics of the region defined by (x_c,y_c,params) in spaxels. It rebins the aperture in smaller boxes, that will define the spatial resolution.
@@ -413,6 +410,9 @@ the main region and fit a gaussian + linear model, in order to fit and emi/abs l
 <li>amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)</li>
 <li>dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.</li>
 <li>inspect: If true, the fit of each spatial resolution element will be shown, 1 by 1. The inspect mode allow the user to manually reject any fit.</li>
+<li>doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile. wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.</li>
+<li>k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features. a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined by k_bounds.</li>
+<li>k_bounds: iterable of length = 2. range of possible values for k.</li>
 </ul>
 </div></blockquote>
 <p>This function returns the kinematic image of the region, and saves the image in a .fits file
@@ -421,7 +421,7 @@ IMPORTANT Select strong and spatially extended features.</p>
 <p>The function:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">compute_kinematics_voronoi_binning</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">y_c</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wv_line_vac</span><span class="p">,</span> <span class="n">wv_range_size</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span>
                                        <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;abs&#39;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">run_vorbin</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">vorbin_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                                       <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">)</span>
+                                       <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">amplitude_threshold</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">dwmax</span><span class="o">=</span><span class="mf">10.</span><span class="p">,</span><span class="n">k_init</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">k_bounds</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span><span class="n">doublet</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>its similar, but the bining will be done according to the file with the name given by <code class="docutils literal"><span class="pre">voronoi_output</span></code>.
@@ -444,6 +444,9 @@ Ideally, the aperture defined by x_c, y_c, params should be the same aperture bi
 <li>cmap: Output colormap</li>
 <li>amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise, defined as the std of the residuals.</li>
 <li>dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated spectrum, the fit will be rejected</li>
+<li>doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile. wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.</li>
+<li>k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features. a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined by k_bounds.</li>
+<li>k_bounds: iterable of length = 2. range of possible values for k.</li>
 </ul>
 </div></blockquote>
 <p>To generate the voronoi input file, you can use:</p>

@@ -327,8 +327,7 @@ SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_
 std_vel_im.fits: Contains the standard deviation of the Gaussian profile fitted to the spectrum in each spatial resolution element where the fit was accepted.
 sig_vel_im.fits: Contains the uncertainty for the velocity obtained. This value comes from the covariance matrix and is computed only for the spaxels where the fit was accepted and where the covariance matrix was well defined.
 
-RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
-                the wavelength range of interest and the needed spatial dimensions to contain the source.
+RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes the wavelength range of interest and the needed spatial dimensions to contain the source.
 
 
 Uniform Binning:
@@ -336,7 +335,7 @@ Uniform Binning:
 The function::
 
     compute_kinematics_uniform_binning(x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs', inspect=False, z=0,
-                           cmap='jet', amplitude_threshold=2., dwmax=10., side = 3)
+                           cmap='jet', amplitude_threshold=2., dwmax=10., side = 3,k_init=1, k_bounds=[0.1,10],doublet = False)
 
 calculates de kinematics of the region defined by (x_c,y_c,params) in spaxels. It rebins the aperture in smaller boxes, that will define the spatial resolution.
 The size of each one of these boxes will be given by the keyword ``side``. The method extract the 1-D spectrum of smaller regions within
@@ -354,6 +353,9 @@ the main region and fit a gaussian + linear model, in order to fit and emi/abs l
     * amplitude threshold: The signal of the line has to be at least this times higher than the noise to be considered real (This is to avoid fiting noise)
     * dwmax: This is the maximum offset allowed to the line (in angstroms). This is also to avoid fitting fake lines.
     * inspect: If true, the fit of each spatial resolution element will be shown, 1 by 1. The inspect mode allow the user to manually reject any fit.
+    * doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile. wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.
+    * k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features. a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined by k_bounds.
+    * k_bounds: iterable of length = 2. range of possible values for k.
 This function returns the kinematic image of the region, and saves the image in a .fits file
 IMPORTANT Select strong and spatially extended features.
 
@@ -363,7 +365,7 @@ The function::
 
     compute_kinematics_voronoi_binning(x_c, y_c, params, wv_line_vac, wv_range_size=35,
                                            type='abs', inspect=False, z=0, run_vorbin=False, vorbin_file=None,
-                                           cmap='jet', amplitude_threshold=2., dwmax=10.)
+                                           cmap='jet', amplitude_threshold=2., dwmax=10.,k_init=1, k_bounds=[0.1,10],doublet = False)
 its similar, but the bining will be done according to the file with the name given by ``voronoi_output``.
 This function uses a VORONOI binning to define the spatial resolution element (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
 Function create_voronoi_input() can create the input for the voronoi code.
@@ -383,6 +385,9 @@ Ideally, the aperture defined by x_c, y_c, params should be the same aperture bi
     * cmap: Output colormap
     * amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted. Amplitude_threshold = 2 means that the amplitude should be at least 2 times higher that the noise, defined as the std of the residuals.
     * dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated spectrum, the fit will be rejected
+    * doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile. wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.
+    * k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features. a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined by k_bounds.
+    * k_bounds: iterable of length = 2. range of possible values for k.
 
 To generate the voronoi input file, you can use::
 

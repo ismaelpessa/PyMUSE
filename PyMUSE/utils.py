@@ -1,13 +1,16 @@
 """Utilities for MuseCube"""
 
+import aplpy
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.io import fits
-from linetools.spectra.xspectrum1d import XSpectrum1D
-from linetools import utils as ltu
-from scipy.interpolate import interp1d
-from scipy.ndimage import gaussian_filter
 from astropy import units as u
+from astropy.io import fits
+from astropy.modeling import models, fitting
+from astropy.modeling.models import custom_model
+from linetools import utils as ltu
+from linetools.spectra.xspectrum1d import XSpectrum1D
+from scipy.interpolate import interp1d
+from astropy.table import Table
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -26,9 +29,10 @@ def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
     print("<FL_IVAR2> = {}".format(np.median(sp2.flux / sp2.sig ** 2)))
     print("<FL1>/<FL2> = {}".format(np.median(sp1.flux / sp2.flux)))
 
-def indexOf(array,element):
-    for i,j in enumerate(array):
-        if j==element:
+
+def indexOf(array, element):
+    for i, j in enumerate(array):
+        if j == element:
             return i
     return -1
 
@@ -65,6 +69,7 @@ def spec_to_redmonster_format(spec, fitsname, n_id=None, mag=None):
     hdulist_new = fits.HDUList([hdu1, hdu2])
     hdulist_new.writeto(fitsname, clobber=True)
 
+
 def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o 4 o 5
     hdulist = fits.open(redmonster_file)
     templates = hdulist[2]
@@ -92,7 +97,7 @@ def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o
 def get_spec(specfit):
     hdulist = fits.open(specfit)
     flux = hdulist[0].data[0]
-    er = hdulist[1].data[0]
+    er = 1./np.sqrt(hdulist[1].data[0])
     n = len(flux)
     COEFF0 = hdulist[0].header['COEFF0']
     COEFF1 = hdulist[0].header['COEFF1']
@@ -137,6 +142,26 @@ def get_rm_spec(rm_spec_name, rm_out_file=None, rm_fit_number=1):
     plt.show()
     return w_spec, f_spec, er_spec
 
+def read_vorbin_output(vorbin_filename):
+    T = Table.read(vorbin_filename,format = 'ascii')
+    x = T['col1'].data
+    y = T['col2'].data
+    label = T['col3'].data
+    z = np.unique(label)
+    n = len(z)
+    x_output = []
+    y_output = []
+    label_output = []
+    for i in range(n):
+        lab = z[i]
+        cond = np.where(label==lab)
+        x_bin = x[cond]
+        y_bin = y[cond]
+        x_output.append(x_bin)
+        y_output.append(y_bin)
+        label_output.append(lab)
+    return np.array(x_output),np.array(y_output),np.array(label_output)
+
 
 def calculate_empirical_rms(spec, test=False):
     fl = spec.flux.value
@@ -152,7 +177,7 @@ def calculate_empirical_rms(spec, test=False):
     fl_max = interpolated_max(wv)
     fl_min = interpolated_min(wv)
     # take the mid value
-    fl_mid = 0.5 * (fl_max + fl_min) # reference flux
+    fl_mid = 0.5 * (fl_max + fl_min)  # reference flux
 
     # the idea here is that these will be the intrinsic rms per pixel (both are the same though)
     max_mean_diff = np.abs(fl_mid - fl_max)
@@ -177,10 +202,89 @@ def calculate_empirical_rms(spec, test=False):
     return XSpectrum1D.from_tuple((wv, fl, sigma))
 
 
+def get_effective_ranges(wv, fl, sig, wv_line, wv_range_size, doublet=False):
+    if doublet:
+        wv_line = np.mean(wv_line)
+    sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+    wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+    fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+    return wv_eff, fl_eff, sig_eff
+
+
+def plot_Gauss_plus_linear_model(model, wv, doublet=False):
+    if doublet:
+        plot_2Gauss_plus_linear_model(model, wv)
+    else:
+        plt.plot(wv, model(wv), label='Gaussian Model', color='black')
+
+
+def plot_2Gauss_plus_linear_model(model, wv):
+    line = models.Linear1D(slope=model.slope_1.value, intercept=model.intercept_1.value)
+    G1 = model.amplitude_0.value * np.exp(
+        -0.5 * ((wv - model.wv_vac1_0.value * (1 + model[0].z.value)) / model.stddev1_0.value) ** 2)
+    G2 = (model.amplitude_0.value / model.k_0.value) * np.exp(
+        -0.5 * ((wv - model.wv_vac2_0.value * (1 + model[0].z.value)) / model.stddev2_0.value) ** 2)
+    plt.plot(wv, model(wv), label='2 Gaussian Model', color='black')
+    plt.plot(wv, G1 + line(wv), label='Gaussian #1', ls='--')
+    plt.plot(wv, G2 + line(wv), label='Gaussian #2', ls='--')
+
+
+@custom_model
+def doublet_Gauss_fit(x, z=0, amplitude=200, stddev1=1, stddev2=1, wv_vac1=5000, wv_vac2=10000, k=1):
+    return amplitude * np.exp(-0.5 * ((x - wv_vac1 * (1 + z)) / stddev1) ** 2) + (amplitude / k) * np.exp(
+        -0.5 * ((x - wv_vac2 * (1 + z)) / stddev2) ** 2)
+
+
+@custom_model
+def single_Gauss_fit(x, z=0, amplitude=200, stddev=1, wv_vac1=5000):
+    return amplitude * np.exp(-0.5 * ((x - wv_vac1 * (1 + z)) / stddev) ** 2)
+
+
+def gaussian_linear_model(wv, fl, sig, a_init, wv_line_vac, sigma_init, slope_init, intercept_init, k_init, k_bounds,
+                          z_init, doublet=False):
+    if doublet:
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = doublet_Gauss_fit(z=z_init, amplitude=a_init / 2., stddev1=sigma_init, stddev2=sigma_init,
+                                       wv_vac1=wv_line_vac[0], wv_vac2=wv_line_vac[1],
+                                       k=k_init) + line
+        model_init.fixed['wv_vac1_0'] = True
+        model_init.fixed['wv_vac2_0'] = True
+        model_init.bounds['k_0'] = k_bounds
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv, fl)
+        return model_fit, fitter
+    else:
+        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
+        model_init = single_Gauss_fit(z=z_init, amplitude=a_init, stddev=sigma_init, wv_vac1=wv_line_vac) + line
+        model_init.fixed['wv_vac1_0'] = True
+        fitter = fitting.LevMarLSQFitter()
+        model_fit = fitter(model_init, wv, fl, weights=sig / np.sum(sig))
+        return model_fit, fitter
+
+
+def accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax, deny, doublet=False):
+    return abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (
+    a_total * amp > 0) and wv_offset <= dwmax and deny != 'r'
+
+
+def save_image_kinematics(hdulist, data, new_image_name, cmap, cb_label):
+    hdulist_new = hdulist
+    hdulist_new[1].data = data
+    hdulist_new.writeto(new_image_name, clobber=True)
+    fig = aplpy.FITSFigure(new_image_name, figure=plt.figure())
+    fig.show_colorscale(cmap=cmap)
+    fig.add_colorbar()
+    fig.colorbar.set_axis_label_text(cb_label)
+    return hdulist_new, fig
+
+
 def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_output=0):
-        neg_fluxes = input_image[np.where(input_image<floor_input)]
-        pos_fluxes = np.abs(neg_fluxes)
-        all_fluxes = np.concatenate((pos_fluxes,neg_fluxes))
-        std = np.std(all_fluxes)
-        im_new = np.where(input_image < nsig*std, floor_output, input_image)
-        return im_new
+    """Filters all pixels with values consistent with nsig*std of fluxes below floor_input
+    (interpreted as being sky), and replace them with a floor_output value"""
+    neg_fluxes = input_image[np.where(input_image < floor_input)]
+    pos_fluxes = np.abs(neg_fluxes)
+    all_fluxes = np.concatenate((pos_fluxes, neg_fluxes))
+    std = np.std(all_fluxes)
+    im_new = np.where(input_image < nsig * std, floor_output, input_image)
+    return im_new
+

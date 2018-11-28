@@ -177,7 +177,7 @@ if you already generated a catalogue, use::
     cube.plot_sextractor_regions('example.cat')
 to plot them and::
 
-    cube.save_sextractor_specs(mode='wwm')
+    cube.save_sextractor_specs('example.cat',mode='wwm')
 
 for saving them to the hard drive.
 

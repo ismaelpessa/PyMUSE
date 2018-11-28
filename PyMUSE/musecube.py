@@ -18,6 +18,7 @@ from astropy.table import Table
 from astropy.utils import isiterable
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.utils import name_from_coord
+import matplotlib
 from matplotlib import pyplot as plt
 from scipy import interpolate
 from scipy import ndimage
@@ -63,8 +64,9 @@ class MuseCube:
         self.load_data()
         self.white_data = fits.open(self.filename_white)[1].data
         self.hdulist_white = fits.open(self.filename_white)
+        self.hdulist_white_temp = fits.open(self.filename_white)
         self.white_data = np.where(self.white_data < 0, 0, self.white_data)
-        self.white_data_orig = fits.open(self.filename_white)
+        self.white_data_orig = fits.open(self.filename_white)[1].data
         self.ivar_im = None
         self.smooth_im = None
         self.__npix = None
@@ -110,12 +112,18 @@ class MuseCube:
 
             # These loops remove the third dimension from the header's keywords. This is neccesary in order to
             # create the white image and preserve the cube astrometry
+            l = []
             for i in w_header_0.keys():
                 if '3' in i:
-                    del w_header_0[i]
+                    l.append(i)
+            for i in l:
+                del w_header_0[i]
+            l = []
             for i in w_header_1.keys():
                 if '3' in i:
-                    del w_header_1[i]
+                    l.append(i)
+            for i in l:
+                del w_header_1[i]
 
             # prepare the header
             hdu = fits.HDUList()
@@ -147,7 +155,7 @@ class MuseCube:
         to disk called `smoothed_white.fits`.
         **kwargs are passed down to scipy.ndimage.gaussian_filter()
         """
-        hdulist = self.hdulist_white
+        hdulist = self.hdulist_white_temp
         im = self.white_data
         if npix > 0:
             smooth_im = ndimage.gaussian_filter(im, sigma=npix, **kwargs)
@@ -241,11 +249,11 @@ class MuseCube:
         """
         side = 2 * halfsize + 1
         image = [[0 for x in range(side)] for y in range(side)]
-        data_white = fits.open(self.filename_white)[1].data
+        data_white = self.white_data_orig
         center_x = center[0]
         center_y = center[1]
-        for i in xrange(center_x - halfsize - 1, center_x + halfsize):
-            for j in xrange(center_y - halfsize - 1, center_y + halfsize):
+        for i in range(center_x - halfsize - 1, center_x + halfsize):
+            for j in range(center_y - halfsize - 1, center_y + halfsize):
                 i2 = i - (center_x - halfsize)
                 j2 = j - (center_y - halfsize)
                 image[j2][i2] = data_white[j - 1][i - 1]
@@ -289,19 +297,19 @@ class MuseCube:
             spec.write_to_fits(name + '.fits')
         return spec
 
-    def create_homogeneous_sky_white(self, nsig=3, floor_input=0, floor_output=0, save=True, output_image_filename = 'homogeneous_sky.fits'):
+    def create_homogeneous_sky_white(self, nsig=3, floor_input=0, floor_output=0, save=True,
+                                     output_image_filename='homogeneous_sky.fits'):
 
-        im_new = mcu.create_homogeneous_sky_image(self.white_data_orig, nsig=nsig, floor_input=floor_input, floor_output=floor_output)
+        im_new = mcu.create_homogeneous_sky_image(self.white_data_orig, nsig=nsig, floor_input=floor_input,
+                                                  floor_output=floor_output)
         if save:
-            hdulist = copy.deepcopy(self.hdulist_white)
-            hdulist[0].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_image'
-            hdulist[1].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_image'
+            hdulist = self.hdulist_white_temp
+            hdulist[0].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_white'
+            hdulist[1].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_white'
             hdulist[1].data = im_new
-            hdulist.writeto(output_image_filename)
+            hdulist.writeto(output_image_filename, clobber=True)
         return im_new
 
-    def create_homogeneous_sky_emission(self, nsig=3, floor_input=0, floor_output=0, save=True, output_image_filename = 'homogeneous_emission.fits'):
-        pass
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False):
         """
@@ -434,7 +442,7 @@ class MuseCube:
         from PyMUSE.roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r', fig=current_fig)
-        raw_input("MuseCube: Please select points with left click. Right click and Enter to continue...")
+        input("MuseCube: Please select points with left click. Right click and Enter to continue...")
         print("MuseCube: Calculating the spectrum...")
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
@@ -622,7 +630,7 @@ class MuseCube:
                 self.wfrac_show_spaxels(frac=frac, mask2d=mask2d, smoothed_white=smoothed_white)
         warn = False
         mask = new_2dmask
-        for wv_ii in xrange(n):
+        for wv_ii in range(n):
             im_fl = self.cube[wv_ii][~mask]  # this is a 1-d np.array()
             im_var = self.stat[wv_ii][~mask]  # this is a 1-d np.array()
 
@@ -830,7 +838,7 @@ class MuseCube:
     def region_2dmask(self, r):
         from pyregion.region_to_filter import as_region_filter
         im_aux = np.ones_like(self.white_data)
-        hdu_aux = fits.open(self.filename_white)[1]
+        hdu_aux = self.hdulist_white_temp[1]
         hdu_aux.data = im_aux
         shape = hdu_aux.data.shape
         region_filter = as_region_filter(r, origin=0)
@@ -840,7 +848,7 @@ class MuseCube:
         return mask2d
 
     def create_voronoi_input(self, x_c, y_c, params, wv_range, output_file='voronoi_input_test.txt', run_vorbin=False,
-                             targetSN=20):
+                             targetSN=20, pixelsize=None, cvt = True, bin_minimum_size = 1):
         """
         Function to create an input file for the voronoi binning code (see https://pypi.org/project/vorbin/#files and http://www-astro.physics.ox.ac.uk/~mxc/software/)
         This input file can be used to produce a voronoi binning of the aperture containing a galaxy, which can be used to compute the kinematics
@@ -854,7 +862,7 @@ class MuseCube:
         This function will also generate the output voronoi file if rune_voronoi is set to True. This requires to have installed vorbin
         :param x_c: x-coordinate of the center of the aperture
         :param y_c: y-coordinate of the center of the aperture
-        :param params: parameters that define the aperture, either a single radius or a [a,b,theta] set
+        :param params: parameters that define the aperture, either a single radius or a [a,b,theta] set. If params == 'cube' the voronoi input file will be created for the entire white image (in the wv_range defined by the user)
         :param wv_range: iterable of length = 2. [w_ini,w_end] of the wavelength range that will be used to generate the images
                          To compute the kinematics of a galaxy, this wavelength range should contain the portion of the spectrum of the
                          galaxy that contains the feature of interest
@@ -863,33 +871,62 @@ class MuseCube:
                             generated vorbin input file (vorbin must be installed)
         :param targetSN: If run_vorbin = True, targetSN will correspond to the required SN to generate de voronoi bins.
                          Higher targetSN will generate less bins, with a higher S/N each one.
+        :param cvt: Passed to vorbin
+        :param pixelsize: Passed to vorbin
+        :param bin_minimum_size: Minimum number of spaxel that will have each Voronoi bin.
         :return:
         """
-        if isinstance(params, (int, float)):
-            params = [params, params, 0]
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
-        mask2d = self.get_new_2dmask(region_string)
-        y, x = np.where(~mask2d)
+
+        waves = self.wavelength[np.where(np.logical_and(self.wavelength>=wv_range[0],self.wavelength<=wv_range[1]))]
+        n = len(waves)
         self.get_image(wv_input=[wv_range], fitsname='white_voronoi.fits', save=True)
         self.get_image(wv_input=[wv_range], fitsname='stat_voronoi.fits', save=True, stat=True)
+        if params != 'cube':
+            if isinstance(params, (int, float)):
+                params = [params, params, 0]
+            region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
+            mask2d = self.get_new_2dmask(region_string)
+        else:
+            if pixelsize is None:
+                pixelsize = 1
+            mask2d = np.ones_like(self.white_data)
+            mask2d = np.where(mask2d == 1, False, False)
+        y, x = np.where(~mask2d)
         hdulist = fits.open('white_voronoi.fits')
         white = hdulist[1].data
         hdulist = fits.open('stat_voronoi.fits')
         stat = hdulist[1].data
+
+        if np.isinf(np.max(stat)):
+            stat = np.where(np.isinf(stat), np.max(stat[np.where(~np.isinf(stat))]), stat)
+        if np.isinf(np.max(white)):
+            white = np.where(np.isinf(white), np.max(white[np.where(~np.isinf(white))]), white)
+
         f = open(output_file, 'w')
         for i, j in zip(x, y):
-            flux = white[j][i]
+            flux = white[j][i]/np.sqrt(n)
             noise = np.sqrt(stat[j][i])
-            f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
+            if bin_minimum_size>1:
+                if flux>targetSN*noise/np.sqrt(bin_minimum_size):
+                    flux = targetSN*noise/np.sqrt(bin_minimum_size)
+            if noise > 0 and flux > 0:
+                f.write('{}\t{}\t{}\t{}\n'.format(i, j, flux, noise))
         f.close()
+
         if run_vorbin:
             try:
                 from vorbin.voronoi_2d_binning import voronoi_2d_binning
             except ImportError:
-                raise ImportError("If run_voronoi=True, then the vorbin python package must be installed.")
+                raise ImportError("If run_vorbin=True, then the vorbin python package must be installed.")
             x, y, signal, noise = np.loadtxt(output_file).T
-            binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
-                                                                                      plot=1, quiet=0)
+            plt.figure()
+            if pixelsize is not None:
+                binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
+                                                                                          plot=1, quiet=0,
+                                                                                          pixelsize=pixelsize, cvt=cvt)
+            else:
+                binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(x, y, signal, noise, targetSN,
+                                                                                          plot=1, quiet=0, cvt=cvt)
             np.savetxt('_temp_vorbin.txt', np.column_stack([x, y, binNum]), fmt=b'%10.6f %10.6f %8i')
             plt.tight_layout()
             plt.pause(1)
@@ -897,7 +934,8 @@ class MuseCube:
     def compute_kinematics_voronoi_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35,
                                            type='abs', inspect=False, z=0,
                                            run_vorbin=False, vorbin_file=None, targetSN=20,
-                                           cmap='jet', amplitude_threshold=2., dwmax=10.):
+                                           cmap='jet', amplitude_threshold=2., dwmax=10., k_init=1, k_bounds=[0.1, 10],
+                                           doublet=False):
         """
                 Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
                 This function uses a VORONOI binning to define the spatial resolution element.
@@ -932,23 +970,31 @@ class MuseCube:
                 :param dwmax: float, Angstroms, maximum offset accepted (respect to the integrated spectrum) for the line in each spaxel
                               to accept the fit. If in a given spaxel, the line of shifted more than dwmax Angstroms respect to the integrated
                               spectrum, the fit will be rejected
+                :param doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile
+                                         wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of
+                                         both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.
+                :param k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features.
+                                                   a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined
+                                                   by k_bounds.
+                :param k_bounds: iterable of length = 2. range of possible values for k.
                 :return:
                 """
         if isinstance(params, (int, float)):
             params = [params, params, 0]
+        if doublet:
+            wv_line_vac = np.array(wv_line_vac)
         wv_line = wv_line_vac * (1 + z)
         region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])
         spec_total = self.get_spec_from_region_string(region_string, mode='mean')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t = spec_total.sig.value
-        sig_eff_t = sig_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
-        wv_eff_t = wv_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
-        fl_eff_t = fl_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
+        wv_eff_t, fl_eff_t, sig_eff_t = mcu.get_effective_ranges(wv_t, fl_t, sig_t, wv_line, wv_range_size,
+                                                                 doublet=doublet)
         fl_left = fl_eff_t[:3]
         fl_right = fl_eff_t[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
-        if type not in ['abs','emi']:
+        if type not in ['abs', 'emi']:
             raise ValueError("Input `type={}` parameter not valid.".format(type))
         if type == 'abs':
             a_init = np.min(fl_eff_t) - intercept_init
@@ -956,23 +1002,36 @@ class MuseCube:
             a_init = np.max(fl_eff_t) - intercept_init
         slope_init = 0
         sigma_init = wv_range_size / 3.
-        mean_init = wv_line
-        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
-        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
-        model_init = gaussian + line
-        fitter = fitting.LevMarLSQFitter()
-        model_fit = fitter(model_init, wv_eff_t, fl_eff_t, weights=sig_eff_t / np.sum(sig_eff_t))
-        mean_total = model_fit[0].mean.value
-        sigma_total = model_fit[0].stddev.value
+
+        model_fit, fitter = mcu.gaussian_linear_model(wv_eff_t, fl_eff_t, sig_eff_t, a_init, wv_line_vac, sigma_init,
+                                                      slope_init, intercept_init, k_init=k_init, k_bounds=k_bounds,
+                                                      z_init=z, doublet=doublet)
+
+        z_total = model_fit[0].z.value
         a_total = model_fit[0].amplitude.value
+        mean_total = (1 + z_total) * wv_line_vac
+        if doublet:
+            sigma_total = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
+            k_init = model_fit[0].k.value
+        else:
+            sigma_total = model_fit[0].stddev.value
+
         if inspect:
+            plt.figure()
+            plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', label='data mean aperture')
+            mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff_t, doublet=doublet)
+            plt.title('Initial Model')
+            plt.legend()
             print('a_total = ' + str(a_total) + '\n')
-            print('mean_total = ' + str(mean_total) + '\n')
+            print('z_total = ' + str(z_total) + '\n')
+            print('sigma_total = ' + str(sigma_total))
         if run_vorbin:
-            # import pdb;pdb.set_trace()
-            wv_range = [wv_line - wv_range_size, wv_line + wv_range_size]
+            if doublet:
+                wv_range = [np.mean(wv_line) - wv_range_size, np.mean(wv_line) + wv_range_size]
+            else:
+                wv_range = [wv_line - wv_range_size, wv_line + wv_range_size]
             self.create_voronoi_input(x_c, y_c, params, wv_range, output_file='_temp_vorbin.txt',
-                                 run_vorbin=True, targetSN=targetSN)
+                                      run_vorbin=True, targetSN=targetSN)
 
             table = Table.read('_temp_vorbin.txt', format='ascii')
         else:
@@ -1003,9 +1062,9 @@ class MuseCube:
                 sig += (s.sig.value) ** 2
             fl = fl / n_spaxels
             sig = np.sqrt(sig) / n_spaxels
-            sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-            wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-            fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+
+            wv_eff, fl_eff, sig_eff = mcu.get_effective_ranges(wv, fl, sig, wv_line, wv_range_size, doublet=doublet)
+
             fl_left = fl_eff[:3]
             fl_right = fl_eff[-3:]
             intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
@@ -1015,28 +1074,38 @@ class MuseCube:
                 a_init = np.max(fl_eff) - intercept_init
             slope_init = 0
             sigma_init = sigma_total
-            mean_init = mean_total
-            gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
-            line = models.Linear1D(slope=slope_init, intercept=intercept_init)
-            model_init = gaussian + line
-            fitter = fitting.LevMarLSQFitter()
-            model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
-            m = fitter.fit_info['param_cov']
+            z_init = z_total
+
+            model_fit, fitter = mcu.gaussian_linear_model(wv_eff, fl_eff, sig_eff, a_init, wv_line_vac, sigma_init,
+                                                          slope_init, intercept_init, k_init=k_init, k_bounds=k_bounds,
+                                                          z_init=z_init, doublet=doublet)
+
             residual = model_fit(wv_eff) - fl_eff
             noise = np.std(residual)
             SN = np.median(fl_eff / sig_eff)
-
-            mean = model_fit[0].mean.value
-            amp = model_fit[0].amplitude.value
-            sig = model_fit[0].stddev.value
+            z_model = model_fit[0].z.value
+            mean = (1 + z_model) * wv_line_vac
+            if doublet:
+                if type == 'abs':
+                    amp = np.min(
+                        np.array([model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
+                else:
+                    amp = np.max(
+                        np.array([model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
+                wv_offset = np.max(np.abs(mean_total - mean))
+                sig = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
+            else:
+                amp = model_fit[0].amplitude.value
+                sig = model_fit[0].stddev.value
+                wv_offset = np.abs(mean_total - mean)
             deny = ''
             m = fitter.fit_info['param_cov']
-            sig_vel_fit=np.nan
+            sig_z_fit = np.nan
             if m is not None:
-                sig_vel_fit = np.sqrt(m[1][1])
+                sig_z_fit = np.sqrt(m[0][0])
             if inspect:
-                if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
-                                mean_total - mean) <= dwmax:
+                if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
+                                    deny, doublet=doublet):
                     print('Fit Accepted')
                     t = 'Accepted'
                 else:
@@ -1046,8 +1115,8 @@ class MuseCube:
                 plt.figure()
                 plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean_flux')
                 plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
-                plt.plot(wv_eff, model_fit(wv_eff), color='green', label='modeled flux')
-                plt.plot(wv_eff, residual, color='red', label='residual')
+                mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff, doublet=doublet)
+                plt.plot(wv_eff, residual, color='red', label='Residual')
                 plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='bin sig')
                 plt.legend()
                 plt.title(t)
@@ -1058,59 +1127,40 @@ class MuseCube:
                     plt.colorbar()
                 else:
                     print('Cov Matrix undefined')
-                print('value of wv_dif = ' + str(mean_total - mean))
+                print('value of wv_dif = ' + str(wv_offset))
                 print('amplitude = ' + str(amp))
                 print('noise = ' + str(noise))
+                print('std = ' + str(sig))
                 print('A fit which is accepted by default can be rejected by the user in the "inspect" mode\n')
                 print('\n')
-                deny=raw_input('Press "r" and Enter to manually reject this fit. Otherwise, just press Enter to continue\n')
-                deny=deny.lower()
-                if deny=='r':
+                deny = raw_input(
+                    'Press "r" and Enter to manually reject this fit. Otherwise, just press Enter to continue\n')
+                deny = deny.lower()
+                if deny == 'r':
                     print('fit manually rejected by the user\n')
-            if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
-                            mean_total - mean) <= dwmax and deny!='r':
+            if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
+                                deny, doublet=doublet):
                 units = u.km / u.s
-                vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
-                sig_vel = ltu.dv_from_z((mean / wv_line_vac) - 1,((mean + sig_vel_fit) / wv_line_vac) - 1).to(units).value
-                std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1,((mean + sig) / wv_line_vac) - 1).to(units).value
+                vel = ltu.dv_from_z(z_model, z).to(units).value
+                sig_vel = ltu.dv_from_z(z_model + sig_z_fit, z_model).to(units).value
+                if doublet:
+                    std_vel = np.mean(
+                        ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value)
+                else:
+                    std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value
                 for i, j in zip(x_, y_):
                     kine_im[j][i] = vel
                     SN_im[j][i] = SN
                     sig_im[j][i] = np.abs(sig_vel)
                     std_im[j][i] = np.abs(std_vel)
 
-
-        hdulist_kin = self.hdulist_white
-        hdulist_kin[1].data = kine_im
-        hdulist_kin.writeto('kinematics_im.fits', clobber=True)
-        fig_k = aplpy.FITSFigure('kinematics_im.fits', figure=plt.figure())
-        fig_k.show_colorscale(cmap=cmap)
-        fig_k.add_colorbar()
-        fig_k.colorbar.set_axis_label_text('dV (km s$^{-1}$)')
-
-        hdulist_SN = self.hdulist_white
-        hdulist_SN[1].data = SN_im
-        hdulist_SN.writeto('SN_im.fits', clobber=True)
-        fig_SN = aplpy.FITSFigure('SN_im.fits', figure=plt.figure())
-        fig_SN.show_colorscale(cmap=cmap)
-        fig_SN.add_colorbar()
-        fig_SN.colorbar.set_axis_label_text('S/N')
-
-        hdulist_sig_vel = self.hdulist_white
-        hdulist_sig_vel[1].data = sig_im
-        hdulist_sig_vel.writeto('sig_vel_im.fits', clobber=True)
-        fig_sig_vel= aplpy.FITSFigure('sig_vel_im.fits', figure=plt.figure())
-        fig_sig_vel.show_colorscale(cmap=cmap)
-        fig_sig_vel.add_colorbar()
-        fig_sig_vel.colorbar.set_axis_label_text('$\sigma_{v (cov matrix)}$ (km s$^{-1}$)')
-
-        hdulist_std_vel = self.hdulist_white
-        hdulist_std_vel[1].data = std_im
-        hdulist_std_vel.writeto('std_vel_im.fits', clobber=True)
-        fig_std_vel = aplpy.FITSFigure('std_vel_im.fits', figure=plt.figure())
-        fig_std_vel.show_colorscale(cmap=cmap)
-        fig_std_vel.add_colorbar()
-        fig_std_vel.colorbar.set_axis_label_text('$\sigma_{v (fit)}$ (km s$^{-1}$)')
+        hdulist_kin, fig_k = mcu.save_image_kinematics(self.hdulist_white_temp, kine_im, 'kinematics_im.fits', cmap,
+                                                       'dV (km s$^{-1}$)')
+        hdulist_SN, fig_SN = mcu.save_image_kinematics(self.hdulist_white_temp, SN_im, 'SN_im.fits', cmap, 'S/N')
+        hdulist_sig_vel, fig_sig_vel = mcu.save_image_kinematics(self.hdulist_white_temp, sig_im, 'sig_vel_im.fits',
+                                                                 cmap, '$\sigma_{v (cov matrix)}$ (km s$^{-1}$)')
+        hdulist_std_vel, fig_std_vel = mcu.save_image_kinematics(self.hdulist_white_temp, std_im, 'std_vel_im.fits',
+                                                                 cmap, '$\sigma_{v (fit)}$ (km s$^{-1}$)')
 
         xw, yw = self.p2w(x_c, y_c)
         if isinstance(params, (int, float)):
@@ -1121,11 +1171,13 @@ class MuseCube:
         fig_k.recenter(xw, yw, r.value)
         fig_SN.recenter(xw, yw, r.value)
         fig_sig_vel.recenter(xw, yw, r.value)
+        fig_std_vel.recenter(xw, yw, r.value)
         return kine_im
 
     def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs',
                                            inspect=False, z=0,
-                                           cmap='jet', amplitude_threshold=2., dwmax=10., side=3):
+                                           cmap='jet', amplitude_threshold=2., dwmax=10., side=3, k_init=1,
+                                           k_bounds=[0.1, 10], doublet=False):
         """
         Function to compute the kinematics of a source, fitting a Gaussian + linear model to a feature.
         This function uses a UNIFORM binning to define the spatial resolution element.
@@ -1158,84 +1210,63 @@ class MuseCube:
         :param side: int, pixels, size of the side of the sub-boxes to re-bin the complete aperture. If this number is bigger,
                      you will obtain a higher signal to noise, but a lower spatial resolution. side = 1 is the maximum spatial resolution,
                      where a single spectrum will be obtained from each spaxels. Bigger boxes will generate less spectra, with higher s/n each one
+        :param doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile
+                        wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of
+                        both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.
+        :param k_init: float, default = 1. If doublet =  True, this parameter allows to modulate the relative amplitude between the 2 features.
+                       a2 = a1/k. k is a parameter that will be fited by the model. The range of k can be defined
+                       by k_bounds.
+        :param k_bounds: iterable of length = 2. range of possible values for k.
 
         :return:
         """
         ##Get the integrated spec fit
+        if doublet:
+            wv_line_vac = np.array(wv_line_vac)
         wv_line = wv_line_vac * (1 + z)
         if isinstance(params, (int, float)):
             params = [params, params, 0]
-
-        # spec_total = self.get_spec_from_ellipse_params(x_c, y_c, params, mode='wwm') #COMENTADO POR TESTEO 13/JUL
         region_string = self.box_params_to_ds9reg_string(x_c, y_c, 2 * np.max(params), 2 * np.max(params))
         spec_total = self.get_spec_from_region_string(region_string, mode='mean')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
         sig_t = spec_total.sig.value
-        sig_eff = sig_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
-        wv_eff = wv_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
-        fl_eff = fl_t[np.where(np.logical_and(wv_t >= wv_line - wv_range_size, wv_t <= wv_line + wv_range_size))]
-        fl_left = fl_eff[:3]
-        fl_right = fl_eff[-3:]
+        wv_eff_t, fl_eff_t, sig_eff_t = mcu.get_effective_ranges(wv_t, fl_t, sig_t, wv_line, wv_range_size,
+                                                                 doublet=doublet)
+        fl_left = fl_eff_t[:3]
+        fl_right = fl_eff_t[-3:]
         intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
         if type == 'abs':
-            a_init = np.min(fl_eff) - intercept_init
+            a_init = np.min(fl_eff_t) - intercept_init
         if type == 'emi':
-            a_init = np.max(fl_eff) - intercept_init
+            a_init = np.max(fl_eff_t) - intercept_init
         slope_init = 0
         sigma_init = wv_range_size / 3.
-        mean_init = wv_line
-        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
-        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
-        model_init = gaussian + line
-        fitter = fitting.LevMarLSQFitter()
-        model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
-        mean_total = model_fit[0].mean.value
-        sigma_total = model_fit[0].stddev.value
+        model_fit, fitter = mcu.gaussian_linear_model(wv_eff_t, fl_eff_t, sig_eff_t, a_init, wv_line_vac, sigma_init,
+                                                      slope_init, intercept_init, k_init=k_init, k_bounds=k_bounds,
+                                                      z_init=z, doublet=doublet)
+        z_total = model_fit[0].z.value
         a_total = model_fit[0].amplitude.value
+        mean_total = (1 + z_total) * wv_line_vac
+        if doublet:
+            sigma_total = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
+            k_init = model_fit[0].k.value
+        else:
+            sigma_total = model_fit[0].stddev.value
+
         if inspect:
+            plt.figure()
+            plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', label='data mean aperture')
+            mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff_t, doublet=doublet)
+            plt.title('Initial Model')
             print('a_total = ' + str(a_total) + '\n')
-            print('mean_total = ' + str(mean_total) + '\n')
-        z_line = (mean_total / wv_line_vac) - 1.
+            print('z_total = ' + str(z_total) + '\n')
+            print('sigma_total = ' + str(sigma_total))
 
-        # region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, params[0], params[1], params[2])   #TESTEO 13/JUL
         mask2d = self.get_new_2dmask(region_string)
-        ##Find center guessing parameters
-
-        region_string_c = self.box_params_to_ds9reg_string(x_c, y_c, side, side)
-        spec_c = self.get_spec_from_region_string(region_string_c, mode='mean')
-        # spec_c = self.get_spec_spaxel(x_c, y_c)
-        fl_c = spec_c.flux.value
-        wv_c = spec_c.wavelength.value
-        sig_c = spec_total.sig.value
-        sig_eff = sig_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
-        wv_eff = wv_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
-        fl_eff = fl_c[np.where(np.logical_and(wv_c >= wv_line - wv_range_size, wv_c <= wv_line + wv_range_size))]
-
-        #### Define central gaussian_mean
-        wv_c_eff = wv_eff
-        fl_c_eff = fl_eff
-        fl_left = fl_eff[:3]
-        fl_right = fl_eff[-3:]
-        intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
-        if type == 'abs':
-            a_init = np.min(fl_eff) - intercept_init
-        if type == 'emi':
-            a_init = np.max(fl_eff) - intercept_init
-        slope_init = 0
-        sigma_init = sigma_total
-        mean_init = wv_line
-        gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
-        line = models.Linear1D(slope=slope_init, intercept=intercept_init)
-        model_init = gaussian + line
-        fitter = fitting.LevMarLSQFitter()
-        model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
-        mean_center = model_fit[0].mean.value
-        a_center = model_fit[0].amplitude.value
-        sigma_center = model_fit[0].stddev.value
-
         ##get spaxel in mask2d
         y, x = np.where(~mask2d)
+
         kine_im = np.where(self.white_data == 0, np.nan, np.nan)
         sig_im = np.where(self.white_data == 0, np.nan, np.nan)
         SN_im = np.where(self.white_data == 0, np.nan, np.nan)
@@ -1260,14 +1291,10 @@ class MuseCube:
                 print(str(count) + '/' + str(n))
                 region_string = self.box_params_to_ds9reg_string(x_, y_, side, side)
                 spec = self.get_spec_from_region_string(region_string, mode='mean')
-                # spec = self.get_spec_spaxel(x[i], y[i])
-
                 wv = spec.wavelength.value
                 fl = spec.flux.value
                 sig = spec_total.sig.value
-                sig_eff = sig[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-                wv_eff = wv[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
-                fl_eff = fl[np.where(np.logical_and(wv >= wv_line - wv_range_size, wv <= wv_line + wv_range_size))]
+                wv_eff, fl_eff, sig_eff = mcu.get_effective_ranges(wv, fl, sig, wv_line, wv_range_size, doublet=doublet)
                 fl_left = fl_eff[:3]
                 fl_right = fl_eff[-3:]
                 intercept_init = (np.sum(fl_right) + np.sum(fl_left)) / (len(fl_left) + len(fl_right))
@@ -1276,27 +1303,38 @@ class MuseCube:
                 if type == 'emi':
                     a_init = np.max(fl_eff) - intercept_init
                 slope_init = 0
-                sigma_init = sigma_center
-                mean_init = mean_center
-                gaussian = models.Gaussian1D(amplitude=a_init, mean=mean_init, stddev=sigma_init)
-                line = models.Linear1D(slope=slope_init, intercept=intercept_init)
-                model_init = gaussian + line
-                fitter = fitting.LevMarLSQFitter()
-                model_fit = fitter(model_init, wv_eff, fl_eff, weights=sig_eff / np.sum(sig_eff))
-                m = fitter.fit_info['param_cov']
-                sig_vel_fit=np.nan
-                if m is not None:
-                    sig_vel_fit = np.sqrt(m[1][1])
+                sigma_init = sigma_total
+                z_init = z_total
+
+                model_fit, fitter = mcu.gaussian_linear_model(wv_eff, fl_eff, sig_eff, a_init, wv_line_vac, sigma_init,
+                                                              slope_init, intercept_init, k_init=k_init,
+                                                              k_bounds=k_bounds, z_init=z_init, doublet=doublet)
                 residual = model_fit(wv_eff) - fl_eff
                 noise = np.std(residual)
                 SN = np.median(fl_eff / sig_eff)
-
-                mean = model_fit[0].mean.value
-                amp = model_fit[0].amplitude.value
-                sig = model_fit[0].stddev.value
-                deny=''
-                if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
-                                mean_total - mean) <= dwmax:
+                z_model = model_fit[0].z.value
+                mean = (1 + z_model) * wv_line_vac
+                if doublet:
+                    if type == 'abs':
+                        amp = np.min(np.array(
+                            [model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
+                    else:
+                        amp = np.max(
+                            np.array(
+                                [model_fit[0].amplitude.value, model_fit[0].amplitude.value / model_fit[0].k.value]))
+                    wv_offset = np.max(np.abs(mean_total - mean))
+                    sig = (model_fit[0].stddev1.value + model_fit[0].stddev2.value) / 2
+                else:
+                    amp = model_fit[0].amplitude.value
+                    sig = model_fit[0].stddev.value
+                    wv_offset = np.abs(mean_total - mean)
+                deny = ''
+                m = fitter.fit_info['param_cov']
+                sig_z_fit = np.nan
+                if m is not None:
+                    sig_z_fit = np.sqrt(m[0][0])
+                if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
+                                    deny, doublet=doublet):
                     print('Fit Accepted')
                     t = 'Accepted'
                     print(str(x_) + ',' + str(y_))
@@ -1307,9 +1345,9 @@ class MuseCube:
 
                 if inspect:
                     plt.figure()
-                    plt.plot(wv_c_eff, fl_c_eff, drawstyle='steps-mid', color='grey', label='central_flux')
+                    plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean flux')
                     plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
-                    plt.plot(wv_eff, model_fit(wv_eff), color='green', label='modeled flux')
+                    mcu.plot_Gauss_plus_linear_model(model_fit, wv_eff, doublet=doublet)
                     plt.plot(wv_eff, residual, color='red', label='residual')
                     plt.plot(wv_eff, sig_eff, color='yellow', drawstyle='steps-mid', label='bin sig')
                     plt.legend()
@@ -1322,9 +1360,10 @@ class MuseCube:
                         plt.colorbar()
                     else:
                         print('Cov Matrix undefined')
-                    print('value of wv_dif = ' + str(mean_total - mean))
+                    print('value of wv_dif = ' + str(wv_offset))
                     print('amplitude = ' + str(amp))
                     print('noise = ' + str(noise))
+                    print('std = ' + str(sig))
                     print('A fit which is accepted by default can be rejected by the user in the "inspect" mode\n')
                     print('\n')
                     deny = raw_input(
@@ -1333,53 +1372,33 @@ class MuseCube:
                     if deny == 'r':
                         print('fit manually rejected by the user\n')
 
-                if abs(amp) >= amplitude_threshold * noise and 1.5 * sigma_total > sig and (a_total * amp > 0) and abs(
-                                mean_total - mean) <= dwmax and deny!='r':
+                if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
+                                    deny, doublet=doublet):
                     units = u.km / u.s
-                    vel = ltu.dv_from_z((mean / wv_line_vac) - 1, z).to(units).value
-                    sig_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig_vel_fit) / wv_line_vac) - 1).to(units).value
-                    std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value
-                    for i in xrange(int(x_ - radius), int(x_ + radius + 1)):
-                        for j in xrange(int(y_ - radius), int(y_ + radius + 1)):
+                    vel = ltu.dv_from_z(z_model, z).to(units).value
+                    sig_vel = ltu.dv_from_z(z_model + sig_z_fit, z_model).to(units).value
+                    if doublet:
+                        std_vel = np.mean(
+                            ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(units).value)
+                    else:
+                        std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(
+                            units).value
+                    for i in range(int(x_ - radius), int(x_ + radius + 1)):
+                        for j in range(int(y_ - radius), int(y_ + radius + 1)):
                             kine_im[j][i] = vel
                             SN_im[j][i] = SN
-                            sig_im[j][i]= np.abs(sig_vel)
+                            sig_im[j][i] = np.abs(sig_vel)
                             std_im[j][i] = np.abs(std_vel)
-                            # kine_im[y[i]][x[i]] = vel
-                            # SN_im[y[i]][x[i]] = SN
 
-
-        hdulist_kin = self.hdulist_white
-        hdulist_kin[1].data = kine_im
-        hdulist_kin.writeto('kinematics_im.fits', clobber=True)
-        fig_k = aplpy.FITSFigure('kinematics_im.fits', figure=plt.figure())
-        fig_k.show_colorscale(cmap=cmap)
-        fig_k.add_colorbar()
-        fig_k.colorbar.set_axis_label_text('dV (km s$^{-1}$)')
-
-        hdulist_SN = self.hdulist_white
-        hdulist_SN[1].data = SN_im
-        hdulist_SN.writeto('SN_im.fits', clobber=True)
-        fig_SN = aplpy.FITSFigure('SN_im.fits', figure=plt.figure())
-        fig_SN.show_colorscale(cmap=cmap)
-        fig_SN.add_colorbar()
-        fig_SN.colorbar.set_axis_label_text('S/N')
-
-        hdulist_sig_vel = self.hdulist_white
-        hdulist_sig_vel[1].data = sig_im
-        hdulist_sig_vel.writeto('sig_vel_im.fits', clobber=True)
-        fig_sig_vel = aplpy.FITSFigure('sig_vel_im.fits', figure=plt.figure())
-        fig_sig_vel.show_colorscale(cmap=cmap)
-        fig_sig_vel.add_colorbar()
-        fig_sig_vel.colorbar.set_axis_label_text('$\sigma_{v (cov matrix)}$ (km s$^{-1}$)')
-
-        hdulist_std_vel = self.hdulist_white
-        hdulist_std_vel[1].data = std_im
-        hdulist_std_vel.writeto('std_vel_im.fits', clobber=True)
-        fig_std_vel = aplpy.FITSFigure('std_vel_im.fits', figure=plt.figure())
-        fig_std_vel.show_colorscale(cmap=cmap)
-        fig_std_vel.add_colorbar()
-        fig_std_vel.colorbar.set_axis_label_text('$\sigma_{v (fit)}$ (km s$^{-1}$)')
+        hdulist_kin, fig_k = mcu.save_image_kinematics(self.hdulist_white_temp, kine_im, 'kinematics_im.fits', cmap,
+                                                       'dV (km s$^{-1}$)')
+        hdulist_SN, fig_SN = mcu.save_image_kinematics(self.hdulist_white_temp, SN_im, 'SN_im.fits', cmap, 'S/N')
+        hdulist_sig_vel, fig_sig_vel = mcu.save_image_kinematics(self.hdulist_white_temp, sig_im, 'sig_vel_im.fits',
+                                                                 cmap,
+                                                                 '$\sigma_{v (cov matrix)}$ (km s$^{-1}$)')
+        hdulist_std_vel, fig_std_vel = mcu.save_image_kinematics(self.hdulist_white_temp, std_im, 'std_vel_im.fits',
+                                                                 cmap,
+                                                                 '$\sigma_{v (fit)}$ (km s$^{-1}$)')
 
         xw, yw = self.p2w(x_c, y_c)
         if isinstance(params, (int, float)):
@@ -1419,7 +1438,7 @@ class MuseCube:
         if ids == 'all':
             ids = fits_table['ID'].data.data
         n = len(ids)
-        for i in xrange(n):
+        for i in range(n):
             j = np.where(ids[i] == ID)[0][0]
             x_world = RA[j]
             y_world = DEC[j]
@@ -1457,7 +1476,7 @@ class MuseCube:
         r = pyregion.open(regfile)
         n = len(r)
         self.reload_canvas()
-        for i in xrange(n):
+        for i in range(n):
             id_ = id_start + i
             r_i = pyregion.ShapeList([r[i]])
             # check size of r_i for ellipses
@@ -1567,7 +1586,7 @@ class MuseCube:
         if len(keywords_list) != len(values_list):
             raise ValueError('Dimensions of keywords_list and values-list does not match')
         n = len(values_list)
-        for i in xrange(n):
+        for i in range(n):
             keyword = keywords_list[i]
             value = values_list[i]
             hdu_element.header[keyword] = value
@@ -1738,7 +1757,7 @@ class MuseCube:
         n = len(x)
         im_white = smoothed_white[~mask2d]
         fl_limit = np.percentile(im_white, (1. - frac) * 100.)
-        for i in xrange(n):
+        for i in range(n):
             if smoothed_white[y[i]][x[i]] >= fl_limit:
                 plt.figure(self.n)
                 plt.plot(x[i] + 1, y[i] + 1, 'o', color='Blue')
@@ -1749,13 +1768,23 @@ class MuseCube:
         plt.imshow(complete_mask, alpha=alpha)
         self.draw_pyregion(region_string)
 
-    def get_new_2dmask(self, region_string):
+    def get_new_2dmask(self, region_string, xy_list=None):
         """Creates a 2D mask for the white image that mask out spaxel that are outside
         the region defined by region_string"""
 
         from pyregion.region_to_filter import as_region_filter
         im_aux = np.ones_like(self.white_data)
-        hdu_aux = fits.open(self.filename_white)[1]
+        if xy_list is not None:
+            x = xy_list[0]
+            y = xy_list[1]
+            n = len(x)
+            for i in range(n):
+                im_aux[y[i]][x[i]] = 0
+            im_aux = np.where(im_aux == 1, True, False)
+            mask = im_aux
+            return mask
+
+        hdu_aux = self.hdulist_white_temp[1]
         hdu_aux.data = im_aux
         hdulist = self.hdulist_white
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
@@ -1812,7 +1841,7 @@ class MuseCube:
                                    b_world_new)
             a_world = a_world_new
             b_world = b_world_new
-            for i in xrange(n):
+            for i in range(n):
                 params_wcs = [a_world[i], b_world[i], theta[i]]
                 x_pix[i], y_pix[i], params = self.ellipse_params_to_pixel(x_world[i], y_world[i], params=params_wcs)
                 a[i] = params[0]
@@ -1826,7 +1855,7 @@ class MuseCube:
             id2 = []
             mag2 = []
             ly, lx = self.white_data.shape
-            for i in xrange(n):
+            for i in range(n):
                 if x_pix[i] >= border_thresh and y_pix[i] >= border_thresh and x_pix[i] <= lx - border_thresh and y_pix[
                     i] <= ly - border_thresh:
                     x2.append(x_pix[i])
@@ -1854,7 +1883,7 @@ class MuseCube:
             plt.text(x_pix[j], y_pix[j], id[j], color='Red')
             return
 
-        for i in xrange(n):
+        for i in range(n):
             color = 'Green'
             if flags[i] > flag_threshold:
                 color = 'Red'
@@ -1862,6 +1891,80 @@ class MuseCube:
             self.draw_pyregion(region_string)
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id, mag
+
+    def plot_vorbins(self, vorbin_filename, cmap = 'gist_rainbow'):
+        x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
+        n = len(label_list)
+        masks = np.zeros_like(self.white_data)
+        for i in range(n):
+            x_bin = x_list[i].astype(int)
+            y_bin = y_list[i].astype(int)
+            mask2d = self.get_new_2dmask(region_string=None, xy_list=[x_bin, y_bin])
+            value = np.random.uniform(1,10*n)
+            mask2d_plot = np.where(mask2d, 0, value)
+            masks = masks + mask2d_plot
+        masks = np.where(masks==0,np.nan,masks)
+        plt.figure(self.n)
+        plt.imshow(masks, cmap=cmap)
+
+
+
+    def save_vorbins_specs(self, vorbin_filename, mode='sum', npix=0, frac=0.1, empirical_std=False,
+                           redmonster_format=False, n_figure=2, plot_only=True):
+        x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
+        n = len(label_list)
+        for i in range(n):
+            x_bin = x_list[i].astype(int)
+            y_bin = y_list[i].astype(int)
+            x_c = np.mean(x_bin)
+            y_c = np.mean(y_bin)
+            x_w, y_w = self.p2w(x_c, y_c)
+            mask2d = self.get_new_2dmask(region_string=None, xy_list=[x_bin, y_bin])
+            cmap_rand = matplotlib.colors.ListedColormap(np.random.rand(256, 3))
+            mask2d_plot = np.where(mask2d, np.nan, 100)
+            plt.figure(self.n)
+            plt.imshow(mask2d_plot, cmap=cmap_rand)
+            if not plot_only:
+                spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
+                sn = np.median(spec.flux / spec.sig)
+                print('S/N = ' + str(sn))
+                plt.figure(n_figure)
+                plt.plot(spec.wavelength, spec.flux)
+                if empirical_std:
+                    spec = mcu.calculate_empirical_rms(spec)
+                spec = self.spec_to_vacuum(spec)
+
+                str_id = str(i).zfill(3)
+                spec_fits_name = str_id + '_' + vorbin_filename
+                if redmonster_format:
+                    mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits')
+                    spec_fits_name += '_RMF.fits'
+                else:
+                    spec.write_to_fits(spec_fits_name + '.fits')
+                    spec_fits_name += '.fits'
+                m = len(x_bin)
+                hdulist = fits.open(spec_fits_name)
+                for j in range(m):
+                    ra, dec = self.p2w(x_bin[j], y_bin[j])
+                    kwrd_ra = 'RA_' + str(j)
+                    kwrd_dec = 'DEC_' + str(j)
+                    kwrd_x = 'X_' + str(j)
+                    kwrd_y = 'Y_' + str(j)
+                    hdulist[0].header[kwrd_ra] = str(ra)
+                    hdulist[0].header[kwrd_dec] = str(dec)
+                    hdulist[0].header[kwrd_x] = str(x_bin[j])
+                    hdulist[0].header[kwrd_y] = str(y_bin[j])
+
+                hdulist[0].header['X_COORD_CENTER'] = x_c
+                hdulist[0].header['Y_COORD_CENTER'] = y_c
+                hdulist[0].header['RA_COORD_CENTER'] = x_w
+                hdulist[0].header['DEC_COORD_CENTER'] = y_w
+                hdulist[0].header['N_SPAXELS'] = str(m)
+
+                hdulist[0].header['CUBE_FILENAME'] = self.filename
+                hdulist[0].header['VORONOI_FILENAME'] = vorbin_filename
+
+                hdulist.writeto(spec_fits_name, overwrite=True)
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2, wcs_coords=False,
@@ -1871,7 +1974,7 @@ class MuseCube:
             flag_threshold=flag_threshold, wcs_coords=wcs_coords, mag_sex=mag_sex, border_thresh=border_thresh)
         self.reload_canvas()
         n = len(x_pix)
-        for i in xrange(n):
+        for i in range(n):
             if flags[i] <= flag_threshold:
                 x_world, y_world = self.p2w(x_pix[i], y_pix[i])
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
@@ -1924,7 +2027,7 @@ class MuseCube:
 
         images_names = []
         fitsnames = []
-        for i in xrange(initial_wavelength, final_wavelength):
+        for i in range(initial_wavelength, final_wavelength):
             wavelength_range = (i, i + width)
             filename = 'colapsed_image_' + str(i) + '_'
             im = self.get_image(wv_input=[wavelength_range], fitsname=filename + '.fits', type='sum', save='True')
@@ -1938,7 +2041,7 @@ class MuseCube:
         video = self.make_video(images=images_names, outvid=outvid)
         n_im = len(fitsnames)
         if erase:
-            for i in xrange(n_im):
+            for i in range(n_im):
                 fits_im = fitsnames[i]
                 png_im = images_names[i]
                 command_fits = 'rm ' + fits_im
@@ -1956,6 +2059,14 @@ class MuseCube:
         inds = [np.argmin(np.fabs(wv_ii - self.wavelength)) for wv_ii in wv_array]
         inds = np.unique(inds)
         return inds
+
+    def trim_cube_edges(self, dx, dy, output_fitsname='trimed_cube.fits'):
+        yc = int(self.cube.shape[1] / 2)
+        xc = int(self.cube.shape[2] / 2)
+        wv_range = [self.wavelength[0], self.wavelength[len(self.wavelength) - 1]]
+        ly = yc - dy
+        lx = xc - dx
+        self.get_subsection_cube(xc, yc, lx, ly, wv_range, output_fitsname=output_fitsname)
 
     def get_subsection_cube(self, xc, yc, lx, ly, wv_range, output_fitsname='cube_subsec.fits'):
         """
@@ -2085,11 +2196,11 @@ class MuseCube:
             r = pyregion.open(maskfile)
             n = len(r)
             masks = []
-            for i in xrange(n):
+            for i in range(n):
                 masks.append(self.region_2dmask(pyregion.ShapeList([r[i]])))
 
             mask_final = masks[0]
-            for i in xrange(n):
+            for i in range(n):
                 mask_final = np.logical_and(mask_final, masks[i])
             if inverse_mask:
                 mask_final = np.where(~mask_final, True, False)
@@ -3028,9 +3139,9 @@ class MuseCube:
         matrix_y = np.zeros_like(self.white_data)
         n = self.white_data.shape[0]
         m = self.white_data.shape[1]
-        for i in xrange(m):
+        for i in range(m):
             matrix_x[:, i] = i
-        for j in xrange(n):
+        for j in range(n):
             matrix_y[j, :] = j
         ###########
 
@@ -3205,6 +3316,7 @@ class MuseCube:
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True, substract_cont=True)
             image_aux = mcu.create_homogeneous_sky_image(image, nsig=3, floor_input=0, floor_output=0)
             image_sum += image_aux
+
             plt.close(15)
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
@@ -3216,7 +3328,7 @@ class MuseCube:
         video = self.make_video(images=images_names, outvid=outvid, image_sum=image_sum)
         n_im = len(fitsnames)
         if erase:
-            for i in xrange(n_im):
+            for i in range(n_im):
                 fits_im = fitsnames[i]
                 png_im = images_names[i]
                 command_fits = 'rm ' + fits_im
@@ -3245,7 +3357,7 @@ class MuseCube:
         normalized_im = valid_voxel_im / count_voxel_im
         normalized_im = np.where(np.isnan(normalized_im), 0, normalized_im)
         if save:
-            hdulist = self.hdulist_white
+            hdulist = self.hdulist_white_temp
             hdulist[1].data = normalized_im
             hdulist.writeto(fitsname, clobber=True)
         return normalized_im
@@ -3281,7 +3393,8 @@ class MuseCube:
                 output_ranges.append(range)
         return output_ranges
 
-    def make_video(self, images, outimg=None, fps=2, size=None, is_color=True, format="XVID", outvid='image_video.avi', image_sum=None):
+    def make_video(self, images, outimg=None, fps=2, size=None, is_color=True, format="XVID", outvid='image_video.avi',
+                   image_sum=None):
         try:
             from cv2 import VideoWriter, VideoWriter_fourcc, imread, resize
         except ImportError:
@@ -3303,7 +3416,8 @@ class MuseCube:
 
         # save image sum
         if image_sum is not None:
-            self.__save2fits('sum_image_from_video.fits', image_sum, stat=False, type='white', n_figure=2, edit_header=[])
+            self.__save2fits('sum_image_from_video.fits', image_sum, stat=False, type='white', n_figure=2,
+                             edit_header=[])
 
         vid.release()
         return vid
