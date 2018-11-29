@@ -1529,7 +1529,7 @@ class MuseCube:
                                  save=False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
-        The .reg file MUST be in physical coordiantes
+        The .reg file MUST be in image coordiantes
         :param regfile: str. Name of the DS9 region file
         :param mode: str
             Mode for combining spaxels:
@@ -1555,13 +1555,22 @@ class MuseCube:
         :return: spec: XSpectrum1D object
         """
         r = pyregion.open(regfile)
-        r = pyregion.ShapeList([r[i]])
+        r_i = pyregion.ShapeList([r[i]])
+        text_i = r[i].comment
+        text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
+        if text_i != '':
+            # define metadata from region
+            # import pdb; pdb.set_trace()
+            meta = dict()
+            meta['headers'] = [dict()]  # has to be list because of linetools likes it this way
+            meta['headers'][0]['PyMUSE COMMENT'] = 'Ds9 region text: ' + text_i
+        else:
+            meta = None
 
         self.draw_region(r)
+        mask2d = self.region_2dmask(r_i)
 
-        mask2d = self.region_2dmask(r)
-
-        spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac)
+        spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac, meta=meta)
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
