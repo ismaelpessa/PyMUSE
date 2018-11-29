@@ -3296,7 +3296,7 @@ class MuseCube:
         return self.cube.data.shape
 
     def create_movie_redshift_range(self, z_ini=0., z_end=1., dz=0.001, width=30, outvid='emission_lines_video.avi',
-                                    erase=True, show_images=False):
+                                    erase=True):
         """
         Function to create a film, colapsing diferent wavelength ranges in which some strong emission lines would fall at certain redshifts
         :param z_ini: initial redshift
@@ -3305,7 +3305,6 @@ class MuseCube:
         :param outvid: name of the final video
         :param width: width of the lines that will be collapsed, in Angstroms
         :param erase: If true, the individual frames to make the video will be erased after the video is produced
-        :param show_images: bool, if true, it shows the images as these are being computed
         :return:
         """
         OII = 3728.483
@@ -3328,8 +3327,8 @@ class MuseCube:
             image = self.get_image_wv_ranges(wv_ranges=ranges, fitsname=filename + '.fits', save=True, substract_cont=True)
             image_aux = mcu.create_homogeneous_sky_image(image, nsig=3, floor_input=0, floor_output=0)
             image_sum += image_aux
-
             plt.close(15)
+
             image = aplpy.FITSFigure(filename + '.fits', figure=plt.figure(15))
             image.show_grayscale()
             plt.title('Emission lines image at z = ' + str(z))
