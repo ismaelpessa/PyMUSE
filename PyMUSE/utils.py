@@ -163,11 +163,6 @@ def read_vorbin_output(vorbin_filename):
     return np.array(x_output),np.array(y_output),np.array(label_output)
 
 
-
-
-
-
-
 def calculate_empirical_rms(spec, test=False):
     fl = spec.flux.value
     wv = spec.wavelength.value
@@ -284,9 +279,12 @@ def save_image_kinematics(hdulist, data, new_image_name, cmap, cb_label):
 
 
 def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_output=0):
+    """Filters all pixels with values consistent with nsig*std of fluxes below floor_input
+    (interpreted as being sky), and replace them with a floor_output value"""
     neg_fluxes = input_image[np.where(input_image < floor_input)]
     pos_fluxes = np.abs(neg_fluxes)
     all_fluxes = np.concatenate((pos_fluxes, neg_fluxes))
     std = np.std(all_fluxes)
     im_new = np.where(input_image < nsig * std, floor_output, input_image)
     return im_new
+
