@@ -1556,9 +1556,9 @@ class MuseCube:
         """
         r = pyregion.open(regfile)
         r_i = pyregion.ShapeList([r[i]])
-        text_i = r[i].comment
-        text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
-        if text_i != '':
+        if r_i[0].comment is not None:  # if there is a comment in the Ds9 region, pass it on
+            text_i = r_i[0].commen
+            text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
             # define metadata from region
             # import pdb; pdb.set_trace()
             meta = dict()
