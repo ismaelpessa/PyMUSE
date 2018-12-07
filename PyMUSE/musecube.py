@@ -2268,7 +2268,18 @@ class MuseCube:
         return cont_range_inf, cont_range_sup, n
 
     def get_image_wv_ranges(self, wv_ranges, substract_cont=True, fitsname='new_collapsed_cube.fits', save=False,
-                            n_figure=3):
+                            n_figure=3, multiplier=None):
+        """
+
+        :param wv_ranges:
+        :param substract_cont:
+        :param fitsname:
+        :param save:
+        :param n_figure:
+        :param multiplier: if multiplier is not none, the resulting images will be multiply by this factor
+                            e.g., could be a dw to get integrated fluxes
+        :return:
+        """
         image_stacker = np.zeros_like(self.white_data)
         for r in wv_ranges:
             image = self.get_image([r])
@@ -2281,6 +2292,8 @@ class MuseCube:
                 image = image - cont_image
             image_stacker = image_stacker + image
         # image_stacker = np.where(image_stacker < 0, 0, image_stacker)
+        if multiplier is not None:
+            image_stacker *= multiplier
         if save:
             self.__save2fits(fitsname, image_stacker, type='white', n_figure=n_figure)
         return image_stacker
