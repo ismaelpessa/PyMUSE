@@ -1212,7 +1212,7 @@ class MuseCube:
                       spectrum, the fit will be rejected
         :param side: int, pixels, size of the side of the sub-boxes to re-bin the complete aperture. If this number is bigger,
                      you will obtain a higher signal to noise, but a lower spatial resolution. side = 1 is the maximum spatial resolution,
-                     where a single spectrum will be obtained from each spaxels. Bigger boxes will generate less spectra, with higher s/n each one
+                     where a single spectrum will be obtained from each spaxel. Bigger boxes will generate less spectra, with higher s/n each one
         :param doublet: boolean. If True, The feature used to compute the kinematics will be fited with a double Gaussian Profile
                         wv_line_vac must be an iterable of length = 2 if doublet = True, with the vacuum wavelengths of
                         both o the features. The relative amplitudes of these features can be modulated using k_init and k_bounds.
@@ -1495,7 +1495,7 @@ class MuseCube:
                     print("Circle region has radius < 1. Skipping it.")
                     continue
             # import pdb; pdb.set_trace()
-            if r_i[0].comment != '':  # if there is a comment in the Ds9 region, pass it on
+            if r_i[0].comment is not None:  # if there is a comment in the Ds9 region, pass it on
                 text_i = r_i[0].comment
                 text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
                 meta = dict()
@@ -2089,17 +2089,20 @@ class MuseCube:
         lx = xc - dx
         self.get_subsection_cube(xc, yc, lx, ly, wv_range, output_fitsname=output_fitsname)
 
-    def get_subsection_cube(self, xc, yc, lx, ly, wv_range, output_fitsname='cube_subsec.fits'):
+    def get_subsection_cube(self, xc, yc, lx, ly, wv_range=None, output_fitsname='cube_subsec.fits'):
         """
-        Creates and save in the current directory a sub section of the MUSE cube, defined by the central coordinates (xc,yc)
-        in pixels. The x and y dimension of the new cube will be 2lx and 2ly respectively. The new wavelength dimension
-        will be given by the values in wv_range, defined as [wv_ini,wv_end] in  Angstroms
+        Creates and save in the current directory a sub section of the MUSE cube, defined by the
+        central coordinates (xc,yc) in pixels. The x and y dimension of the new cube will be
+        2lx and 2ly respectively. The new wavelength dimension will be given by the values in
+        wv_range, defined as [wv_ini,wv_end] in  Angstroms
         :param xc: x-coordinate of the center of the new cube
         :param yc: y-coordinate of the center of the new cube
         :param lx: half of the x-dimension of the new cube
         :param ly: half of the y-dimension of the new cube
         :param wv_range: iterable. Must have length = 2. Its defined as [w_ini, w_end], where
-                         w_ini is the first wavelength element of the new cube and w_end is the last wavelength element
+                         w_ini is the first wavelength element of the new cube and w_end is the
+                         last wavelength element
+                         if None, then take the full wavelenght range
         :param output_fitsname: String. The new fitsfile will be saved under this name
         :return:
         """
@@ -2108,9 +2111,12 @@ class MuseCube:
         hdu2 = hdulist[2]
         data = self.cube
         stat = self.stat
-        wv_inds = self.find_wv_inds(wv_range)
-        datanew = data[wv_inds[0]:wv_inds[1] + 1, yc - ly:yc + ly, xc - lx:xc + lx]
-        statnew = stat[wv_inds[0]:wv_inds[1] + 1, yc - ly:yc + ly, xc - lx:xc + lx]
+        if wv_range is not None:
+            wv_inds = self.find_wv_inds(wv_range)
+        else:
+            wv_inds = [0, -1]
+        datanew = data[wv_inds[0]:wv_inds[1] + 1, int(yc - ly):int(yc + ly), int(xc - lx): int(xc + lx)]
+        statnew = stat[wv_inds[0]:wv_inds[1] + 1, int(yc - ly):int(yc + ly), int(xc - lx): int(xc + lx)]
         xw, yw = self.p2w(xc, yc)
         hdu1.header['NAXIS1'] = datanew.shape[2]
         hdu1.header['NAXIS2'] = datanew.shape[1]
@@ -2267,6 +2273,7 @@ class MuseCube:
         for r in wv_ranges:
             image = self.get_image([r])
             if substract_cont:
+                # import pdb; pdb.set_trace()
                 cont_range_inf, cont_range_sup, n = self.get_continuum_range(r)
                 cont_inf_image = self.get_image([cont_range_inf], type='median')
                 cont_sup_image = self.get_image([cont_range_sup], type='median')
