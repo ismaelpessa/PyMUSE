@@ -1229,7 +1229,10 @@ class MuseCube:
         wv_line = wv_line_vac * (1 + z)
         if isinstance(params, (int, float)):
             params = [params, params, 0]
-        region_string = self.box_params_to_ds9reg_string(x_c, y_c, 2 * np.max(params), 2 * np.max(params))
+        if x_c == int(x_c) and y_c == int(y_c):
+            region_string = self.box_params_to_ds9reg_string(x_c-0.5, y_c-0.5, 2 * np.max(params), 2 * np.max(params))
+        else:
+            region_string = self.box_params_to_ds9reg_string(x_c, y_c, 2 * np.max(params), 2 * np.max(params))
         spec_total = self.get_spec_from_region_string(region_string, mode='mean')
         wv_t = spec_total.wavelength.value
         fl_t = spec_total.flux.value
@@ -1280,8 +1283,9 @@ class MuseCube:
         else:
             radius = int(side / 2)
         dim = np.sqrt(len(x))  # same for x or y
-        x_start = np.min(x) + (side - 1) * 0.5
-        y_start = np.min(y) + (side - 1) * 0.5
+        center_correct = 0.5
+        x_start = np.min(x) + (side - 1) * 0.5 - center_correct
+        y_start = np.min(y) + (side - 1) * 0.5 - center_correct
         n_iter = int(dim / side)
         iteration_x = np.arange(x_start, x_start + side * n_iter, side) + 0.5
         iteration_y = np.arange(y_start, y_start + side * n_iter, side) + 0.5
