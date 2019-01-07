@@ -1201,7 +1201,10 @@ class MuseCube:
         :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
                               of the line wavelength
         :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
-        :param inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
+        :param inspect: boolean or string
+            If True, the fit for each resolution element will be shown. The inspect mode allow the user
+            to manually reject any fit. If `inspect='accepted', then inspection will only be performed in the accepted fits
+            (i.e. ignoring the rejected ones).
         :param z: Redshift of the source
         :param cmap: Output colormap
         :param amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
@@ -1295,7 +1298,7 @@ class MuseCube:
         for x_ in iteration_x:
             for y_ in iteration_y:
                 count += 1
-                print(str(count) + '/' + str(n))
+                print("Iteration {}/{}, spaxel (x,y)=({},{})".format(count,n,x_,y_))
                 region_string = self.box_params_to_ds9reg_string(x_, y_, side, side)
                 spec = self.get_spec_from_region_string(region_string, mode='mean')
                 wv = spec.wavelength.value
@@ -1345,12 +1348,14 @@ class MuseCube:
                     print('Fit Accepted')
                     t = 'Accepted'
                     print(str(x_) + ',' + str(y_))
+                    accepted = True
                 else:
                     print('Fit Rejected')
                     t = 'Rejected'
                     print(str(x_) + ',' + str(y_))
+                    accepted = False
 
-                if inspect:
+                if inspect or ((inspect == 'accepted') and (accepted)):
                     plt.figure()
                     plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean flux')
                     plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
