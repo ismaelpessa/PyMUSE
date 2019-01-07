@@ -1221,7 +1221,7 @@ class MuseCube:
                        by k_bounds.
         :param k_bounds: iterable of length = 2. range of possible values for k.
 
-        :return:
+        :return: It returns a kinematic image with the centroids
         """
         ##Get the integrated spec fit
         if doublet:
@@ -1363,6 +1363,7 @@ class MuseCube:
                         plt.colorbar()
                     else:
                         print('Cov Matrix undefined')
+                    plt.show()
                     print('value of wv_dif = ' + str(wv_offset))
                     print('amplitude = ' + str(amp))
                     print('noise = ' + str(noise))
@@ -2167,30 +2168,30 @@ class MuseCube:
                 sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self, _filter='r', save=True, n_figure=5, custom_filter=None):
+    def get_filtered_image(self, filter='r', save=True, n_figure=5, custom_filter= None):
         """
         Function used to produce a filtered image from the cube
-        :param _filter: string, default = r
+        :param filter: string, default = r
                         possible values: u,g,r,i,z , sdss filter or Johnson V,r to get the new image
         :param save: Boolean, default = True
                      If True, the image will be saved
         :param custom_filter: Default = None.
-                              If not, can be a customized filter created by the user formated as [wc,fc],
+                              If not None, can be a customized filter created by the user formated as [wc,fc],
                               where the first element is the wavelength array of the filter and the second is the
                               corresponding transmission curve.
         :return:
         """
 
         w = self.wavelength
-        if not custom_filter:
-            filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
+        if custom_filter is None:
+            filter_curve = self.get_filter(wavelength_spec=w, _filter=filter)
         else:
             wave_filter = custom_filter[0]
             flux_filter = custom_filter[1]
             filter_curve = self.filter_to_MUSE_wavelength(wave_filter, flux_filter, wavelength_spec=w)
 
         condition = np.where(filter_curve > 0)[0]
-        fitsname = 'new_image_' + _filter + '_filter.fits'
+        fitsname = 'new_image_' + filter + '_filter.fits'
         sub_cube = self.cube[condition]
         filter_curve_final = filter_curve[condition]
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
