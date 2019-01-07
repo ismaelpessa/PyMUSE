@@ -1028,6 +1028,7 @@ class MuseCube:
             print('a_total = ' + str(a_total) + '\n')
             print('z_total = ' + str(z_total) + '\n')
             print('sigma_total = ' + str(sigma_total))
+
         if run_vorbin:
             if doublet:
                 wv_range = [np.mean(wv_line) - wv_range_size, np.mean(wv_line) + wv_range_size]
@@ -1106,6 +1107,7 @@ class MuseCube:
             sig_z_fit = np.nan
             if m is not None:
                 sig_z_fit = np.sqrt(m[0][0])
+
             if inspect:
                 if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
                                     deny, doublet=doublet):
