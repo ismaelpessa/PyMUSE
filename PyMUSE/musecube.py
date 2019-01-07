@@ -1280,8 +1280,10 @@ class MuseCube:
         else:
             radius = int(side / 2)
         dim = np.sqrt(len(x))  # same for x or y
-        x_start = np.min(x) + (side - 1) * 0.5
-        y_start = np.min(y) + (side - 1) * 0.5
+
+        center_correct = 0.5
+        x_start = np.min(x) + (side - 1) * 0.5 + center_correct
+        y_start = np.min(y) + (side - 1) * 0.5 + center_correct
         n_iter = int(dim / side)
         iteration_x = np.arange(x_start, x_start + side * n_iter, side) + 0.5
         iteration_y = np.arange(y_start, y_start + side * n_iter, side) + 0.5
