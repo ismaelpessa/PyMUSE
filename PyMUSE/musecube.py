@@ -935,7 +935,7 @@ class MuseCube:
             plt.pause(1)
 
     def compute_kinematics_voronoi_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35,
-                                           type='abs', inspect=False, z=0,
+                                           type='abs', inspect=False, z=0.0,
                                            run_vorbin=False, vorbin_file=None, targetSN=20,
                                            cmap='jet', amplitude_threshold=2., dwmax=10., k_init=1, k_bounds=[0.1, 10],
                                            doublet=False):
@@ -1178,7 +1178,7 @@ class MuseCube:
         return kine_im
 
     def compute_kinematics_uniform_binning(self, x_c, y_c, params, wv_line_vac, wv_range_size=35, type='abs',
-                                           inspect=False, z=0,
+                                           inspect=False, z=0.0,
                                            cmap='jet', amplitude_threshold=2., dwmax=10., side=3, k_init=1,
                                            k_bounds=[0.1, 10], doublet=False):
         """
