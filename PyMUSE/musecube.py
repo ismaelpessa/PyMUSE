@@ -1390,8 +1390,8 @@ class MuseCube:
                     else:
                         std_vel = ltu.dv_from_z((mean / wv_line_vac) - 1, ((mean + sig) / wv_line_vac) - 1).to(
                             units).value
-                    for i in range(int(x_ - radius), int(x_ + radius + 1)):
-                        for j in range(int(y_ - radius), int(y_ + radius + 1)):
+                    for i in range(int(x_ - radius -1), int(x_ + radius )):
+                        for j in range(int(y_ - radius - 1), int(y_ + radius )):
                             kine_im[j][i] = vel
                             SN_im[j][i] = SN
                             sig_im[j][i] = np.abs(sig_vel)
