@@ -2184,9 +2184,9 @@ class MuseCube:
     def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None):
         """
         Function used to produce a filtered image from the cube
-        :param band: string, default = r
-                        possible values: u,g,r,i,z , SDSS filter or Johnson V,R to get
-                        the filtered image
+        :param band: string, default = `r`
+                        possible values: u,g,r,i,z (SDSS filters) or V,R (Johnson's)
+                        to get the filtered image
         :param save: Boolean, default = True
                      If True, the image will be saved
         :param custom_filter: Default = None.
