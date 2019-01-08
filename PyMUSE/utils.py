@@ -290,9 +290,15 @@ def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_outpu
     return im_new
 
 def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
-    """Collapses the full wavelength range, but only keeping those voxels with flux above
-    a given S/N threshold. Each spaxel is normalized by the number of wavelength
-    pixels used"""
+    """Collapses the full wavelength range, but only summing voxels with flux above
+    a given S/N threshold to obtain a total flux (flux) per spaxel. Each spaxel
+    is then normalized by the number of wavelength pixels used (npix)
+
+    Returns
+    -------
+    flux/npix, flux, npix : three images as described above
+
+    """
 
     # define s2n cube
     cube_s2n = input_cube / input_cube_er
@@ -306,5 +312,4 @@ def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
         flux_sum += np.where(cond, input_cube[ii], 0.)
         counter += cond
 
-    return flux_sum, counter
-
+    return flux_sum/counter, flux_sum, counter
