@@ -272,6 +272,7 @@ def save_image_kinematics(hdulist, data, new_image_name, cmap, cb_label):
     hdulist_new[1].data = data
     hdulist_new.writeto(new_image_name, clobber=True)
     fig = aplpy.FITSFigure(new_image_name, figure=plt.figure())
+    print('New file saved: {}'.format(new_image_name))
     fig.show_colorscale(cmap=cmap)
     fig.add_colorbar()
     fig.colorbar.set_axis_label_text(cb_label)
@@ -288,3 +289,27 @@ def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_outpu
     im_new = np.where(input_image < nsig * std, floor_output, input_image)
     return im_new
 
+def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
+    """Collapses the full wavelength range, but only summing voxels with flux above
+    a given S/N threshold to obtain a total flux (flux) per spaxel. Each spaxel
+    is then normalized by the number of wavelength pixels used (npix)
+
+    Returns
+    -------
+    flux/npix, flux, npix : three images as described above
+
+    """
+
+    # define s2n cube
+    cube_s2n = input_cube / input_cube_er
+    # get rid of negative flux
+    cube_s2n = np.where(cube_s2n<=0, 0., cube_s2n)
+
+    counter = np.zeros_like(cube_s2n[0])
+    flux_sum = np.zeros_like(cube_s2n[0])
+    for ii in np.arange(len(cube_s2n)):
+        cond = cube_s2n[ii] >= min_s2n
+        flux_sum += np.where(cond, input_cube[ii], 0.)
+        counter += cond
+
+    return flux_sum/counter, flux_sum, counter
