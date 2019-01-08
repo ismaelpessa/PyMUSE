@@ -2181,30 +2181,31 @@ class MuseCube:
                 sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self, filter='r', save=True, n_figure=5, custom_filter= None):
+    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None):
         """
         Function used to produce a filtered image from the cube
-        :param filter: string, default = r
-                        possible values: u,g,r,i,z , sdss filter or Johnson V,r to get the new image
+        :param band: string, default = r
+                        possible values: u,g,r,i,z , SDSS filter or Johnson V,R to get
+                        the filtered image
         :param save: Boolean, default = True
                      If True, the image will be saved
         :param custom_filter: Default = None.
-                              If not None, can be a customized filter created by the user formated as [wc,fc],
-                              where the first element is the wavelength array of the filter and the second is the
-                              corresponding transmission curve.
+                              If not None, can be a custom filter created by the user formated as
+                              a list with [wc,fc], where wc is the wavelength array of the filter
+                              and fc is the corresponding transmission curve to each wc.
         :return:
         """
 
         w = self.wavelength
         if custom_filter is None:
-            filter_curve = self.get_filter(wavelength_spec=w, _filter=filter)
+            filter_curve = self.get_filter(wavelength_spec=w, _filter=band)
         else:
             wave_filter = custom_filter[0]
             flux_filter = custom_filter[1]
             filter_curve = self.filter_to_MUSE_wavelength(wave_filter, flux_filter, wavelength_spec=w)
 
         condition = np.where(filter_curve > 0)[0]
-        fitsname = 'new_image_' + filter + '_filter.fits'
+        fitsname = 'new_image_{}_filter.fits'.format(band)
         sub_cube = self.cube[condition]
         filter_curve_final = filter_curve[condition]
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
