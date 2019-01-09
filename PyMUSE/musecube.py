@@ -1028,6 +1028,7 @@ class MuseCube:
             print('a_total = ' + str(a_total) + '\n')
             print('z_total = ' + str(z_total) + '\n')
             print('sigma_total = ' + str(sigma_total))
+
         if run_vorbin:
             if doublet:
                 wv_range = [np.mean(wv_line) - wv_range_size, np.mean(wv_line) + wv_range_size]
@@ -1106,6 +1107,7 @@ class MuseCube:
             sig_z_fit = np.nan
             if m is not None:
                 sig_z_fit = np.sqrt(m[0][0])
+
             if inspect:
                 if mcu.accept_model(amp, sig, a_total, sigma_total, wv_offset, amplitude_threshold, noise, dwmax,
                                     deny, doublet=doublet):
@@ -1204,7 +1206,10 @@ class MuseCube:
         :param wv_range_size: float, size of the windows (in angstroms) that will be considered by the fit, at each side
                               of the line wavelength
         :param type: string, "emi" to fit an emission line or "abs" to fit an absorption line,
-        :param inspect: If True, the fit for each resolution element will be shown. The inspect mode allow the user to manually reject any fit.
+        :param inspect: boolean or string
+            If True, the fit for each resolution element will be shown. The inspect mode allow the user
+            to manually reject any fit. If `inspect='accepted', then inspection will only be performed in the accepted fits
+            (i.e. ignoring the rejected ones).
         :param z: Redshift of the source
         :param cmap: Output colormap
         :param amplitude_threshold: float, sets the theshold for the minimum amplitude required for the fit to be accepted.
@@ -1224,7 +1229,7 @@ class MuseCube:
                        by k_bounds.
         :param k_bounds: iterable of length = 2. range of possible values for k.
 
-        :return:
+        :return: It returns a kinematic image with the centroids
         """
         ##Get the integrated spec fit
         if doublet:
@@ -1286,9 +1291,11 @@ class MuseCube:
         else:
             radius = int(side / 2)
         dim = np.sqrt(len(x))  # same for x or y
+
         center_correct = 0.5
         x_start = np.min(x) + (side - 1) * 0.5 - center_correct
         y_start = np.min(y) + (side - 1) * 0.5 - center_correct
+
         n_iter = int(dim / side)
         iteration_x = np.arange(x_start, x_start + side * n_iter, side) + 0.5
         iteration_y = np.arange(y_start, y_start + side * n_iter, side) + 0.5
@@ -1298,7 +1305,7 @@ class MuseCube:
         for x_ in iteration_x:
             for y_ in iteration_y:
                 count += 1
-                print(str(count) + '/' + str(n))
+                print("Iteration {}/{}, spaxel (x,y)=({},{})".format(count,n,x_,y_))
                 region_string = self.box_params_to_ds9reg_string(x_, y_, side, side)
                 spec = self.get_spec_from_region_string(region_string, mode='mean')
                 wv = spec.wavelength.value
@@ -1348,12 +1355,14 @@ class MuseCube:
                     print('Fit Accepted')
                     t = 'Accepted'
                     print(str(x_) + ',' + str(y_))
+                    accepted = True
                 else:
                     print('Fit Rejected')
                     t = 'Rejected'
                     print(str(x_) + ',' + str(y_))
+                    accepted = False
 
-                if inspect:
+                if inspect or ((inspect == 'accepted') and (accepted)):
                     plt.figure()
                     plt.plot(wv_eff_t, fl_eff_t, drawstyle='steps-mid', color='grey', label='mean flux')
                     plt.plot(wv_eff, fl_eff, drawstyle='steps-mid', color='blue', label='bin flux')
@@ -1370,6 +1379,7 @@ class MuseCube:
                         plt.colorbar()
                     else:
                         print('Cov Matrix undefined')
+                    plt.show()
                     print('value of wv_dif = ' + str(wv_offset))
                     print('amplitude = ' + str(amp))
                     print('noise = ' + str(noise))
@@ -2174,30 +2184,31 @@ class MuseCube:
                 sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self, _filter='r', save=True, n_figure=5, custom_filter=None):
+    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None):
         """
         Function used to produce a filtered image from the cube
-        :param _filter: string, default = r
-                        possible values: u,g,r,i,z , sdss filter or Johnson V,r to get the new image
+        :param band: string, default = r
+                        possible values: u,g,r,i,z , SDSS filter or Johnson V,R to get
+                        the filtered image
         :param save: Boolean, default = True
                      If True, the image will be saved
         :param custom_filter: Default = None.
-                              If not, can be a customized filter created by the user formated as [wc,fc],
-                              where the first element is the wavelength array of the filter and the second is the
-                              corresponding transmission curve.
+                              If not None, can be a custom filter created by the user formated as
+                              a list with [wc,fc], where wc is the wavelength array of the filter
+                              and fc is the corresponding transmission curve to each wc.
         :return:
         """
 
         w = self.wavelength
-        if not custom_filter:
-            filter_curve = self.get_filter(wavelength_spec=w, _filter=_filter)
+        if custom_filter is None:
+            filter_curve = self.get_filter(wavelength_spec=w, _filter=band)
         else:
             wave_filter = custom_filter[0]
             flux_filter = custom_filter[1]
             filter_curve = self.filter_to_MUSE_wavelength(wave_filter, flux_filter, wavelength_spec=w)
 
         condition = np.where(filter_curve > 0)[0]
-        fitsname = 'new_image_' + _filter + '_filter.fits'
+        fitsname = 'new_image_{}_filter.fits'.format(band)
         sub_cube = self.cube[condition]
         filter_curve_final = filter_curve[condition]
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
