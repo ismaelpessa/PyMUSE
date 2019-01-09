@@ -1187,6 +1187,8 @@ class MuseCube:
         RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
         the wavelength range of interest and the needed spatial dimensions.
 
+        Keep in mind that the central coordinates (x_c and y_c, in pixels) can be defined as integer or semi-integer numbers, to put the center on the centroid or the edge of a spaxel respectively. For an even number of spatial bins per axis, the center should be located on the edge of a spaxel. For the odd case, the center shoudl be located on the center of a spaxel
+
         This function will create 4 images:
         kinematics_im.fits: Contains the velocity calculated by the fit in each spatial resolution element where the fit was accepted.
         SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_range_size in each spatial resolution element where the fit was accepted.
