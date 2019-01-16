@@ -494,7 +494,8 @@ class MuseCube:
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
                                     save=False):
         """
-        Obtains a combined spectrum of spaxels within geametrical region defined by the region _string, interpretated by ds9
+        Obtains a combined spectrum of spaxels within geometrical region defined by the region _string,
+        interpreted by ds9
         :param region_string: str
             Region defined by a string, using ds9 format (ellipse only in gaussian method)
             example: region_string = 'physical;ellipse(100,120,10,5,35) # color = green'
@@ -1546,13 +1547,14 @@ class MuseCube:
                                  save=False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
-        The .reg file MUST be in image coordiantes
-        :param regfile: str. Name of the DS9 region file
+        The .reg file MUST be in Image coordinates
+        :param regfile: str. Name of the ds9 region file
         :param mode: str
             Mode for combining spaxels:
               * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
               * `sum` - Sum of total flux
-              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `wwm` - 'White Weighted Mean'. Weighted mean, weights are obtained from the white image,
+              smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
               * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
               * `mean`  -  Mean of the total flux
               * `median` - Median of the total flux
@@ -1561,7 +1563,7 @@ class MuseCube:
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
         :param i: int, default = 0
-                  Index of the region in the region file. i = 0 corresponds to the first region listed.
+            Index of the region in the region file. i = 0 corresponds to the first region in the file.
         :param frac: Float, default = 0.1
                      Parameter needed for wfrac mode
         :param npix: int. Default = 0
