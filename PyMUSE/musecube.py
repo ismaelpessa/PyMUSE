@@ -492,7 +492,7 @@ class MuseCube:
             return x_c, y_c, params
 
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
-                                    save=False):
+                                    save=False, save_mask=False):
         """
         Obtains a combined spectrum of spaxels within geometrical region defined by the region _string,
         interpreted by ds9
@@ -521,6 +521,8 @@ class MuseCube:
             If True, the errors of the spectrum will be determined empirically
         :param save: boolean. Default = False
             If True, the spectrum will be saved in hard_disk
+        : param save_mask: boolean
+            If True, a fits image with the masked pixels used will be stored in disk
         :return: spec: XSpectrum1D object
         """
 
@@ -543,6 +545,11 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         if save:
             spec.write_to_fits(name + '.fits')
+        if save_mask:
+            mask = np.where(new_mask, self.white_data, 0.)
+            self.__save2fits(name+'_mask.fits',mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
+
         return spec
 
     def draw_ellipse_params(self, xc, yc, params, color='green'):
