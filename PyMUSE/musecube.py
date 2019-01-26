@@ -494,7 +494,8 @@ class MuseCube:
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
                                     save=False):
         """
-        Obtains a combined spectrum of spaxels within geametrical region defined by the region _string, interpretated by ds9
+        Obtains a combined spectrum of spaxels within geometrical region defined by the region _string,
+        interpreted by ds9
         :param region_string: str
             Region defined by a string, using ds9 format (ellipse only in gaussian method)
             example: region_string = 'physical;ellipse(100,120,10,5,35) # color = green'
@@ -824,6 +825,8 @@ class MuseCube:
         fig = plt.figure(self.n)
         ax = fig.axes[0]
         patch_list, artist_list = r.get_mpl_patches_texts(origin=0)
+        if len(patch_list) == 0:
+            import pdb; pdb.set_trace()
         patch = patch_list[0]
         ax.add_patch(patch)
 
@@ -1189,6 +1192,9 @@ class MuseCube:
         RECOMMENDATION: Use a smaller cube created with the cube.get_subsection_cube() function, that includes
         the wavelength range of interest and the needed spatial dimensions.
 
+        Keep in mind that the central coordinates (x_c and y_c, in pixels) can be defined as integer or semi-integer numbers, to put the center on the centroid or the edge of a spaxel respectively.
+        For an even number of spatial bins per axis, the center should be located on the edge of a spaxel. For the odd case, the center should be located on the center of a spaxel
+
         This function will create 4 images:
         kinematics_im.fits: Contains the velocity calculated by the fit in each spatial resolution element where the fit was accepted.
         SN_im.fits: Contains the local S/N of the portion of the spectrum defined by wv_range_size in each spatial resolution element where the fit was accepted.
@@ -1474,7 +1480,7 @@ class MuseCube:
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False,
                               redmonster_format=False, id_start=1, coord_name=False, debug=False, a_min=3.5):
         """
-        Function used to save a set of spectra given by a DS9 regionfile "regfile"
+        Method used to save a set of spectra given by a ds9 regionfile `regfile`
         :param regfile: str. Name of the DS9 region file
         :param mode: str.  Default = 'wwm'. See more modes and details in self.spec_from_minicube_mask()
         :param frac. FLoat, default = 0.1
@@ -1485,10 +1491,11 @@ class MuseCube:
             If True, the errors of the spectrum will be determined empirically
         :param redmonster_format: If True, the specta will be saved in a redeable format for redmonster software
         :param coord_name: Boolean. Default = False.
-            If True, The name of each spectrum will be computed from the coordinates of the first (X,Y) pair in the region
-            string. Otherwhise, the spectra will be named with and ID and the name of the region file.
+            If True, the name of each spectrum will be computed from the coordinates of the first (X,Y) pair in
+            the region string. Otherwhise, the spectra will be named with and ID and the name of the
+            region file.
         :param id_start: int. Default = 1
-                Initial id assigned to diferent spectra
+                Initial ID assigned to different spectra
         """
         meta = None  # this can eventually be a dictionary with metadata to pass to the XSpectrum1D object
         r = pyregion.open(regfile)
@@ -1514,7 +1521,7 @@ class MuseCube:
                 text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
                 meta = dict()
                 meta['headers'] = [dict()]  # has to be list because of linetools likes it this way
-                meta['headers'][0]['PyMUSE COMMENT'] = 'Ds9 region text: '+ text_i
+                meta['headers'][0]['PyMUSE COMMENT'] = 'ds9 region text: '+ text_i
             self.draw_region(r_i)
             mask2d = self.region_2dmask(r_i)
             ##Get spec
@@ -1523,7 +1530,8 @@ class MuseCube:
                 spec = mcu.calculate_empirical_rms(spec)
             spec = self.spec_to_vacuum(spec)
             str_id = str(id_).zfill(3)
-            spec_fits_name = str_id + '_' + regfile[:-4]
+            regfile_root = regfile.split('/')[-1].split('.reg')[0]
+            spec_fits_name = str_id + '_' + regfile_root
             if coord_name:
                 r_aux = r[i]
                 x = r_aux.coord_list[0]
@@ -1543,13 +1551,14 @@ class MuseCube:
                                  save=False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
-        The .reg file MUST be in image coordiantes
-        :param regfile: str. Name of the DS9 region file
+        The .reg file MUST be in Image coordinates
+        :param regfile: str. Name of the ds9 region file
         :param mode: str
             Mode for combining spaxels:
               * `ivar` - Inverse variance weighting, variance is taken only spatially, from a "white variance image"
               * `sum` - Sum of total flux
-              * `wwm` - 'White Weighted Mean'. Weigted mean, weights are obtained from the white image, smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
+              * `wwm` - 'White Weighted Mean'. Weighted mean, weights are obtained from the white image,
+              smoothed using a gaussian filter of sigma = npix. If npix=0, no smooth is done
               * `ivarwv` - Weighted mean, the weight of every pixel is given by the inverse of it's variance
               * `mean`  -  Mean of the total flux
               * `median` - Median of the total flux
@@ -1558,7 +1567,7 @@ class MuseCube:
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
         :param i: int, default = 0
-                  Index of the region in the region file. i = 0 corresponds to the first region listed.
+            Index of the region in the region file. i = 0 corresponds to the first region in the file.
         :param frac: Float, default = 0.1
                      Parameter needed for wfrac mode
         :param npix: int. Default = 0
@@ -1571,7 +1580,7 @@ class MuseCube:
         r = pyregion.open(regfile)
         r_i = pyregion.ShapeList([r[i]])
         if r_i[0].comment is not None:  # if there is a comment in the Ds9 region, pass it on
-            text_i = r_i[0].commen
+            text_i = r_i[0].comment
             text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
             # define metadata from region
             # import pdb; pdb.set_trace()
