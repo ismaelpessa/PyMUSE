@@ -854,7 +854,7 @@ class MuseCube:
         hdu_aux = self.hdulist_white_temp[1]
         hdu_aux.data = im_aux
         shape = hdu_aux.data.shape
-        region_filter = as_region_filter(r, origin=0)
+        region_filter = as_region_filter(r, origin=1)
         mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
         mask2d = mask_new_inverse
@@ -1840,7 +1840,7 @@ class MuseCube:
         hdulist = self.hdulist_white
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         shape = hdu_aux.data.shape
-        region_filter = as_region_filter(r, origin=0)
+        region_filter = as_region_filter(r, origin=1)
         mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
         self.draw_pyregion(region_string)
