@@ -492,7 +492,7 @@ class MuseCube:
             return x_c, y_c, params
 
     def get_spec_from_region_string(self, region_string, mode='wwm', npix=0., frac=0.1, empirical_std=False, n_figure=2,
-                                    save=False):
+                                    save=False, save_mask=False):
         """
         Obtains a combined spectrum of spaxels within geometrical region defined by the region _string,
         interpreted by ds9
@@ -521,6 +521,8 @@ class MuseCube:
             If True, the errors of the spectrum will be determined empirically
         :param save: boolean. Default = False
             If True, the spectrum will be saved in hard_disk
+        : param save_mask: boolean
+            If True, a fits image with the masked pixels used will be stored in disk
         :return: spec: XSpectrum1D object
         """
 
@@ -543,6 +545,11 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         if save:
             spec.write_to_fits(name + '.fits')
+        if save_mask:
+            mask = np.where(new_mask, self.white_data, 0.)
+            self.__save2fits(name+'_mask.fits',mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
+
         return spec
 
     def draw_ellipse_params(self, xc, yc, params, color='green'):
@@ -569,7 +576,7 @@ class MuseCube:
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel 0,0
         patch = patch_list[0]
         ax.add_patch(patch)
 
@@ -824,7 +831,7 @@ class MuseCube:
     def draw_region(self, r):
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel (0,0)
         if len(patch_list) == 0:
             import pdb; pdb.set_trace()
         patch = patch_list[0]
@@ -847,7 +854,7 @@ class MuseCube:
         hdu_aux = self.hdulist_white_temp[1]
         hdu_aux.data = im_aux
         shape = hdu_aux.data.shape
-        region_filter = as_region_filter(r, origin=0)
+        region_filter = as_region_filter(r, origin=1)
         mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
         mask2d = mask_new_inverse
@@ -1833,7 +1840,7 @@ class MuseCube:
         hdulist = self.hdulist_white
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         shape = hdu_aux.data.shape
-        region_filter = as_region_filter(r, origin=0)
+        region_filter = as_region_filter(r, origin=1)
         mask_new = region_filter.mask(shape)
         mask_new_inverse = np.where(~mask_new, True, False)
         self.draw_pyregion(region_string)
@@ -2193,9 +2200,9 @@ class MuseCube:
     def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None):
         """
         Function used to produce a filtered image from the cube
-        :param band: string, default = r
-                        possible values: u,g,r,i,z , SDSS filter or Johnson V,R to get
-                        the filtered image
+        :param band: string, default = `r`
+                        possible values: u,g,r,i,z (SDSS filters) or V,R (Johnson's)
+                        to get the filtered image
         :param save: Boolean, default = True
                      If True, the image will be saved
         :param custom_filter: Default = None.
