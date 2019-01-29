@@ -576,7 +576,7 @@ class MuseCube:
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=1)
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel 0,0
         patch = patch_list[0]
         ax.add_patch(patch)
 
@@ -831,7 +831,7 @@ class MuseCube:
     def draw_region(self, r):
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=1)
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel (0,0)
         if len(patch_list) == 0:
             import pdb; pdb.set_trace()
         patch = patch_list[0]
