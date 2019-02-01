@@ -72,11 +72,11 @@ class MuseCube:
         self.__npix = None
 
         if vmin is None:
-            self.vmin = np.nanpercentile(self.white_data, 0.25)
+            self.vmin = np.nanpercentile(self.white_data, 25)
         else:
             self.vmin = vmin
         if vmax is None:
-            self.vmax = np.nanpercentile(self.white_data, 98.)
+            self.vmax = np.nanpercentile(self.white_data, 95.)
         else:
             self.vmax = vmax
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
