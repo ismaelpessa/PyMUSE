@@ -311,9 +311,9 @@ class MuseCube:
         return im_new
 
 
-    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False, meta=None):
+    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False, meta=None, origin = 1):
         """
-        Gets the spectrum of a single spaxel (xy) of the MuseCube
+        Gets the spectrum of a single spaxel (xy) of the MuseCube, starting from (0,0)
         :param x: x coordinate of the spaxel
         :param y: y coordinate of the spaxel
         :param coord_system: 'pix' or 'wcs'
@@ -325,7 +325,15 @@ class MuseCube:
         else:
             x_c, y_c = x, y
             x_world, y_world = self.p2w(x, y)
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 1, 1, 0, coord_system='pix')
+        if origin == 1:
+            region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 0.5, 0.5, 0, coord_system='pix')
+            x_c-=1
+            y_c-=1
+
+        elif origin == 0:
+            region_string = self.ellipse_param_to_ds9reg_string(x_c+1, y_c+1, 0.5, 0.5, 0, coord_system='pix')
+        else:
+            raise ValueError('origin must be either 1 or 0')
         self.draw_pyregion(region_string)
         w = self.wavelength
         spec = self.cube[:, int(y_c), int(x_c)]
@@ -580,7 +588,7 @@ class MuseCube:
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=1)  # for drawing we start from pixel 0,0
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel 0,0
         patch = patch_list[0]
         ax.add_patch(patch)
 
