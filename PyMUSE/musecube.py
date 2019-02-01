@@ -71,11 +71,11 @@ class MuseCube:
         self.smooth_im = None
         self.__npix = None
 
-        if not vmin:
+        if vmin is None:
             self.vmin = np.nanpercentile(self.white_data, 0.25)
         else:
             self.vmin = vmin
-        if not vmax:
+        if vmax is None:
             self.vmax = np.nanpercentile(self.white_data, 98.)
         else:
             self.vmax = vmax
