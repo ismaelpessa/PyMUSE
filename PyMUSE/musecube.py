@@ -71,12 +71,12 @@ class MuseCube:
         self.smooth_im = None
         self.__npix = None
 
-        if not vmin:
-            self.vmin = np.nanpercentile(self.white_data, 0.25)
+        if vmin is None:
+            self.vmin = np.nanpercentile(self.white_data, 25)
         else:
             self.vmin = vmin
-        if not vmax:
-            self.vmax = np.nanpercentile(self.white_data, 98.)
+        if vmax is None:
+            self.vmax = np.nanpercentile(self.white_data, 95.)
         else:
             self.vmax = vmax
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
@@ -311,9 +311,9 @@ class MuseCube:
         return im_new
 
 
-    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False, meta=None):
+    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False, meta=None, origin = 1):
         """
-        Gets the spectrum of a single spaxel (xy) of the MuseCube
+        Gets the spectrum of a single spaxel (xy) of the MuseCube, starting from (0,0)
         :param x: x coordinate of the spaxel
         :param y: y coordinate of the spaxel
         :param coord_system: 'pix' or 'wcs'
@@ -325,7 +325,15 @@ class MuseCube:
         else:
             x_c, y_c = x, y
             x_world, y_world = self.p2w(x, y)
-        region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 1, 1, 0, coord_system='pix')
+        if origin == 1:
+            region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 0.5, 0.5, 0, coord_system='pix')
+            x_c-=1
+            y_c-=1
+
+        elif origin == 0:
+            region_string = self.ellipse_param_to_ds9reg_string(x_c+1, y_c+1, 0.5, 0.5, 0, coord_system='pix')
+        else:
+            raise ValueError('origin must be either 1 or 0')
         self.draw_pyregion(region_string)
         w = self.wavelength
         spec = self.cube[:, int(y_c), int(x_c)]
@@ -349,7 +357,7 @@ class MuseCube:
         return spec
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.1,
-                                     n_figure=2, empirical_std=False, save=False, color='green'):
+                                     n_figure=2, empirical_std=False, save=False, color='green', save_mask = False):
         """
         Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, param
@@ -405,11 +413,15 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         if save:
             spec.write_to_fits(name + '.fits')
+        if save_mask and mode != 'gaussian':
+            mask = np.where(new_mask, self.white_data, 0.)
+            self.__save2fits(name+'_mask.fits',mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
         return spec
 
     def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0, frac=0.1,
                                                  n_figure=2,
-                                                 empirical_std=False, save=False):
+                                                 empirical_std=False, save=False, save_mask = False):
         """
         Function used to interactively define a region and extract the spectrum of that region
 
@@ -438,30 +450,36 @@ class MuseCube:
         :return: spec: XSpectrum1D object
 
         """
-        self.reload_canvas()
+
         from PyMUSE.roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r', fig=current_fig)
         input("MuseCube: Please select points with left click. Right click and Enter to continue...")
         print("MuseCube: Calculating the spectrum...")
+        self.reload_canvas()
+        MyROI.displayROI()
+        MyROI.allxpoints = list(np.array(MyROI.allxpoints)-1)
+        MyROI.allypoints = list(np.array(MyROI.allypoints)-1)
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
         complete_mask = mask_inv
         new_2dmask = np.where(complete_mask == 0, False, True)
         spec = self.spec_from_minicube_mask(new_2dmask, mode=mode, npix=npix, frac=frac)
-        self.reload_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.title('Polygonal region spectrum ')
         plt.figure(self.n)
-        MyROI.displayROI()
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
         if save:
             spec.write_to_fits('Poligonal_region_spec.fits')
+        if save_mask:
+            mask = np.where(new_2dmask, self.white_data, 0.)
+            self.__save2fits('Poligonal_region_spec_mask.fits',mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
         return spec
 
     def params_from_ellipse_region_string(self, region_string, deg=False):
@@ -545,7 +563,7 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         if save:
             spec.write_to_fits(name + '.fits')
-        if save_mask:
+        if save_mask and mode != 'gaussian':
             mask = np.where(new_mask, self.white_data, 0.)
             self.__save2fits(name+'_mask.fits',mask, stat=False, type='white', n_figure=2,
                              edit_header=[])
@@ -1556,6 +1574,7 @@ class MuseCube:
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', i=0, frac=0.1, npix=0, empirical_std=False, n_figure=2,
                                  save=False, save_mask=False):
+
         """
         Function to get the spec of a region defined in a ds9 .reg file
         The .reg file MUST be in Image coordinates
