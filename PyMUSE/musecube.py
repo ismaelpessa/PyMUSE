@@ -1555,7 +1555,7 @@ class MuseCube:
             print('ID = ' + str_id + ' Ready!!')
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', i=0, frac=0.1, npix=0, empirical_std=False, n_figure=2,
-                                 save=False):
+                                 save=False, save_mask=False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
         The .reg file MUST be in Image coordinates
@@ -1582,6 +1582,8 @@ class MuseCube:
         :param n_figure: int. Default = 2. Figure to display the spectrum
         :param empirical_std: boolean. Default = False.
             If True, the errors of the spectrum will be determined empirically
+        : param save_mask: boolean
+            If True, a fits image with the masked pixels used will be stored in disk
         :return: spec: XSpectrum1D object
         """
         r = pyregion.open(regfile)
@@ -1606,6 +1608,11 @@ class MuseCube:
         spec = self.spec_to_vacuum(spec)
         if save:
             spec.write_to_fits(regfile[:-4] + '.fits')
+        if save_mask:
+            rootname = regfile.split('/')[-1].split('.reg')[0]
+            mask = np.where(mask2d, self.white_data, 0.)
+            self.__save2fits('{}_{}_mask.fits'.format(rootname,i+1),mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
 
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
