@@ -311,12 +311,15 @@ class MuseCube:
         return im_new
 
 
-    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False, meta=None, origin = 1):
+    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False,
+                        meta=None, origin=1):
         """
         Gets the spectrum of a single spaxel (xy) of the MuseCube, starting from (0,0)
         :param x: x coordinate of the spaxel
         :param y: y coordinate of the spaxel
         :param coord_system: 'pix' or 'wcs'
+        :param origin: int 1 or 0 - Whether (xy) coordinate of spaxel starts from pixel
+                                    (1,1) or (0,0) respectively
         :return: spec: XSpectrum1D object
         """
         if coord_system == 'wcs':
@@ -329,7 +332,6 @@ class MuseCube:
             region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 0.5, 0.5, 0, coord_system='pix')
             x_c-=1
             y_c-=1
-
         elif origin == 0:
             region_string = self.ellipse_param_to_ds9reg_string(x_c+1, y_c+1, 0.5, 0.5, 0, coord_system='pix')
         else:
