@@ -421,7 +421,7 @@ class MuseCube:
 
     def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0, frac=0.1,
                                                  n_figure=2,
-                                                 empirical_std=False, save=False):
+                                                 empirical_std=False, save=False, save_mask = False):
         """
         Function used to interactively define a region and extract the spectrum of that region
 
@@ -450,30 +450,36 @@ class MuseCube:
         :return: spec: XSpectrum1D object
 
         """
-        self.reload_canvas()
+
         from PyMUSE.roipoly import roipoly
         current_fig = plt.figure(self.n)
         MyROI = roipoly(roicolor='r', fig=current_fig)
         input("MuseCube: Please select points with left click. Right click and Enter to continue...")
         print("MuseCube: Calculating the spectrum...")
+        self.reload_canvas()
+        MyROI.displayROI()
+        MyROI.allxpoints = list(np.array(MyROI.allxpoints)-1)
+        MyROI.allypoints = list(np.array(MyROI.allypoints)-1)
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
         complete_mask = mask_inv
         new_2dmask = np.where(complete_mask == 0, False, True)
         spec = self.spec_from_minicube_mask(new_2dmask, mode=mode, npix=npix, frac=frac)
-        self.reload_canvas()
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         plt.xlabel('Wavelength (Angstroms)')
         plt.title('Polygonal region spectrum ')
         plt.figure(self.n)
-        MyROI.displayROI()
         if empirical_std:
             spec = mcu.calculate_empirical_rms(spec)
         spec = self.spec_to_vacuum(spec)
         if save:
             spec.write_to_fits('Poligonal_region_spec.fits')
+        if save_mask:
+            mask = np.where(new_2dmask, self.white_data, 0.)
+            self.__save2fits('Poligonal_region_spec_mask.fits',mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
         return spec
 
     def params_from_ellipse_region_string(self, region_string, deg=False):
