@@ -349,7 +349,7 @@ class MuseCube:
         return spec
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.1,
-                                     n_figure=2, empirical_std=False, save=False, color='green'):
+                                     n_figure=2, empirical_std=False, save=False, color='green', save_mask = False):
         """
         Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, param
@@ -405,6 +405,10 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         if save:
             spec.write_to_fits(name + '.fits')
+        if save_mask and mode != 'gaussian':
+            mask = np.where(new_mask, self.white_data, 0.)
+            self.__save2fits(name+'_mask.fits',mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
         return spec
 
     def get_spec_from_interactive_polygon_region(self, mode='wwm', npix=0, frac=0.1,
@@ -545,7 +549,7 @@ class MuseCube:
         plt.ylabel('Flux (' + str(self.flux_units) + ')')
         if save:
             spec.write_to_fits(name + '.fits')
-        if save_mask:
+        if save_mask and mode != 'gaussian':
             mask = np.where(new_mask, self.white_data, 0.)
             self.__save2fits(name+'_mask.fits',mask, stat=False, type='white', n_figure=2,
                              edit_header=[])
@@ -576,7 +580,7 @@ class MuseCube:
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel 0,0
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=1)  # for drawing we start from pixel 0,0
         patch = patch_list[0]
         ax.add_patch(patch)
 
@@ -831,7 +835,7 @@ class MuseCube:
     def draw_region(self, r):
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel (0,0)
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=1)  # for drawing we start from pixel (0,0)
         if len(patch_list) == 0:
             import pdb; pdb.set_trace()
         patch = patch_list[0]
@@ -1555,7 +1559,7 @@ class MuseCube:
             print('ID = ' + str_id + ' Ready!!')
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', i=0, frac=0.1, npix=0, empirical_std=False, n_figure=2,
-                                 save=False):
+                                 save=False, save_mask = False):
         """
         Function to get the spec of a region defined in a ds9 .reg file
         The .reg file MUST be in Image coordinates
@@ -1606,6 +1610,10 @@ class MuseCube:
         spec = self.spec_to_vacuum(spec)
         if save:
             spec.write_to_fits(regfile[:-4] + '.fits')
+        if save_mask:
+            mask = np.where(mask2d, self.white_data, 0.)
+            self.__save2fits(regfile[:-4]+'_mask.fits',mask, stat=False, type='white', n_figure=2,
+                             edit_header=[])
 
         plt.figure(n_figure)
         plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
