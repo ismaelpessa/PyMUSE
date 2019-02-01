@@ -311,12 +311,15 @@ class MuseCube:
         return im_new
 
 
-    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False, meta=None, origin = 1):
+    def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False,
+                        meta=None, origin=1):
         """
         Gets the spectrum of a single spaxel (xy) of the MuseCube, starting from (0,0)
         :param x: x coordinate of the spaxel
         :param y: y coordinate of the spaxel
         :param coord_system: 'pix' or 'wcs'
+        :param origin: int 1 or 0 - Whether (xy) coordinate of spaxel starts from pixel
+                                    (1,1) or (0,0) respectively
         :return: spec: XSpectrum1D object
         """
         if coord_system == 'wcs':
@@ -329,7 +332,6 @@ class MuseCube:
             region_string = self.ellipse_param_to_ds9reg_string(x_c, y_c, 0.5, 0.5, 0, coord_system='pix')
             x_c-=1
             y_c-=1
-
         elif origin == 0:
             region_string = self.ellipse_param_to_ds9reg_string(x_c+1, y_c+1, 0.5, 0.5, 0, coord_system='pix')
         else:
@@ -1573,7 +1575,8 @@ class MuseCube:
             print('ID = ' + str_id + ' Ready!!')
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', i=0, frac=0.1, npix=0, empirical_std=False, n_figure=2,
-                                 save=False, save_mask = False):
+                                 save=False, save_mask=False):
+
         """
         Function to get the spec of a region defined in a ds9 .reg file
         The .reg file MUST be in Image coordinates
@@ -1600,6 +1603,8 @@ class MuseCube:
         :param n_figure: int. Default = 2. Figure to display the spectrum
         :param empirical_std: boolean. Default = False.
             If True, the errors of the spectrum will be determined empirically
+        : param save_mask: boolean
+            If True, a fits image with the masked pixels used will be stored in disk
         :return: spec: XSpectrum1D object
         """
         r = pyregion.open(regfile)
@@ -1625,8 +1630,9 @@ class MuseCube:
         if save:
             spec.write_to_fits(regfile[:-4] + '.fits')
         if save_mask:
+            rootname = regfile.split('/')[-1].split('.reg')[0]
             mask = np.where(mask2d, self.white_data, 0.)
-            self.__save2fits(regfile[:-4]+'_mask.fits',mask, stat=False, type='white', n_figure=2,
+            self.__save2fits('{}_{}_mask.fits'.format(rootname,i+1),mask, stat=False, type='white', n_figure=2,
                              edit_header=[])
 
         plt.figure(n_figure)
