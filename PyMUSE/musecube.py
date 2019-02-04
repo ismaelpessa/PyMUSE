@@ -1575,7 +1575,7 @@ class MuseCube:
             print('ID = ' + str_id + ' Ready!!')
 
     def get_spec_from_ds9regfile(self, regfile, mode='wwm', i=0, frac=0.1, npix=0, empirical_std=False, n_figure=2,
-                                 save=False, save_mask=False):
+                                 save=False, save_mask=False, plot=False):
 
         """
         Function to get the spec of a region defined in a ds9 .reg file
@@ -1605,6 +1605,8 @@ class MuseCube:
             If True, the errors of the spectrum will be determined empirically
         : param save_mask: boolean
             If True, a fits image with the masked pixels used will be stored in disk
+        : param plot : bool
+            Whether to plot spectrum
         :return: spec: XSpectrum1D object
         """
         r = pyregion.open(regfile)
@@ -1620,7 +1622,7 @@ class MuseCube:
         else:
             meta = None
 
-        self.draw_region(r)
+        self.draw_region(r_i)
         mask2d = self.region_2dmask(r_i)
 
         spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac, meta=meta)
@@ -1635,11 +1637,12 @@ class MuseCube:
             self.__save2fits('{}_{}_mask.fits'.format(rootname,i+1),mask, stat=False, type='white', n_figure=2,
                              edit_header=[])
 
-        plt.figure(n_figure)
-        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
-        plt.title('Spectrum from ' + regfile)
-        plt.xlabel('Angstroms')
-        plt.ylabel('Flux (' + str(self.flux_units) + ')')
+        if plot:
+            plt.figure(n_figure)
+            plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid')
+            plt.title('Spectrum from ' + regfile)
+            plt.xlabel('Angstroms')
+            plt.ylabel('Flux (' + str(self.flux_units) + ')')
         return spec
 
     @property
