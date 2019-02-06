@@ -1544,11 +1544,12 @@ class MuseCube:
                     continue
             # import pdb; pdb.set_trace()
             if r_i[0].comment is not None:  # if there is a comment in the Ds9 region, pass it on
-                text_i = r_i[0].comment
-                text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
-                meta = dict()
-                meta['headers'] = [dict()]  # has to be list because of linetools likes it this way
-                meta['headers'][0]['PyMUSE COMMENT'] = 'ds9 region text: '+ text_i
+                if 'text' in r_i[0].comment:
+                    text_i = r_i[0].comment
+                    text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
+                    meta = dict()
+                    meta['headers'] = [dict()]  # has to be list because of linetools likes it this way
+                    meta['headers'][0]['PyMUSE COMMENT'] = 'ds9 region text: '+ text_i
             self.draw_region(r_i)
             mask2d = self.region_2dmask(r_i)
             ##Get spec
