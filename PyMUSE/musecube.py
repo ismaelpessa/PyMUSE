@@ -1087,7 +1087,7 @@ class MuseCube:
             n_spaxels = len(x_)
             spec_list = []
             for i, j in zip(x_, y_):
-                spec = self.get_spec_spaxel(i, j)
+                spec = self.get_spec_spaxel(i, j, origin = 0)
                 spec_list.append(spec)
             fl = 0
             sig = 0
