@@ -1469,7 +1469,7 @@ class MuseCube:
         return kine_im
 
     def save_muselet_specs(self, filename, mode='sum', params=4, frac=0.1, npix=0, empirical_std=False,
-                           redmonster_format=True, ids='all'):
+                           redmonster_format=True, ids='all',origin = 0):
         """
 
         :param filename: string, Name of the MUSELET output fits table
@@ -1502,7 +1502,7 @@ class MuseCube:
             spec_fits_name = str_id + '_' + name_from_coord(coord)
             x, y = self.w2p(x_world, y_world)
             spec = self.get_spec_from_ellipse_params(x, y, params, mode=mode, npix=npix, frac=frac,
-                                                     empirical_std=empirical_std, save=False)
+                                                     empirical_std=empirical_std, save=False, origin = origin)
             if redmonster_format:
                 mcu.spec_to_redmonster_format(spec=spec, fitsname=spec_fits_name + '_RMF.fits', n_id=ids[i])
             else:
