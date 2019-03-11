@@ -359,7 +359,7 @@ class MuseCube:
         return spec
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.1,
-                                     n_figure=2, empirical_std=False, save=False, color='green', save_mask = False):
+                                     n_figure=2, empirical_std=False, save=False, color='green', save_mask = False, origin = 1):
         """
         Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, param
@@ -390,8 +390,13 @@ class MuseCube:
             If True, the errors of the spectrum will be determined empirically
         :param save: boolean. Default = False
             If True, the spectrum will be saved in hard_disk
+        :param origin: int. Default = 1. Set the origin in (0,0) or (1,1)
         :return: spec: XSpectrum1D object
         """
+        if origin == 0 and coord_system=='pix':
+            x_c +=1
+            y_c +=1
+
         if mode == 'gaussian':
             spec = self.get_gaussian_profile_weighted_spec(x_c=x_c, y_c=y_c, params=params)
         else:
@@ -1505,7 +1510,7 @@ class MuseCube:
             print('ID = ' + str_id + ' Ready!!')
 
     def save_ds9regfile_specs(self, regfile, mode='wwm', frac=0.1, npix=0, empirical_std=False,
-                              redmonster_format=False, id_start=1, coord_name=False, debug=False, a_min=3.5):
+                              redmonster_format=False, id_start=1, coord_name=False, debug=False, a_min=3.5, save_masks=False):
         """
         Method used to save a set of spectra given by a ds9 regionfile `regfile`
         :param regfile: str. Name of the DS9 region file
@@ -1554,6 +1559,11 @@ class MuseCube:
             mask2d = self.region_2dmask(r_i)
             ##Get spec
             spec = self.spec_from_minicube_mask(mask2d, mode=mode, npix=npix, frac=frac, meta=meta)
+            if save_masks:
+                rootname = regfile.split('/')[-1].split('.reg')[0]
+                mask = np.where(mask2d, self.white_data, 0.)
+                self.__save2fits('{}_{}_mask.fits'.format(rootname, i + 1), mask, stat=False, type='white', n_figure=2,
+                                 edit_header=[])
             if empirical_std:
                 spec = mcu.calculate_empirical_rms(spec)
             spec = self.spec_to_vacuum(spec)
@@ -2052,7 +2062,24 @@ class MuseCube:
 
     def save_sextractor_specs(self, sextractor_filename, flag_threshold=32, redmonster_format=True, a_min=3.5,
                               n_figure=2, wcs_coords=False,
-                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1, mag_sex='MAG_AUTO', border_thresh=1):
+                              mode='wwm', mag_kwrd='mag_r', npix=0, frac=0.1, mag_sex='MAG_AUTO', border_thresh=1, origin = 0):
+        """
+        Function to extract the spectra of sourced from a SExtractor catalog
+        :param sextractor_filename: str. Name of the SExtractor catalog
+        :param flag_threshold: SExtractor flag threshold. Sources with a flag higher than this threshold will not be extracted
+        :param redmonster_format: Set to True to save the output spectra in a format redeable for Redmonster software.
+        :param a_min: Minimim value for the semi-major axis of the elliptical regions. The values smaller than this will be enlarged, keeping the same a/b ratio. (Values smaller than 1 can fail, since it may be an empty (no spaxels) region)
+        :param n_figure: Figure to display the extracted spectra
+        :param wcs_coords: Boolean. Default: False. Set to true to use coordinates instead of pixels in the SExtractor catalog.
+        :param mode: Mode of spectral extraction
+        :param mag_kwrd: Keyword to save the SExtractor photometry in the header of the saved spectra
+        :param npix: extraction parameter (see methods above)
+        :param frac: extraction parameter (see methods above)
+        :param mag_sex: SExtractor photometry to save in the header of saved spectra. Default: "MAG_AUTO"
+        :param border_thresh: Minimum distance to an edge for a source to be extracted
+        :param origin: Set the origin in (0,0) or (1,1). Default: 0
+        :return:
+        """
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
             flag_threshold=flag_threshold, wcs_coords=wcs_coords, mag_sex=mag_sex, border_thresh=border_thresh)
@@ -2064,7 +2091,7 @@ class MuseCube:
                 coord = SkyCoord(ra=x_world, dec=y_world, frame='icrs', unit='deg')
                 spec_fits_name = name_from_coord(coord)
                 spec = self.get_spec_from_ellipse_params(x_c=x_pix[i], y_c=y_pix[i], params=[a[i], b[i], theta[i]],
-                                                         mode=mode, npix=npix, frac=frac, save=False, n_figure=n_figure)
+                                                         mode=mode, npix=npix, frac=frac, save=False, n_figure=n_figure, origin = origin)
 
                 str_id = str(id[i]).zfill(3)
                 spec_fits_name = str_id + '_' + spec_fits_name
