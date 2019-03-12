@@ -3355,7 +3355,7 @@ class MuseCube:
                        y coordinate in pixels
         """
         #xpix, ypix = self.gc2.world2pixel(xw, yw)
-        [[ypix, xpix]] = wcs.sky2pix([yw, xw])
+        [[ypix, xpix]] = self.wcs.sky2pix([yw, xw])
         if xpix < 0:
             xpix = 0
         if ypix < 0:
@@ -3377,7 +3377,7 @@ class MuseCube:
                      y coordinate in wcs
         """
         #xw, yw = self.gc2.pixel2world(xp, yp)
-        [[yw, xw]] = wcs.sky2pix([yp, xp])
+        [[yw, xw]] = self.wcs.sky2pix([yp, xp])
         return xw, yw
 
     def xyr_to_pixel(self, x_center, y_center, radius):
