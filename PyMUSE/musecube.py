@@ -4,6 +4,7 @@ import glob
 import os
 import warnings
 
+from mpdaf.obj import WCS
 import aplpy
 import linetools.utils as ltu
 import numpy as np
@@ -81,7 +82,6 @@ class MuseCube:
             self.vmax = vmax
         self.gc2 = aplpy.FITSFigure(self.filename_white, figure=plt.figure(self.n))
         self.gc2.show_grayscale(vmin=self.vmin, vmax=self.vmax)
-
         # self.gc = aplpy.FITSFigure(self.filename, slices=[1], figure=plt.figure(20))
         self.pixelsize = pixelsize
         gc.enable()
@@ -90,6 +90,7 @@ class MuseCube:
 
     def load_data(self):
         hdulist = fits.open(self.filename)
+        self.wcs = WCS(hdr = hdulist[1].header)
         print("MuseCube: Loading the cube fluxes and variances...")
 
         # import pdb; pdb.set_trace()
@@ -3353,7 +3354,8 @@ class MuseCube:
                  ypix: float
                        y coordinate in pixels
         """
-        xpix, ypix = self.gc2.world2pixel(xw, yw)
+        #xpix, ypix = self.gc2.world2pixel(xw, yw)
+        [[ypix, xpix]] = wcs.sky2pix([yw, xw])
         if xpix < 0:
             xpix = 0
         if ypix < 0:
@@ -3374,7 +3376,8 @@ class MuseCube:
                  yw: float
                      y coordinate in wcs
         """
-        xw, yw = self.gc2.pixel2world(xp, yp)
+        #xw, yw = self.gc2.pixel2world(xp, yp)
+        [[yw, xw]] = wcs.sky2pix([yp, xp])
         return xw, yw
 
     def xyr_to_pixel(self, x_center, y_center, radius):

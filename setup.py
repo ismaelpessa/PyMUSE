@@ -17,5 +17,6 @@ setup(
         'aplpy',
         'h5py',
         'pyregion',
-        'numpy'
+        'numpy',
+        'mpdaf'
           ])
