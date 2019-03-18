@@ -1981,7 +1981,7 @@ class MuseCube:
             color = 'Green'
             if flags[i] > flag_threshold:
                 color = 'Red'
-            if origin == 0 and wcs_coords = False:
+            if origin == 0 and wcs_coords == False:
                 region_string = self.ellipse_param_to_ds9reg_string(x_pix[i] + 1, y_pix[i] + 1, a[i], b[i], theta[i],
                                                                     color=color)
             else:
@@ -3440,7 +3440,7 @@ class MuseCube:
         max_z_allowed = (w_max / OII) - 1.
         if z_end > max_z_allowed:
             print('maximum redshift allowed is ' + str(max_z_allowed) + ', this value will be used  instead of ' + str(
-                z_fin))
+                z_end))
             z_end = max_z_allowed
         z_array = np.arange(z_ini, z_end, dz)
         images_names = []
