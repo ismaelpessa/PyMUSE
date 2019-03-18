@@ -1891,7 +1891,7 @@ class MuseCube:
         return mask_new_inverse
 
     def plot_sextractor_regions(self, sextractor_filename, a_min=3.5, flag_threshold=32, wcs_coords=False, n_id=None,
-                                mag_sex='MAG_AUTO', border_thresh=1):
+                                mag_sex='MAG_AUTO', border_thresh=1, origin = 0):
         """
         Function to plot the regions in a SExtractor catalog
         :param sextractor_filename: string, catalog filename
@@ -1977,12 +1977,15 @@ class MuseCube:
             self.draw_pyregion(region_string)
             plt.text(x_pix[j], y_pix[j], id[j], color='Red')
             return
-
         for i in range(n):
             color = 'Green'
             if flags[i] > flag_threshold:
                 color = 'Red'
-            region_string = self.ellipse_param_to_ds9reg_string(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color)
+            if origin == 0 and wcs_coords = False:
+                region_string = self.ellipse_param_to_ds9reg_string(x_pix[i] + 1, y_pix[i] + 1, a[i], b[i], theta[i],
+                                                                    color=color)
+            else:
+                region_string = self.ellipse_param_to_ds9reg_string(x_pix[i], y_pix[i], a[i], b[i], theta[i], color=color)
             self.draw_pyregion(region_string)
             plt.text(x_pix[i], y_pix[i], id[i], color='Red')
         return x_pix, y_pix, a, b, theta, flags, id, mag
@@ -2083,7 +2086,7 @@ class MuseCube:
         """
         x_pix, y_pix, a, b, theta, flags, id, mag = self.plot_sextractor_regions(
             sextractor_filename=sextractor_filename, a_min=a_min,
-            flag_threshold=flag_threshold, wcs_coords=wcs_coords, mag_sex=mag_sex, border_thresh=border_thresh)
+            flag_threshold=flag_threshold, wcs_coords=wcs_coords, mag_sex=mag_sex, border_thresh=border_thresh, origin = origin)
         self.reload_canvas()
         n = len(x_pix)
         for i in range(n):
