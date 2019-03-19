@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="PyMUSE",
-    version="0.4.0",
+    version="0.4.1",
     description="Python software for handling VLT/MUSE data.",
     author="I. Pessa",
     license="MIT",
