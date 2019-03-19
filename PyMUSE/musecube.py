@@ -2184,7 +2184,10 @@ class MuseCube:
         :return:
         """
         data_to_save =  mcu.mask_matrix(self.white_data_orig,min_dist_to_nan_allowed = min_dist_to_nan_allowed)
-        self.__save2fits(self, fitsname, data_to_save, type='white')
+        new_hdu = copy.deepcopy(self.hdulist_white)
+        new_hdu[1].data = data_to_save
+        new_hdu.writeto(fitsname,overwrite = True)
+
 
     def trim_cube_edges(self, dx, dy, output_fitsname='trimed_cube.fits'):
         yc = int(self.cube.shape[1] / 2)
