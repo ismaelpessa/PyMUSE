@@ -314,7 +314,7 @@ class MuseCube:
 
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False,
-                        meta=None, origin=1):
+                        meta=None, origin=0):
         """
         Gets the spectrum of a single spaxel (xy) of the MuseCube, starting from (0,0)
         :param x: x coordinate of the spaxel
@@ -361,7 +361,7 @@ class MuseCube:
         return spec
 
     def get_spec_from_ellipse_params(self, x_c, y_c, params, coord_system='pix', mode='wwm', npix=0, frac=0.1,
-                                     n_figure=2, empirical_std=False, save=False, color='green', save_mask = False, origin = 1):
+                                     n_figure=2, empirical_std=False, save=False, color='green', save_mask = False, origin = 0):
         """
         Obtains a combined spectrum of spaxels within a geometrical region defined by
         x_c, y_c, param
@@ -383,7 +383,7 @@ class MuseCube:
               * `wwm_ivar` - Weights given by both, `wwm` and `ivar`
               * `wfrac` - It only takes the fraction `frac` of brightest spaxels (white) in the region
                          (e.g. frac=0.1 means 10% brightest) with equal weight.
-        :param frac. FLoat, default = 0.1
+        :param frac. Float, default = 0.1
                      Parameter needed for wfrac mode
         :param npix: int. Default = 0
             Standard deviation of the gaussian filter to smooth (Only in wwm methods)
@@ -467,8 +467,8 @@ class MuseCube:
         print("MuseCube: Calculating the spectrum...")
         self.reload_canvas()
         MyROI.displayROI()
-        MyROI.allxpoints = list(np.array(MyROI.allxpoints)-1)
-        MyROI.allypoints = list(np.array(MyROI.allypoints)-1)
+        MyROI.allxpoints = list(np.array(MyROI.allxpoints))
+        MyROI.allypoints = list(np.array(MyROI.allypoints))
         mask = MyROI.getMask(self.white_data)
         mask_inv = np.where(mask == 1, 0, 1)
         complete_mask = mask_inv
@@ -603,7 +603,7 @@ class MuseCube:
         r = pyregion.parse(region_string).as_imagecoord(hdulist[1].header)
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel 0,0
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=1)  # for drawing we start from pixel 0,0
         patch = patch_list[0]
         ax.add_patch(patch)
 
@@ -858,7 +858,7 @@ class MuseCube:
     def draw_region(self, r):
         fig = plt.figure(self.n)
         ax = fig.axes[0]
-        patch_list, artist_list = r.get_mpl_patches_texts(origin=0)  # for drawing we start from pixel (0,0)
+        patch_list, artist_list = r.get_mpl_patches_texts(origin=1)  # for drawing we start from pixel (0,0)
         if len(patch_list) == 0:
             import pdb; pdb.set_trace()
         patch = patch_list[0]
@@ -1624,17 +1624,17 @@ class MuseCube:
         """
         r = pyregion.open(regfile)
         r_i = pyregion.ShapeList([r[i]])
+        meta = None
         if r_i[0].comment is not None:  # if there is a comment in the Ds9 region, pass it on
             if 'text' in r_i[0].comment:
                 text_i = r_i[0].comment
                 text_i = text_i.split('{')[1][:-1]  # this is the text that will be stored in spec metadata
                 # define metadata from region
                 # import pdb; pdb.set_trace()
-            meta = dict()
-            meta['headers'] = [dict()]  # has to be list because of linetools likes it this way
-            meta['headers'][0]['PyMUSE COMMENT'] = 'Ds9 region text: ' + text_i
-        else:
-            meta = None
+                meta = dict()
+                meta['headers'] = [dict()]  # has to be list because of linetools likes it this way
+                meta['headers'][0]['PyMUSE COMMENT'] = 'Ds9 region text: ' + text_i
+
 
         self.draw_region(r_i)
         mask2d = self.region_2dmask(r_i)
@@ -3394,7 +3394,7 @@ class MuseCube:
                      y coordinate in wcs
         """
         #xw, yw = self.gc2.pixel2world(xp, yp)
-        [[yw, xw]] = self.wcs.sky2pix([yp, xp])
+        [[yw, xw]] = self.wcs.pix2sky([yp, xp])
         return xw, yw
 
     def xyr_to_pixel(self, x_center, y_center, radius):
