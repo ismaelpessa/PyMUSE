@@ -2179,7 +2179,8 @@ class MuseCube:
     def trim_white_nan_edges(self, min_dist_to_nan_allowed = 5, fitsname = 'new_nan_trimed.fits'):
         """
         Mask, replacing with a nan, all the spaxels at distances lower than 'min_dist_to_nan_allowed' (in spaxels) to the next nan in the white_image
-        :param min_dist_to_nan_allowed:
+        :param min_dist_to_nan_allowed: Int. All spaxels at a distance (in spaxels) lower than this value to the next nan, will be masked
+        :param fitsname: Str. Name of the new fits file created
         :return:
         """
         data_to_save =  mcu.mask_matrix(self.white_data_orig,min_dist_to_nan_allowed = min_dist_to_nan_allowed)
