@@ -11,6 +11,7 @@ from linetools import utils as ltu
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from scipy.interpolate import interp1d
 from astropy.table import Table
+import copy
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -68,6 +69,22 @@ def spec_to_redmonster_format(spec, fitsname, n_id=None, mag=None):
         hdu1.header[mag[0]] = mag[1]
     hdulist_new = fits.HDUList([hdu1, hdu2])
     hdulist_new.writeto(fitsname, clobber=True)
+
+def closest_nan(x,y,matrix):
+    m = np.where(np.isnan(matrix))
+    d = (y-m[0])**2 + (x-m[1])**2
+    return np.min(np.sqrt(d))
+
+def mask_matrix(matrix,min_dist_to_nan_allowed = 5):
+    m = copy.deepcopy(matrix)
+    y = len(matrix)
+    x = len(matrix[0])
+    for i in range(x):
+        for j in range(y):
+            d = closest_nan(i,j,matrix)
+            if d<=min_dist_to_nan_allowed:
+                m[j][i] = np.nan
+    return m
 
 
 def get_template(redmonster_file, n_template):  # n_template puede ser 1,2 o 3 o 4 o 5

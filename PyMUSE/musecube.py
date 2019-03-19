@@ -107,6 +107,7 @@ class MuseCube:
             print("MuseCube: No white image given, creating one.")
 
             w_data = self.create_white(save=False)
+            w_data = np.where(w_data == 0,np.nan, w_data)
 
             w_header_0 = copy.deepcopy(self.header_0)
             w_header_1 = copy.deepcopy(self.header_1)
@@ -156,8 +157,8 @@ class MuseCube:
         to disk called `smoothed_white.fits`.
         **kwargs are passed down to scipy.ndimage.gaussian_filter()
         """
-        hdulist = self.hdulist_white_temp
-        im = self.white_data
+        hdulist = copy.deepcopy(self.hdulist_white_temp)
+        im = copy.deepcopy(self.white_data)
         if npix > 0:
             smooth_im = ndimage.gaussian_filter(im, sigma=npix, **kwargs)
         else:
@@ -250,7 +251,7 @@ class MuseCube:
         """
         side = 2 * halfsize + 1
         image = [[0 for x in range(side)] for y in range(side)]
-        data_white = self.white_data_orig
+        data_white = copy.deepcopy(self.white_data_orig)
         center_x = center[0]
         center_y = center[1]
         for i in range(center_x - halfsize - 1, center_x + halfsize):
@@ -2174,6 +2175,15 @@ class MuseCube:
         inds = [np.argmin(np.fabs(wv_ii - self.wavelength)) for wv_ii in wv_array]
         inds = np.unique(inds)
         return inds
+
+    def trim_white_nan_edges(self, min_dist_to_nan_allowed = 5, fitsname = 'new_nan_trimed.fits'):
+        """
+        Mask, replacing with a nan, all the spaxels at distances lower than 'min_dist_to_nan_allowed' (in spaxels) to the next nan in the white_image
+        :param min_dist_to_nan_allowed:
+        :return:
+        """
+        data_to_save =  mcu.mask_matrix(self.white_data_orig,min_dist_to_nan_allowed = min_dist_to_nan_allowed)
+        self.__save2fits(self, fitsname, data_to_save, type='white')
 
     def trim_cube_edges(self, dx, dy, output_fitsname='trimed_cube.fits'):
         yc = int(self.cube.shape[1] / 2)
