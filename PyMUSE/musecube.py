@@ -3394,7 +3394,7 @@ class MuseCube:
                      y coordinate in wcs
         """
         #xw, yw = self.gc2.pixel2world(xp, yp)
-        [[yw, xw]] = self.wcs.pix2sky([yp, xp])
+        [[yw, xw]] = self.wcs.pix2sky([yp-1, xp-1])
         return xw, yw
 
     def xyr_to_pixel(self, x_center, y_center, radius):
