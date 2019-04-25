@@ -2190,6 +2190,13 @@ class MuseCube:
 
 
     def trim_cube_edges(self, dx, dy, output_fitsname='trimed_cube.fits'):
+        '''
+        Trim the edges of the cube, and creates a smaller cube. This function calls the more general function get_subsection_cube()
+        :param dx: int. Number of pixels to trim in the X dimension
+        :param dy: int. Number of pixels to trim in the Y dimension
+        :param output_fitsname: str. Name of the new cube that will be created.
+        :return:
+        '''
         yc = int(self.cube.shape[1] / 2)
         xc = int(self.cube.shape[2] / 2)
         wv_range = [self.wavelength[0], self.wavelength[len(self.wavelength) - 1]]
