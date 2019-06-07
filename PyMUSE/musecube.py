@@ -2229,7 +2229,7 @@ class MuseCube:
         if wv_range is not None:
             wv_inds = self.find_wv_inds(wv_range)
         else:
-            wv_inds = [0, -1]
+            wv_inds = [0, len(self.wavelength) - 1]
         datanew = data[wv_inds[0]:wv_inds[1] + 1, int(yc - ly):int(yc + ly), int(xc - lx): int(xc + lx)]
         statnew = stat[wv_inds[0]:wv_inds[1] + 1, int(yc - ly):int(yc + ly), int(xc - lx): int(xc + lx)]
         xw, yw = self.p2w(xc, yc)
