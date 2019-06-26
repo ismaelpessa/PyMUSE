@@ -2309,6 +2309,7 @@ class MuseCube:
         fitsname = 'new_image_{}_filter.fits'.format(band)
         sub_cube = self.cube[condition]
         filter_curve_final = filter_curve[condition]
+        filter_curve_final = filter_curve_final/np.sum(filter_curve_final)
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
         new_shape = filter_curve_final.shape + (1,) * extra_dims
         new_filter_curve = filter_curve_final.reshape(new_shape)
