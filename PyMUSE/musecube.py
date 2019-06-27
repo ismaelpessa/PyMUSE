@@ -2176,14 +2176,15 @@ class MuseCube:
         inds = np.unique(inds)
         return inds
 
-    def trim_white_nan_edges(self, min_dist_to_nan_allowed = 5, fitsname = 'new_nan_trimed.fits'):
+    def trim_white_nan_edges(self, min_dist_to_nan_allowed = 5, fitsname = 'new_nan_trimed.fits', reference_image = None):
         """
         Mask, replacing with a nan, all the spaxels at distances lower than 'min_dist_to_nan_allowed' (in spaxels) to the next nan in the white_image
         :param min_dist_to_nan_allowed: Int. All spaxels at a distance (in spaxels) lower than this value to the next nan, will be masked
         :param fitsname: Str. Name of the new fits file created
+        ;param reference_image: np.array(). A matrix with the same dimensions of the white image. If given, this image will be used to determine the positions to mask instead of the white.
         :return:
         """
-        data_to_save =  mcu.mask_matrix(self.white_data_orig,min_dist_to_nan_allowed = min_dist_to_nan_allowed)
+        data_to_save =  mcu.mask_matrix(self.white_data_orig,min_dist_to_nan_allowed = min_dist_to_nan_allowed, reference_image=reference_image)
         new_hdu = copy.deepcopy(self.hdulist_white)
         new_hdu[1].data = data_to_save
         new_hdu.writeto(fitsname,overwrite = True)
@@ -2282,7 +2283,7 @@ class MuseCube:
                 sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None):
+    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None, change_units = False):
         """
         Function used to produce a filtered image from the cube
         :param band: string, default = `r`
@@ -2294,6 +2295,8 @@ class MuseCube:
                               If not None, can be a custom filter created by the user formated as
                               a list with [wc,fc], where wc is the wavelength array of the filter
                               and fc is the corresponding transmission curve to each wc.
+        param change_units: Default = False.
+                            If True, the output image will lose the "/Angstrom" dependency. The output units will be in ergs/s (Not imple,emtated yet)
         :return:
         """
 

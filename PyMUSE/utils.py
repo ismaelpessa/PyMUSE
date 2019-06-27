@@ -75,13 +75,20 @@ def closest_nan(x,y,matrix):
     d = (y-m[0])**2 + (x-m[1])**2
     return np.min(np.sqrt(d))
 
-def mask_matrix(matrix,min_dist_to_nan_allowed = 5):
+def mask_matrix(matrix,min_dist_to_nan_allowed = 5, reference_image = None):
     m = copy.deepcopy(matrix)
     y = len(matrix)
     x = len(matrix[0])
+    if reference_image is not None:
+        if reference_image.shape != matrix.shape:
+            raise ValueError('Shapes of reference image does not match!')
+        matrix_aux = reference_image
+    else:
+        matrix_aux = matrix
+
     for i in range(x):
         for j in range(y):
-            d = closest_nan(i,j,matrix)
+            d = closest_nan(i,j,matrix_aux)
             if d<=min_dist_to_nan_allowed:
                 m[j][i] = np.nan
     return m
