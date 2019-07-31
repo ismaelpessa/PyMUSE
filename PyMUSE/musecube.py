@@ -2009,10 +2009,10 @@ class MuseCube:
 
 
     def save_vorbins_specs(self, vorbin_filename, mode='sum', npix=0, frac=0.1, empirical_std=False,
-                           redmonster_format=False, n_figure=2, plot_only=True):
+                           redmonster_format=False, n_figure=2, plot_only=True, id_start = 0):
         x_list, y_list, label_list = mcu.read_vorbin_output(vorbin_filename)
         n = len(label_list)
-        for i in range(n):
+        for i in range(id_start,n):
             x_bin = x_list[i].astype(int)
             y_bin = y_list[i].astype(int)
             x_c = np.mean(x_bin)
