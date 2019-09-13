@@ -34,7 +34,7 @@ class MuseCube:
     """
 
     def __init__(self, filename_cube, filename_white=None, pixelsize=0.2 * u.arcsec, n_fig=1,
-                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=None, vmax=None, wave_cal='air'):
+                 flux_units=1E-20 * u.erg / u.s / u.cm ** 2 / u.angstrom, vmin=None, vmax=None, input_wave_cal='air', output_wave_cal = 'air'):
         """
         Parameters
         ----------
@@ -46,9 +46,11 @@ class MuseCube:
             Pixel size of the datacube, if float it assumes arcsecs.
             Default is 0.2 arcsec
         n_fig : int, optional
-            XXXXXXXX
+            Figure to display the canvas
         flux_units : Quantity
-            XXXXXXXXXX
+        vmin, vmax: Display paramters
+        input_wave_cal: Wavelength calibration of the data cube, can be either air or vac
+        output_wave_cal: Wavelength calibration of the spectra extractied with this package
 
         """
 
@@ -58,8 +60,10 @@ class MuseCube:
         self.flux_units = flux_units
         self.n = n_fig
         plt.close(self.n)
-        self.wave_cal = wave_cal
-
+        self.wave_cal = input_wave_cal
+        self.output_wave_cal = output_wave_cal
+        if input_wave_cal not in ['air', 'vac'] or output_wave_cal not in ['air', 'vac'] :
+            raise Warning('input_wave_cal and output_wave_cal should be either "air" or "vac"')
         self.filename = filename_cube
         self.filename_white = filename_white
         self.load_data()
@@ -178,7 +182,7 @@ class MuseCube:
 
     def spec_to_vacuum(self, spectrum):
         spectrum_vac = spectrum
-        if self.wave_cal == 'air':
+        if self.wave_cal == 'air' and self.output_wave_cal == 'vac':
             spectrum_vac.meta['airvac'] = 'air'
             spectrum_vac.airtovac()
             return spectrum_vac
