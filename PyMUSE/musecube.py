@@ -316,6 +316,42 @@ class MuseCube:
             hdulist.writeto(output_image_filename, clobber=True)
         return im_new
 
+    def create_SN_map(self, wavelength_restframe = None, wavelength_effective = None, width = 10, redshift = None, units_redshift = None , output_file = 'SN_map.fits'):
+        """
+
+        :param wavelength_restframe: Restframe central wavelength where SN map will be constructed. If given, wavelength_effective must be None, and a redshift must be specified
+        :param wavelength_effective: Effective central wavelength where SN map will be constructed. If given, wavelength_restframe must be None, and a redshift must not be specified
+        :param width: Width (in AA) at each side of the central wavelength to compute te SN map
+        :param redshift: If wavelenght_restframe is given, a redshift must be specified.
+        :param units_redshift: Units of velocity. If No units are given, units will be assumed to be redshift units (z)
+        :return:
+        """
+        if (wavelength_restframe is None and wavelength_effective is None) or (wavelength_restframe is not None and wavelength_effective is not None) or (wavelength_restframe is not None and redshift is None):
+            raise ValueError('if wavelength_restframe is given, wavelength_effective muse be none and vice-versa. If wavelength_restframe is given, redshift must also be given')
+        if units_redshift is not None:
+            if units_redshift.physical_type != 'speed':
+                raise ValueError('units given must be speed ("'+units_redshift.physical_type+'" found)')
+
+        if wavelength_restframe is not None:
+            if units_redshift is None:
+                z = redshift
+            else:
+                z =  ltu.dz_from_dv(redshift*units_redshift,0.)
+            wave_central = wavelength_restframe*(1. + z)
+        else:
+            wave_central = wavelength_effective
+
+        n = len(self.wavelength[np.where(np.logical_and(self.wavelength>=wave_central-width, self.wavelength<=wave_central+width))])
+        im_data = self.get_image([[wave_central-width, wave_central+width]], type='sum', n_figure=2, save=False, stat=False)/np.sqrt(n)
+        im_stat = np.sqrt(self.get_image([[wave_central - width, wave_central + width]], type='sum', n_figure=2, save=False, stat=True))
+        SN_im = im_data/im_stat
+        hdulist = self.hdulist_white_temp
+        hdulist[0].header['COMMENT'] = 'Image created by PyMUSE.create_SN_map'
+        hdulist[1].header['COMMENT'] = 'Image created by PyMUSE.create_SN_map'
+        hdulist[1].header['COMMENT'] = 'S/N map, wavelength range: ['+str(wave_central-width)+','+str(wave_central+width)+']'
+        hdulist[1].data = SN_im
+        hdulist.writeto(output_file, overwrite=True)
+
 
     def get_spec_spaxel(self, x, y, coord_system='pix', n_figure=2, empirical_std=False, save=False,
                         meta=None, origin=0):
