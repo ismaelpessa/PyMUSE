@@ -2323,7 +2323,7 @@ class MuseCube:
                 sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None, multiply_by_central_wave = True):
+    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None, multiply_by_central_wave = True, scalar_normalization = 1.0):
         """
         Function used to produce a filtered image from the cube
         :param band: string, default = `r`
@@ -2337,6 +2337,7 @@ class MuseCube:
                               and fc is the corresponding transmission curve to each wc.
         param multiply_by_central_wave: Default = True.
                             If True, the output image produce bt convolving the cube with the transmission curve will be multiplied by the central waveleght of the transmission curve.
+        param scalar_normalization: Float, Default = 1.0. Number to re-esecale the output image (multiplicative factor).
         :return:
         """
 
@@ -2359,7 +2360,7 @@ class MuseCube:
         new_shape = filter_curve_final.shape + (1,) * extra_dims
         new_filter_curve = filter_curve_final.reshape(new_shape)
         new_filtered_cube = sub_cube * new_filter_curve
-        new_filtered_image = np.nansum(new_filtered_cube, axis=0)
+        new_filtered_image = np.nansum(new_filtered_cube, axis=0)*scalar_normalization
         if multiply_by_central_wave:
             new_filtered_image = new_filtered_image * central_waveleght_filter
         if save:
