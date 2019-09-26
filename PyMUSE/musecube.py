@@ -2323,7 +2323,7 @@ class MuseCube:
                 sub_cube = self.cube[wv_inds, :, :]
         return sub_cube
 
-    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None, change_units = False):
+    def get_filtered_image(self, band='r', save=True, n_figure=5, custom_filter= None, multiply_by_central_wave = True):
         """
         Function used to produce a filtered image from the cube
         :param band: string, default = `r`
@@ -2335,8 +2335,8 @@ class MuseCube:
                               If not None, can be a custom filter created by the user formated as
                               a list with [wc,fc], where wc is the wavelength array of the filter
                               and fc is the corresponding transmission curve to each wc.
-        param change_units: Default = False.
-                            If True, the output image will lose the "/Angstrom" dependency. The output units will be in ergs/s (Not imple,emtated yet)
+        param multiply_by_central_wave: Default = True.
+                            If True, the output image produce bt convolving the cube with the transmission curve will be multiplied by the central waveleght of the transmission curve.
         :return:
         """
 
@@ -2351,13 +2351,17 @@ class MuseCube:
         condition = np.where(filter_curve > 0)[0]
         fitsname = 'new_image_{}_filter.fits'.format(band)
         sub_cube = self.cube[condition]
+        w_in = w[condition]
         filter_curve_final = filter_curve[condition]
         filter_curve_final = filter_curve_final/np.sum(filter_curve_final)
+        central_waveleght_filter = np.sum(w_in*filter_curve_final)
         extra_dims = sub_cube.ndim - filter_curve_final.ndim
         new_shape = filter_curve_final.shape + (1,) * extra_dims
         new_filter_curve = filter_curve_final.reshape(new_shape)
         new_filtered_cube = sub_cube * new_filter_curve
         new_filtered_image = np.nansum(new_filtered_cube, axis=0)
+        if multiply_by_central_wave:
+            new_filtered_image = new_filtered_image * central_waveleght_filter
         if save:
             self.__save2fits(fitsname, new_filtered_image, type='white', n_figure=n_figure)
         return new_filtered_image
