@@ -337,3 +337,6 @@ def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
         counter += cond
 
     return flux_sum/counter, flux_sum, counter
+
+def create_marz_file():
+    pass
