@@ -380,6 +380,6 @@ def create_marz_file_from_directory(specdir, output, check_wave=True):
         wvHDU = fits.ImageHDU(data=matrix_wv)
         fluxHDU.header['EXTNAME'] = 'INTENSITY'
         varHDU.header['EXTNAME'] = 'VARIANCE'
-        varHDU.header['EXTNAME'] = 'WAVELEMGHT'
+        varHDU.header['EXTNAME'] = 'WAVELENGHT'
         hdulist_out = fits.HDUList([fluxHDU, varHDU, wvHDU])
         hdulist_out.writeto(output, overwrite=True)
