@@ -313,6 +313,7 @@ def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_outpu
     im_new = np.where(input_image < nsig * std, floor_output, input_image)
     return im_new
 
+
 def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
     """Collapses the full wavelength range, but only summing voxels with flux above
     a given S/N threshold to obtain a total flux (flux) per spaxel. Each spaxel
@@ -338,5 +339,89 @@ def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
 
     return flux_sum/counter, flux_sum, counter
 
-def create_marz_file():
+
+def create_marz_file(image, catalogue, specdir, output, r_lim=False):
+
+        import glob
+        from astropy.io import fits
+        from astropy import wcs
+        import numpy as np
+        import pdb
+
+        # Makes a list of spectra files ** MUST be all and only spectra
+        # from catalogue**
+        filelist = glob.glob(specdir + '/*')
+        # resort the filelist into numeric order
+        # Fixed the sorting algorithm to python 3 standards
+
+        filelist.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
+        # Need catalogue of spectra objects
+        catalog = fits.open(catalogue)
+        # name of MARZ file
+        if r_lim:
+            marzfile = output + '/spectra_marz_r' + str(r_lim) + '.fits'
+        else:
+            marzfile = output + '/spectra_marz.fits'
+
+            # Some image from MUSE cube, to get coordinates
+        image = fits.open(imagefile)
+        wref = wcs.WCS(image[0].header)
+
+        s0 = fits.open(filelist[0])
+        naxis3 = len(s0[0].data)
+        nspectra = len(filelist)
+
+        id = np.arange(len(filelist)) + 1  # Integer array - id of object
+        x = catalog[1].data['x']  # Array of object image x-coords
+        y = catalog[1].data['y']  # Array of object image y-coords
+        world_coords = wref.wcs_pix2world(np.transpose(np.array([x, y])), 0)
+        ra = world_coords[:, 0]  # Array of object R.A.s
+        dec = world_coords[:, 1]  # Array of object Dec.s
+
+        # Initialize flux, variance & sky arrays (sky not mandatory)
+        intensity = np.zeros((nspectra, naxis3))
+        variance = np.zeros((nspectra, naxis3))
+        sky = np.zeros((nspectra, naxis3))
+        wavelength = np.zeros((nspectra, naxis3))
+
+        # Fill the flux, variance and sky arrays here.
+        type = []
+
+        for filename in enumerate(filelist):
+            data = fits.open(filename[1])
+            type.append('P')
+            intensity[filename[0], :] = data[0].data
+            variance[filename[0], :] = data[1].data
+            sky[filename[0], :] = data[0].data * 0.0
+            wavelength[filename[0], :] = data[2].data
+
+        intensity[np.logical_not(np.isfinite(intensity))] = np.nan
+        variance[np.logical_not(np.isfinite(variance))] = np.nan
+        sky[np.logical_not(np.isfinite(sky))] = 0.0
+
+        # Set-up the fits file
+        marz_hdu = fits.HDUList()
+        marz_hdu.append(fits.ImageHDU(intensity))
+        marz_hdu.append(fits.ImageHDU(variance))
+        marz_hdu.append(fits.ImageHDU(sky))
+        marz_hdu.append(fits.ImageHDU(wavelength))
+        marz_hdu[0].header.set('extname', 'INTENSITY')
+        marz_hdu[1].header.set('extname', 'VARIANCE')
+        marz_hdu[2].header.set('extname', 'SKY')
+        marz_hdu[3].header.set('extname', 'WAVELENGTH')
+
+        # Add in source parameters as fits table
+        c1 = fits.Column(name='source_id', format='80A', array=id)
+        c2 = fits.Column(name='RA', format='D', array=ra)
+        c3 = fits.Column(name='DEC', format='D', array=dec)
+        c4 = fits.Column(name='X', format='J', array=x)
+        c5 = fits.Column(name='Y', format='J', array=y)
+        c6 = fits.Column(name='TYPE', format='1A', array=type)
+        coldefs = fits.ColDefs([c1, c2, c3, c4, c5, c6])
+        marz_hdu.append(fits.BinTableHDU.from_columns(coldefs))
+        marz_hdu[4].header.set('extname', 'FIBRES')
+
+        # And write out.
+        marz_hdu.writeto(marzfile, overwrite=True)
+
     pass
