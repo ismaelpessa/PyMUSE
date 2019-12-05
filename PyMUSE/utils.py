@@ -341,7 +341,7 @@ def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
     return flux_sum/counter, flux_sum, counter
 
 
-def create_marz_file_from_directory(specdir, output, check_wave=True):
+def marz_file_from_specdir(specdir, output, check_wave=True):
     """
     Convert a set of PyMUSE spectra in a given directory, to the
     MARZ format: single .fits file with all the spectra in it.
