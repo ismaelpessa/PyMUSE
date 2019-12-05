@@ -351,35 +351,35 @@ def create_marz_file_from_directory(specdir, output, check_wave=True):
     :return:
     """
 
-        list_spec = glob.glob(specdir + '/*.fits')
-        # sort the filelist into numeric order
-        list_spec.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
+    list_spec = glob.glob(specdir + '/*.fits')
+    # sort the filelist into numeric order
+    list_spec.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
 
-        ns = len(list_spec)  # number of spectra
-        hdulist0 = fits.open(list_spec[0])
-        nw = hdulist0[1].data.shape[0]  # number of wavelength pixels
+    ns = len(list_spec)  # number of spectra
+    hdulist0 = fits.open(list_spec[0])
+    nw = hdulist0[1].data.shape[0]  # number of wavelength pixels
 
-        matrix_data = np.zeros((ns, nw))
-        matrix_var = np.zeros((ns, nw))
-        matrix_wv = np.zeros((ns, nw))
+    matrix_data = np.zeros((ns, nw))
+    matrix_var = np.zeros((ns, nw))
+    matrix_wv = np.zeros((ns, nw))
 
         # fill in the data
-        for i in range(ns):
-            hdulist = fits.open(list_spec[i])
-            flux = hdulist[0].data
-            var = hdulist[1].data ** 2
-            wave = hdulist[2].data
-            # fill in the matrix
-            matrix_data[i, :] = flux
-            matrix_var[i, :] = var
-            matrix_wv[i, :] = wave
+    for i in range(ns):
+        hdulist = fits.open(list_spec[i])
+        flux = hdulist[0].data
+        var = hdulist[1].data ** 2
+        wave = hdulist[2].data
+        # fill in the matrix
+        matrix_data[i, :] = flux
+        matrix_var[i, :] = var
+        matrix_wv[i, :] = wave
 
-        # set the HDU objects
-        fluxHDU = fits.PrimaryHDU(data=matrix_data)
-        varHDU = fits.ImageHDU(data=matrix_var)
-        wvHDU = fits.ImageHDU(data=matrix_wv)
-        fluxHDU.header['EXTNAME'] = 'INTENSITY'
-        varHDU.header['EXTNAME'] = 'VARIANCE'
-        varHDU.header['EXTNAME'] = 'WAVELENGHT'
-        hdulist_out = fits.HDUList([fluxHDU, varHDU, wvHDU])
-        hdulist_out.writeto(output, overwrite=True)
+    # set the HDU objects
+    fluxHDU = fits.PrimaryHDU(data=matrix_data)
+    varHDU = fits.ImageHDU(data=matrix_var)
+    wvHDU = fits.ImageHDU(data=matrix_wv)
+    fluxHDU.header['EXTNAME'] = 'INTENSITY'
+    varHDU.header['EXTNAME'] = 'VARIANCE'
+    wvHDU.header['EXTNAME'] = 'WAVELENGTH'
+    hdulist_out = fits.HDUList([fluxHDU, varHDU, wvHDU])
+    hdulist_out.writeto(output, overwrite=True)
