@@ -11,6 +11,7 @@ from linetools import utils as ltu
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from scipy.interpolate import interp1d
 from astropy.table import Table
+import glob
 import copy
 
 
@@ -313,6 +314,7 @@ def create_homogeneous_sky_image(input_image, nsig=3, floor_input=0, floor_outpu
     im_new = np.where(input_image < nsig * std, floor_output, input_image)
     return im_new
 
+
 def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
     """Collapses the full wavelength range, but only summing voxels with flux above
     a given S/N threshold to obtain a total flux (flux) per spaxel. Each spaxel
@@ -337,3 +339,47 @@ def create_significant_flux_image(input_cube, input_cube_er, min_s2n=1):
         counter += cond
 
     return flux_sum/counter, flux_sum, counter
+
+
+def marz_file_from_specdir(specdir, output, check_wave=True):
+    """
+    Convert a set of PyMUSE spectra in a given directory, to the
+    MARZ format: single .fits file with all the spectra in it.
+
+    :param specdir: str, directory containing the spectra
+    :param output: str, filename for MARZ output
+    :return:
+    """
+
+    list_spec = glob.glob(specdir + '/*.fits')
+    # sort the filelist into numeric order
+    list_spec.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
+
+    ns = len(list_spec)  # number of spectra
+    hdulist0 = fits.open(list_spec[0])
+    nw = hdulist0[1].data.shape[0]  # number of wavelength pixels
+
+    matrix_data = np.zeros((ns, nw))
+    matrix_var = np.zeros((ns, nw))
+    matrix_wv = np.zeros((ns, nw))
+
+        # fill in the data
+    for i in range(ns):
+        hdulist = fits.open(list_spec[i])
+        flux = hdulist[0].data
+        var = hdulist[1].data ** 2
+        wave = hdulist[2].data
+        # fill in the matrix
+        matrix_data[i, :] = flux
+        matrix_var[i, :] = var
+        matrix_wv[i, :] = wave
+
+    # set the HDU objects
+    fluxHDU = fits.PrimaryHDU(data=matrix_data)
+    varHDU = fits.ImageHDU(data=matrix_var)
+    wvHDU = fits.ImageHDU(data=matrix_wv)
+    fluxHDU.header['EXTNAME'] = 'INTENSITY'
+    varHDU.header['EXTNAME'] = 'VARIANCE'
+    wvHDU.header['EXTNAME'] = 'WAVELENGTH'
+    hdulist_out = fits.HDUList([fluxHDU, varHDU, wvHDU])
+    hdulist_out.writeto(output, overwrite=True)
