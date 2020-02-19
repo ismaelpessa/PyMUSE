@@ -130,7 +130,7 @@ class MuseCube:
                     l.append(i)
             for i in l:
                 del w_header_1[i]
-
+            w_header_1['WCSAXES'] = 2
             # prepare the header
             hdu = fits.HDUList()
             hdu_0 = fits.PrimaryHDU(header=w_header_0)
