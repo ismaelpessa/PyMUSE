@@ -181,13 +181,16 @@ class MuseCube:
         return smooth_im
 
     def spec_to_vacuum(self, spectrum):
-        spectrum_vac = spectrum
+        spectrum_aux = spectrum
         if self.wave_cal == 'air' and self.output_wave_cal == 'vac':
-            spectrum_vac.meta['airvac'] = 'air'
-            spectrum_vac.airtovac()
-            return spectrum_vac
+            spectrum_aux.meta['airvac'] = 'air'
+            spectrum_aux.airtovac()
+            return spectrum_aux
+        elif self.wave_cal == 'air' and self.output_wave_cal == 'air':
+            spectrum_aux.meta['airvac'] = 'air'
+            return spectrum_aux
         else:
-            return spectrum_vac
+            return spectrum_aux
 
     def spatial_smooth(self, npix, output="smoothed.fits", test=False, **kwargs):
         """Applies Gaussian filter of std=npix in both spatial directions
