@@ -137,7 +137,7 @@ class MuseCube:
             hdu_1 = fits.ImageHDU(data=w_data, header=w_header_1)
             hdu.append(hdu_0)
             hdu.append(hdu_1)
-            hdu.writeto('new_white.fits', clobber=True)
+            hdu.writeto('new_white.fits', overwrite=True)
             self.filename_white = 'new_white.fits'
             print("MuseCube: `new_white.fits` image saved to disk.")
 
@@ -173,7 +173,7 @@ class MuseCube:
             comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
             # print(comment)
             prihdr['history'] = comment
-            hdulist.writeto('smoothed_white.fits', clobber=True)
+            hdulist.writeto('smoothed_white.fits', overwrite=True)
             if show:
                 fig = aplpy.FITSFigure('smoothed_white.fits', figure=plt.figure())
                 fig.show_grayscale(vmin=self.vmin, vmax=self.vmax)
@@ -245,7 +245,7 @@ class MuseCube:
         comment = 'Spatially smoothed with a Gaussian kernel of sigma={} spaxels (by MuseCube)'.format(npix)
         print(comment)
         prihdr['history'] = comment
-        hdulist.writeto(output, clobber=True)
+        hdulist.writeto(output, overwrite=True)
         print("MuseCube: new smoothed cube written to {}".format(output))
 
     def get_mini_image(self, center, halfsize=15):
@@ -316,7 +316,7 @@ class MuseCube:
             hdulist[0].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_white'
             hdulist[1].header['COMMENT'] = 'Image created by PyMUSE.create_homogeneous_sky_white'
             hdulist[1].data = im_new
-            hdulist.writeto(output_image_filename, clobber=True)
+            hdulist.writeto(output_image_filename, overwrite=True)
         return im_new
 
     def create_SN_map(self, wavelength_restframe = None, wavelength_effective = None, width = 10, redshift = None, units_redshift = None , output_file = 'SN_map.fits'):
@@ -1740,20 +1740,20 @@ class MuseCube:
             hdulist = fits.HDUList.fromfile(self.filename_white)
             hdulist[1].data = data_to_save
             if len(edit_header) == 0:
-                hdulist.writeto(fitsname, clobber=True)
+                hdulist.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
                 im.show_grayscale()
             elif len(edit_header) == 1:
                 values_list = edit_header[0]
                 hdulist_edited = self.__edit_header(hdulist, values_list=values_list)
-                hdulist_edited.writeto(fitsname, clobber=True)
+                hdulist_edited.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
                 im.show_grayscale()
             elif len(edit_header) == 2:
                 values_list = edit_header[0]
                 keywords_list = edit_header[1]
                 hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list)
-                hdulist_edited.writeto(fitsname, clobber=True)
+                hdulist_edited.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
                 im.show_grayscale()
             elif len(edit_header) == 3:
@@ -1762,7 +1762,7 @@ class MuseCube:
                 hdu = edit_header[2]
                 hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list,
                                                     hdu=hdu)
-                hdulist_edited.writeto(fitsname, clobber=True)
+                hdulist_edited.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, figure=plt.figure(n_figure))
                 im.show_grayscale()
 
@@ -1773,20 +1773,20 @@ class MuseCube:
             if stat == True:
                 hdulist[2].data = data_to_save
             if len(edit_header) == 0:
-                hdulist.writeto(fitsname, clobber=True)
+                hdulist.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
             elif len(edit_header) == 1:
                 values_list = edit_header[0]
                 hdulist_edited = self.__edit_header(hdulist, values_list=values_list)
-                hdulist_edited.writeto(fitsname, clobber=True)
+                hdulist_edited.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
             elif len(edit_header) == 2:
                 values_list = edit_header[0]
                 keywords_list = edit_header[1]
                 hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list)
-                hdulist_edited.writeto(fitsname, clobber=True)
+                hdulist_edited.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
             elif len(edit_header) == 3:
@@ -1795,7 +1795,7 @@ class MuseCube:
                 hdu = edit_header[2]
                 hdulist_edited = self.__edit_header(hdulist, values_list=values_list, keywords_list=keywords_list,
                                                     hdu=hdu)
-                hdulist_edited.writeto(fitsname, clobber=True)
+                hdulist_edited.writeto(fitsname, overwrite=True)
                 im = aplpy.FITSFigure(fitsname, slices=[1], figure=plt.figure(n_figure))
                 im.show_grayscale()
 
@@ -2150,7 +2150,7 @@ class MuseCube:
                     spec.write_to_fits(spec_fits_name + '.fits')
                     hdulist = fits.open(spec_fits_name + '.fits')
                     hdulist[0].header[mag_kwrd] = mag[i]
-                    hdulist.writeto(spec_fits_name + '.fits', clobber=True)
+                    hdulist.writeto(spec_fits_name + '.fits', overwrite=True)
                 print('ID = ' + str_id + ' Ready!!')
 
     def __read_files(self, input):
@@ -2297,7 +2297,7 @@ class MuseCube:
         hdulist[2] = hdu2
         hdulist[1].data = datanew
         hdulist[2].data = statnew
-        hdulist.writeto(output_fitsname, clobber=True)
+        hdulist.writeto(output_fitsname, overwrite=True)
 
     def sub_cube(self, wv_input, stat=False):
         """
@@ -3569,7 +3569,7 @@ class MuseCube:
         if save:
             hdulist = self.hdulist_white_temp
             hdulist[1].data = normalized_im
-            hdulist.writeto(fitsname, clobber=True)
+            hdulist.writeto(fitsname, overwrite=True)
         return normalized_im
 
     def create_ranges(self, z, width=30.):
